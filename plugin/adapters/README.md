@@ -16,6 +16,8 @@
 | **Codex** | `codex mcp add paper-studio -- <node> …/bin/mcp-server.mjs` | Codex 的 goals / `AGENTS.md` 任务清单；**或用本插件自带的 `paper_progress`** | ✅ **MCP 注册已实测**（见下）；⚠️ 技能目录发现未实测 |
 | **Claude Code** | `claude mcp add paper-studio -- <node> …/bin/mcp-server.mjs` | `TodoWrite` + 子代理；或用 `paper_progress` | ⚠️ **未实测**（本机没装 Claude Code）—— 命令按官方文档写，**未经验证** |
 | **Cursor / Cline / 其它 MCP 宿主** | 在宿主的 MCP 配置里加一条 stdio server | 各自的待办机制；或用 `paper_progress` | ⚠️ **未实测** |
+| **TRAE CN（字节 AI IDE）** | 同一台机器上已验证：写 `%APPDATA%\Trae CN\User\mcp.json` 的 `mcpServers`（标准 VS Code 系格式） | 用 `paper_progress` | ✅ **已实测**（`install-mcp.cjs --host trae-cn` 真写入 + JSON 复核 + 原有 3 条无损） |
+| **TRAE（国际版）** | 同上，路径 `%APPDATA%\Trae\User\mcp.json` | 同上 | ⚠️ 本机未装（仅路径不同，格式同） |
 | **任何能跑 shell 的 agent** | 直接 `node bin/studio.cjs <子命令>` | `PROGRESS.md`（纯文件，最少依赖） | ✅ **已实测**（本机 `studio.cjs selftest` 53/53，不依赖 DSH） |
 
 > **诚实标注**：上表只有 DSH 与 Codex(MCP) 是**本机实测**过的；Claude Code / Cursor 是按官方文档写的，**没有**在这台机器上验证 —— 不要把它们当成"已验证可用"。
@@ -60,3 +62,30 @@ codex mcp remove paper-studio          :: 撤销 Codex 注册
 :: 若手改过 config.toml：用 ~/.codex/config.toml.bak-paperstudio-<时间戳> 覆盖回去
 ```
 DSH 侧回退：`node E:\DeepSeek\tools\dsh-paper-plugin.cjs off`（行级开关，见根 README）。
+
+---
+
+## 一键接多宿主：`install-mcp.cjs`（**推荐**，2026-10-15 新增）
+
+一家家写文档太慢，所以把「宿主 → 配置位置 → 写法」做成一张表，一次装到位。**内置 12 个宿主**：
+
+```bat
+node adapters/install-mcp.cjs --list                 :: 看本机检测到哪些宿主（只判断存在性，不读凭证值）
+node adapters/install-mcp.cjs --host auto            :: 装进所有检测到且支持的宿主
+node adapters/install-mcp.cjs --host trae-cn,cursor  :: 只装指定的
+node adapters/install-mcp.cjs --host trae-cn --dry-run
+node adapters/install-mcp.cjs --host trae-cn --remove
+```
+
+内置宿主：`trae-cn` · `trae` · `cursor` · `vscode`(Copilot) · `claude-desktop` · `windsurf` · `cline` · `gemini-cli` · `continue` · `zed`(用 `context_servers` 键) · `claude-code`(官方 CLI) · `codex`(官方 CLI)。
+
+**它的安全纪律**（写进代码，不靠自觉）：
+1. **写前必留备份**（`<配置>.bak-paperstudio-<时间戳>`）；
+2. **只增删 `paper-studio` 这一条**，其它键原样保留；写后**自校验"原有条目一条不少"**；
+3. **幂等**（重复运行报 `noop`）；`--remove` 只删自己那条；
+4. 有官方 CLI 的宿主（Codex / Claude Code）**只走官方入口**，不手改其配置文件；
+5. `--list` / 报错信息**只判断存在性，不打印任何凭证值**。
+
+> **实测（2026-10-15）**：`--host trae-cn` 真写入成功 —— 合并后 `mcpServers` 为 `gitee, windows-cli, dsh-collab, paper-studio`（原有 3 条无损），JSON 可解析，复跑 `noop`。
+> **且这条自检本身被证伪过**：早期实现把"原有条目数"取自**已被改动的同一个对象**，等于自己跟自己比 —— 报告永远通过。修正为**改动前快照**，并写了**能变红的夹具**（复现该 bug 时自检直接报"报告未如实反映原有条目数"）。
+

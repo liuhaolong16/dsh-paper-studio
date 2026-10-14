@@ -10,7 +10,7 @@
  * 用法：node plugin/selftest.cjs
  * 退出码：0 全过 · 1 有失败
  */
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
@@ -221,6 +221,39 @@ asyncChecks.push(['★★ 正控（宿主中立）· 目标/自动推进机制**
   return bad.length === 0 ? true : bad.join(' | ')
 }])
 
+// ── 跨宿主安装器：合并必须安全（不许吃掉别人配置），且自检不能是空的 ──
+asyncChecks.push(['★★ 正控（跨宿主）· install-mcp 的合并：原有条目一条不少 + 幂等 + 可移除 + 报告的真实性', async () => {
+  const inst = join(HERE, 'adapters', 'install-mcp.cjs')
+  if (!existsSync(inst)) return '缺 adapters/install-mcp.cjs'
+  const dir = join(tmpdir(), 'ps-mcpinst-' + Date.now())
+  const cfg = join(dir, 'mcp.json')
+  mkdirSync(dir, { recursive: true })
+  const seed = { mcpServers: { alpha: { command: 'x', args: ['1'] }, beta: { command: 'y', args: [] }, gamma: { command: 'z', args: [] } } }
+  writeFileSync(cfg, JSON.stringify(seed, null, 2) + '\n', 'utf8')
+  const run = (extra) => spawnSync(process.execPath, [inst, '--host', 'trae-cn', '--config', cfg, ...extra], { encoding: 'utf8', timeout: 60000 })
+  const bad = []
+  const r1 = run([])
+  const out1 = String(r1.stdout || '')
+  // ① 报告必须说"原有 3 条完好"（若实现拿被改动的对象自比，会报 4 ⇒ 这条立刻红）
+  if (!/原有 3 条完好/.test(out1)) bad.push('报告未如实反映原有条目数（期望"原有 3 条完好"）：' + out1.replace(/\s+/g, ' ').slice(0, 160))
+  const after1 = JSON.parse(readFileSync(cfg, 'utf8'))
+  const keys = Object.keys(after1.mcpServers).sort()
+  for (const k of ['alpha', 'beta', 'gamma']) if (!keys.includes(k)) bad.push('原有条目被吃掉：' + k)
+  if (!keys.includes('paper-studio')) bad.push('没装上 paper-studio')
+  if (JSON.stringify(after1.mcpServers.alpha) !== JSON.stringify(seed.mcpServers.alpha)) bad.push('原有条目内容被改动（alpha）')
+  // ② 幂等
+  const r2 = run([])
+  if (!/noop/.test(String(r2.stdout || ''))) bad.push('重复运行不幂等')
+  // ③ 移除：只删自己那一条
+  const r3 = run(['--remove'])
+  const after3 = JSON.parse(readFileSync(cfg, 'utf8'))
+  const keys3 = Object.keys(after3.mcpServers)
+  if (keys3.includes('paper-studio')) bad.push('--remove 没删掉自己的条目')
+  if (keys3.length !== 3) bad.push('--remove 误伤其它条目：' + keys3.join(','))
+  try { rmSync(dir, { recursive: true, force: true }) } catch { /* 忽略 */ }
+  return bad.length === 0 ? true : bad.join(' | ')
+}])
+
 // ── 跨宿主适配：MCP 服务器必须真能握手与调用（否则"支持 Codex"就是空话）──
 asyncChecks.push(['★★ 正控（跨宿主）· MCP 服务器真握手：initialize + tools/list 三工具 + paper_progress 往返', async () => {
   const srv = join(HERE, 'bin', 'mcp-server.mjs')
@@ -294,6 +327,9 @@ asyncChecks.push(['★★ 正控（真机事故）· 交付文件不得带 UTF-8
     'plugin/package.json', 'plugin/cordis.patch.yml', 'plugin/tools-manifest.json',
     'plugin/skill/SKILL.md', 'plugin/README.md', 'plugin/hub/README.md',
     'plugin/dist/plugin.js', 'plugin/selftest.mjs',
+    // ★ 跨宿主入口也必须在守卫范围内（否则新加的文件没人管 BOM）
+    'plugin/bin/mcp-server.mjs', 'plugin/adapters/install-mcp.cjs',
+    'plugin/adapters/install-codex.cjs', 'plugin/adapters/README.md',
     'references/pipeline.json', 'references/templates.json',
     'package.json', 'README.md', 'CHANGELOG.md', 'NOTICE.md', 'SKILL.md',
   ]
