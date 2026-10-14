@@ -1,0 +1,40 @@
+name: sync-from-gitee
+
+# 为什么需要这个文件（如实说明，不藏）：
+#   作者所在网络**无法访问 github.com 的 git over HTTPS**（TLS 会话被重置，实测 curl 到
+#   github.com 超时，而 api.github.com 200 正常）。因此本仓的**主仓在 Gitee**，
+#   由 GitHub Actions 运行器（走 GitHub 自己的出口）把 Gitee 的 main **镜像**到本仓 —— 无需任何
+#   额外凭据，使用运行器自带的 GITHUB_TOKEN。
+#   触发：push 到本仓（首次引导即用此路径）+ 每 6 小时定时 + 手动 dispatch。
+#   防环：镜像推送的是**同一个 commit SHA**，所以运行时不会有新提交；另加 actor 守卫双保险。
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-from-gitee
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 从 Gitee 主仓镜像 main
+        env:
+          SRC: https://gitee.com/Suzumiya-haruhi16/dsh-paper-studio.git
+          DST: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          set -euo pipefail
+          git clone --mirror "$SRC" src.git
+          cd src.git
+          echo "Gitee main = $(git rev-parse main)"
+          git push --force "$DST" main:refs/heads/main
+          echo "已镜像到 ${{ github.repository }}"
