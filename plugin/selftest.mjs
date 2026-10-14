@@ -202,6 +202,55 @@ asyncChecks.push(['★ 正控 · action=intent 经工具路径也可用（含判
 }])
 
 // ── 启动安全（重启前必须过：插件抛错会把宿主界面带崩）──
+asyncChecks.push(['★★ 正控（宿主中立）· 目标/自动推进机制**不得写死某一宿主的专有 API**（必须有自带兜底与宿主矩阵）', async () => {
+  // 反面案例：早期版本把 autonomy.first 写成「调宿主的 create_goal」——那是 DSH 专有，
+  //   下载插件的 Codex / Claude Code 用户拿到就是死指令。夹具据此看守措辞。
+  const r = await studio.execute({ action: 'modes' })
+  const a = ((r && r.menu) || {}).autonomy || {}
+  const first = String(a.first || '')
+  const hosts = a.hosts || {}
+  const bad = []
+  if (!/paper_progress|PROGRESS\.md/.test(first)) bad.push('autonomy.first 没有中立兜底（paper_progress / PROGRESS.md）')
+  if (!hosts.dsh && !/DSH/i.test(first)) bad.push('未说明 DSH 用什么')
+  if (!hosts.codex) bad.push('hosts 缺 codex（Codex 用户也要有目标机制）')
+  if (!hosts.claude_code) bad.push('hosts 缺 claude_code')
+  if (!/paper_progress/.test(String(hosts.mcp_any || ''))) bad.push('hosts.mcp_any 未指向本插件自带的 paper_progress')
+  if (!/PROGRESS\.md/.test(String(hosts.none || ''))) bad.push('hosts.none 未给出纯文件兜底')
+  if (!/催/.test(String(a.why || ''))) bad.push('autonomy.why 未写反面案例')
+  if (!/每一轮|逐轮/.test(String(a.then || ''))) bad.push('autonomy.then 未写明逐轮推进')
+  return bad.length === 0 ? true : bad.join(' | ')
+}])
+
+// ── 跨宿主适配：MCP 服务器必须真能握手与调用（否则"支持 Codex"就是空话）──
+asyncChecks.push(['★★ 正控（跨宿主）· MCP 服务器真握手：initialize + tools/list 三工具 + paper_progress 往返', async () => {
+  const srv = join(HERE, 'bin', 'mcp-server.mjs')
+  if (!existsSync(srv)) return '缺 bin/mcp-server.mjs（跨宿主入口）'
+  const probeDir = join(tmpdir(), 'ps-mcp-' + Date.now())
+  const prog = join(probeDir, 'PROGRESS.md').replace(/\\/g, '/')
+  const lines = [
+    JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05' } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }),
+    JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'paper_studio', arguments: { action: 'intent', text: '帮我写论文' } } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'paper_progress', arguments: { action: 'append', path: prog, text: '阶段：夹具' } } }),
+    JSON.stringify({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'paper_progress', arguments: { action: 'read', path: prog } } }),
+  ].join('\n') + '\n'
+  const r = spawnSync(process.execPath, [srv], { input: lines, encoding: 'utf8', timeout: 60000 })
+  const bad = []
+  if (r.status !== 0) bad.push('退出码 ' + r.status + ' err=' + String(r.stderr || '').slice(0, 200))
+  const got = String(r.stdout || '').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
+  const by = (id) => got.find((m) => m.id === id)
+  if (!(by(1) && by(1).result && by(1).result.serverInfo)) bad.push('initialize 无 serverInfo')
+  const tools = (by(2) && by(2).result && by(2).result.tools) || []
+  const names = tools.map((t) => t.name).sort().join(',')
+  if (names !== 'paper_dev,paper_progress,paper_studio') bad.push('tools/list = ' + names)
+  if (!tools.every((t) => t.inputSchema && t.inputSchema.type === 'object')) bad.push('有工具缺 inputSchema')
+  if (!/is_paper/.test(JSON.stringify(by(3) || {}))) bad.push('paper_studio intent 经 MCP 不可用')
+  if (!(by(4) && /已追加|已写入/.test(JSON.stringify(by(4))))) bad.push('paper_progress append 失败：' + JSON.stringify(by(4) || {}).slice(0, 200))
+  if (!(by(5) && /阶段：夹具/.test(JSON.stringify(by(5))))) bad.push('paper_progress read 没读回刚写的内容')
+  try { rmSync(probeDir, { recursive: true, force: true }) } catch { /* 忽略 */ }
+  return bad.length === 0 ? true : bad.join(' | ')
+}])
+
 asyncChecks.push(['★★ 正控（冷启动）· 在**全新子进程**里 import + apply（模拟宿主启动加载），不得抛错且注册 2 个工具', async () => {
   const probe = join(tmpdir(), 'ps-coldstart-' + Date.now() + '.mjs')
   writeFileSync(probe, `
@@ -319,13 +368,11 @@ asyncChecks.push(['★★ 正控 · 菜单协议内置「自动推进」：收�
   const m = (r && r.menu) || {}
   const a = m.autonomy || {}
   const bad = []
-  if (!/create_goal/.test(String(a.first || ''))) bad.push('autonomy.first 未要求 create_goal')
+  if (!String(a.first || '').trim()) bad.push('autonomy.first 为空')
   if (!/逐轮|自动推进/.test(String(a.then || ''))) bad.push('autonomy.then 未写明逐轮自动推进')
   if (!/用户才有的东西|作者/.test(String(a.blocked || ''))) bad.push('autonomy.blocked 未界定何时才可停')
-  if (!/complete/.test(String(a.done || ''))) bad.push('autonomy.done 未要求收尾标记完成')
-  if (!/create_goal/.test(String(m.after_choice || ''))) bad.push('after_choice 未提示先建目标')
-  // 反面案例必须写进去（这是"为什么要有这一条"的依据，删了就会退回手动催）
-  if (!/催/.test(String(a.why || ''))) bad.push('autonomy.why 未写明反面案例')
+  if (!/完成/.test(String(a.done || ''))) bad.push('autonomy.done 未要求收尾标记完成')
+  if (!/目标|create_goal|paper_progress|PROGRESS/.test(String(m.after_choice || ''))) bad.push('after_choice 未提示先建/接续目标')
   return bad.length === 0 ? true : bad.join(' | ')
 }])
 
