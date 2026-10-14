@@ -224,6 +224,40 @@ asyncChecks.push(['★★ 正控（必失败面）· 敌意/残缺 ctx 下 apply
   return thrown.length === 0 ? true : thrown.join(' | ')
 }])
 
+// ── 出厂卫生（真机事故换来的：BOM 让宿主 manifest 解析失败 ⇒ 整个 bundle 被静默跳过）──
+asyncChecks.push(['★★ 正控（真机事故）· 交付文件不得带 UTF-8 BOM，且每个 JSON 必须能被严格 JSON.parse', async () => {
+  // 事故复盘（2026-10-14 重启后实证）：`plugin/package.json` 被某次
+  //   PowerShell `Set-Content -Encoding UTF8` 写入了 BOM（\uFEFF）；
+  //   宿主诊断原话：`Unexpected token '﻿', "﻿{\n  \"name\"... is not valid JSON"`；
+  //   后果：**manifest 读取失败 ⇒ 该 bundle 被静默跳过（skippedBundles）** ⇒ 工具一个都不注册、界面不崩。
+  //   注意 `JSON.parse` 对 BOM **不宽容**（会抛），所以本夹具天然能拦住它。
+  const root = join(HERE, '..')
+  const files = [
+    'plugin/package.json', 'plugin/cordis.patch.yml', 'plugin/tools-manifest.json',
+    'plugin/skill/SKILL.md', 'plugin/README.md', 'plugin/hub/README.md',
+    'plugin/dist/plugin.js', 'plugin/selftest.mjs',
+    'references/pipeline.json', 'references/templates.json',
+    'package.json', 'README.md', 'CHANGELOG.md', 'NOTICE.md', 'SKILL.md',
+  ]
+  const bom = []
+  const parseFail = []
+  for (const rel of files) {
+    const p = join(root, rel)
+    if (!existsSync(p)) continue
+    const buf = readFileSync(p)
+    if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) bom.push(rel)
+    if (rel.endsWith('.json')) { try { JSON.parse(readFileSync(p, 'utf8')) } catch (e) { parseFail.push(rel + ' → ' + e.message) } }
+  }
+  const pj = JSON.parse(readFileSync(join(HERE, 'package.json'), 'utf8'))
+  const patchRel = pj && pj.dsh && pj.dsh.bundle && pj.dsh.bundle.patch
+  const patchOk = patchRel && existsSync(join(HERE, patchRel))
+  const bad = []
+  if (bom.length) bad.push('带 BOM：' + bom.join(', '))
+  if (parseFail.length) bad.push('JSON 解析失败：' + parseFail.join(' | '))
+  if (!patchOk) bad.push('dsh.bundle.patch 指向的文件不存在：' + patchRel)
+  return bad.length === 0 ? true : bad.join(' ；')
+}])
+
 // ── 端到端：真的把 CLI 跑起来 ──
 asyncChecks.push(['★★ 正控（端到端）· paper_studio action=audit 真的跑通 CLI 并返回退出码 0', async () => {
   // ★ 端到端会连带跑 10 个子工具的自检，负载高时可能偶发慢/失败（实测在"全新副本"里出现过 1 次）。
