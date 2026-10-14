@@ -136,7 +136,7 @@ function modeMenu() {
     how_to_show: '用 ask_user_question 呈现（宿主原生可点击选项，用户不用打字）；每项 label 用大写模式名，description 用该模式的 blurb；multi_select=false',
     confirm_first: '若意图判断为「可能是论文请求但不确定」，先问一句确认，**不要**直接弹模式菜单（防误启）',
     options: MODES.map((m) => ({ label: m.label, description: m.blurb })),
-    after_choice: '选定后**只按该模式的 next_ask 提问**（全代写只问 4 项后直接开写）；每个问题都给选项与一行解释；**收齐必要信息后先建目标再开写**（见 autonomy）',
+    after_choice: '选定后**只按该模式的 next_ask 提问**（全代写只问 4 项后直接开写）；每个问题都给选项与一行解释；**收齐必要信息后先调 create_goal 建持久目标再开写**（见 autonomy）',
     // ★ 自动推进（用户要求内置，2026-10-14）：把"写完"做成**持久目标**，这样不靠用户每步说「继续」。
     //   为什么放在插件协议里而不是只写文档：目标不建，长任务就会**每步停下等催**（实测发生过）。
     autonomy: {
