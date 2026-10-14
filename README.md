@@ -64,6 +64,18 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 - **明确不做**：不生成图片（图表只给题注文本/绘图建议/Mermaid 源码）· 不做规避 AI 检测类操作。
 - **许可**：见 `LICENSE`（MIT）与 `NOTICE.md`（**三分类口径**：机制/思想不受著作权保护 · 本方实现 MIT · 本仓不含逐字复印的上游正文）。
 
+## 两端同步说明（**如实记录**）
+
+- **主仓：Gitee** —— <https://gitee.com/Suzumiya-haruhi16/dsh-paper-studio>
+- **GitHub 侧** —— <https://github.com/liuhaolong16/dsh-paper-studio>（公开仓已建；**内容同步方式见下**）
+
+作者所在网络**无法直连 `github.com` 的 git over HTTPS**（实测：`curl https://github.com/...` 超时；但 `https://api.github.com` 200 正常；`git push` 反复 `Recv failure: Connection was reset`）。因此 GitHub 侧的同步采用**由 GitHub 自己拉取**的方式，而不是本机推上去：
+
+1. **一次性引导**：在 GitHub 网页用 **Import a repository** 指向上面 Gitee 主仓地址 —— GitHub 服务端会连 Gitee 克隆整个仓（含历史），本机网络不参与。
+2. **此后的自动同步**：本仓自带 `.github/workflows/sync-from-gitee.yml`，会**每 6 小时**（以及手动 dispatch 时）由 Actions 运行器把 Gitee 的 `main` 镜像过来 —— **无需任何额外凭据**（用运行器自带的 `GITHUB_TOKEN`）。
+
+> 为什么不用"本机直推"：本机没有可用代理 / `gh` / SSH 密钥，且逐文件走 API 需把 530 KB 内容经模型上下文传输（约十几万 token）——**代价不可接受**，故不采用。
+
 ## 相关仓
 
 - 论文方法本体（11 维判据 · 机器门 · 投稿前检查表）：`research-paper-playbook`
