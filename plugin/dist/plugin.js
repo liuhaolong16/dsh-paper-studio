@@ -146,7 +146,7 @@ function modeMenu() {
       then: '此后**逐轮自动推进**：每轮至少落一个阶段（骨架 → 检索与核实 → 协议章节 → 正文各章 → 跑门 → 声明）；' +
         '每轮**先读进度载体再干活、干完追加一行**；**不要**在阶段之间停下等用户说继续。',
       blocked: '只有当"继续"需要**用户才有的东西**（作者/单位/邮箱、选刊、是否允许某类操作）时才停；停下时**一次问清**，并说明其余部分会继续做。',
-      done: '全部阶段完成（含跑门与声明）后，把目标标记完成（原生机制则 complete；用 PROGRESS.md 则写"已完成"），并给出最终交付与"未完成/做不到"清单。',
+      done: '全部阶段完成（含跑门与声明）后：① 跑 `paper_studio action=cost` 生成**成本总结**（token 是事实、金额按价格表算；价格表里没有的模型标「未定价」，**绝不当 0**），把它作为交付物之一（`--out 交付总结.md`）；② 把目标标记完成（原生机制则 complete；用 PROGRESS.md 则写"已完成"）；③ 给出最终交付与"未完成/做不到"清单。',
       why: '反面案例（实测）：长任务无持久目标时，模型写几步就停、用户要反复催「继续」；' +
         '且**不得写死某一宿主的专有 API** —— 否则换宿主即失效（早期 `create_goal` 版本就是这个错）。',
       hosts: {
@@ -233,7 +233,7 @@ const INTENT_CASES = [
 ]
 
 
-const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 'scaffold', 'genre', 'sections', 'verify', 'stylecheck', 'polish', 'revise', 'figures', 'profile', 'coach', 'audit', 'state', 'lessons', 'method', 'handoff', 'crosscheck', 'docx', 'selftest']
+const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 'scaffold', 'genre', 'sections', 'verify', 'stylecheck', 'polish', 'revise', 'figures', 'profile', 'coach', 'audit', 'state', 'lessons', 'method', 'handoff', 'crosscheck', 'docx', 'cost', 'selftest']
 
 const PAPER_STUDIO_TOOL = {
   name: 'paper_studio',

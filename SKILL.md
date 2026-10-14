@@ -54,6 +54,8 @@ node bin/studio.cjs revise budget --file "<稿.md>"       :: 缩写/扩写：与
 node bin/studio.cjs figures caption --check --file "<稿.md>"   :: 题注体检（硬判据＝"见正文"；缺 n/单位只提示）· `figures recommend` 绘图建议 · `figures arch` 架构图 Mermaid 源码
 node bin/studio.cjs schemacheck --manifest tools.json    :: **工具 parameters 严格性校验**（防严格通道 400 / "换模型才报错"）
 node bin/studio.cjs audit                                :: **出厂审查**（完整性 + 重复性 + 数字一致性，6 项可复跑）
+node bin/studio.cjs cost [--latest|--file <会话日志>] [--out 交付总结.md] [--prices <价格表>] [--usd-cny <汇率>]
+                                                         :: **交付后成本总结**：token 用量**读会话日志**（多帧 zstd 逐个解）· 金额**只按价格表算**，表里没有的模型标「未定价」**绝不当 0**
 node bin/studio.cjs state show --run "<run 目录>"        :: 运行状态机（**done ≠ accepted**；accept 需 verdict_id + reviewer，同族会告警）
 node bin/studio.cjs method                             :: 11 维方法论索引（指向真源文件，不复制）
 node bin/studio.cjs gates                              :: 列全部必过门（含运行器与脚本路径是否存在）
@@ -66,7 +68,7 @@ node bin/studio.cjs handoff intake --file decl.json     :: **真校验**一份�
 node bin/studio.cjs sections [--genre review]             :: **章节级框架**（每节：解决什么/必答/篇幅/证据义务/门/常见退回）
 node bin/studio.cjs crosscheck [--pair=material|docx]   :: **同判回归**（两对判据：材料声明 / 成品件结构）必须同判
 node bin/studio.cjs docx "<成品.docx 路径>"                   :: **不依赖文档库**读成品件结构（表格/图/段落/残留标记）
-node bin/studio.cjs selftest                           :: 自检 51 项（含必失败夹具）
+node bin/studio.cjs selftest                           :: 自检（含必失败夹具；数量不写死——写死就是漂移源）
 node bin/gate-runner.cjs --task "投稿前体检" --draft 稿.md --docx 稿.docx   :: 逐门真跑
 node bin/studio.cjs report --task "投稿前体检" --draft 稿.md --docx 稿.docx --anchors 锚点.json
                                           :: 带行号待修项 + **按节看哪一节要改** + 成品件自带读数；

@@ -254,6 +254,22 @@ asyncChecks.push(['★★ 正控（跨宿主）· install-mcp 的合并：原有
   return bad.length === 0 ? true : bad.join(' | ')
 }])
 
+// ── 交付后成本总结（cost）：工具侧、CLI 侧、schema 枚举三处都得通 ──
+asyncChecks.push(['★★ 正控 · cost 子命令（交付后成本总结）经插件与 CLI 都可跑，且 schema 枚举放行', async () => {
+  if (!mod.__test__.STUDIO_ACTIONS.includes('cost')) return 'STUDIO_ACTIONS 里没有 cost'
+  // ① schema 的 action 枚举必须含 cost —— 否则宿主会在**调用前**按 schema 拒掉（真事故：intent 那次）
+  const enumList = (studio.parameters && studio.parameters.properties && studio.parameters.properties.action && studio.parameters.properties.action.enum) || []
+  if (!enumList.includes('cost')) return 'paper_studio 的 action 枚举里没有 cost（宿主会按 schema 拒调用）'
+  // ② 经插件真跑一次 cost 的自检（走 CLI 桥接）
+  const r = await studio.execute({ action: 'cost', args: ['--selftest'] })
+  if (!r || r.exit_code !== 0) return 'cost --selftest 经插件失败：' + JSON.stringify(r).slice(0, 300)
+  if (!/10\/10/.test(String(r.stdout || ''))) return 'cost 自检输出里没有 10/10：' + String(r.stdout || '').slice(0, 200)
+  // ③ 失败面：给一个不存在的文件 ⇒ 必须**非 0 退出**（不能静默"成功"）
+  const r2 = await studio.execute({ action: 'cost', args: ['--file', 'E:\\__不存在__\\nope.jsonl.zstd'] })
+  if (!r2 || r2.exit_code === 0) return '给不存在的文件竟然退出码 0（静默成功）'
+  return true
+}])
+
 // ── 跨宿主适配：MCP 服务器必须真能握手与调用（否则"支持 Codex"就是空话）──
 asyncChecks.push(['★★ 正控（跨宿主）· MCP 服务器真握手：initialize + tools/list 三工具 + paper_progress 往返', async () => {
   const srv = join(HERE, 'bin', 'mcp-server.mjs')

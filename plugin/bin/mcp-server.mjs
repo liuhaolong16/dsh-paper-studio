@@ -7,7 +7,7 @@
  * 而 MCP 是这些宿主**共同**的扩展口 ⇒ 把这套能力做成 MCP 服务器，一份代码到处能用。
  *
  * ★ 单一真源：本文件**不复制任何判据** —— 模式菜单、意图判据、双模式状态、白名单根、
- *   解锁原话全部从 `../dist/plugin.js` 的 `__test__` 导入；24 个子命令一律**转发给 `bin/studio.cjs`**。
+ *   解锁原话全部从 `../dist/plugin.js` 的 `__test__` 导入；25 个子命令一律**转发给 `bin/studio.cjs`**。
  *   本文件只做三件事：讲 MCP 协议、做参数校验、把结果包成 MCP 内容块。
  *
  * 用法（在宿主里注册；不同宿主的注册命令见 ../adapters/）：
@@ -29,7 +29,7 @@ const PROTOCOL_FALLBACK = '2024-11-05'
 
 const clip = (s, n = 30000) => { const t = String(s == null ? '' : s); return t.length > n ? t.slice(0, n) + `\n…（已截断，原长 ${t.length} 字符）` : t }
 
-/** 转发给 CLI（24 个子命令） */
+/** 转发给 CLI（25 个子命令） */
 function runStudio(sub, args) {
   const root = resolveRoot()
   if (!root) return Promise.resolve({ ok: false, exit_code: null, stdout: '', stderr: '', note: '找不到 paper-studio 根：设 DSH_PAPER_STUDIO_ROOT，或把 paper-studio 放到 ~/.agents/skills/paper-studio' })
@@ -135,7 +135,7 @@ async function toolProgress(a) {
 const TOOLS = [
   {
     name: 'paper_studio',
-    description: '论文方案执行入口（宿主中立版）：action=modes 取五模式菜单；action=intent 做确定性意图判定；其余 action 转发给 paper-studio 的 24 个子命令（route/gates/intake/draft/scaffold/genre/sections/verify/stylecheck/polish/revise/figures/profile/coach/audit/state/lessons/method/handoff/crosscheck/docx/selftest）。',
+    description: '论文方案执行入口（宿主中立版）：action=modes 取五模式菜单；action=intent 做确定性意图判定；其余 action 转发给 paper-studio 的 25 个子命令（route/gates/intake/draft/scaffold/genre/sections/verify/stylecheck/polish/revise/figures/profile/coach/audit/state/lessons/method/handoff/crosscheck/docx/selftest）。',
     inputSchema: {
       type: 'object',
       properties: {

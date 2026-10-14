@@ -4,7 +4,7 @@
 
 | 半体 | 内容 | 依赖宿主？ |
 |---|---|---|
-| **技能 + CLI（可移植半体）** | `SKILL.md`（技能说明）· `bin/studio.cjs`（24 个子命令）· `references/`（判据真源） | **不依赖**任何宿主：只要能跑 `node`，任何 agent 都能用 |
+| **技能 + CLI（可移植半体）** | `SKILL.md`（技能说明）· `bin/studio.cjs`（25 个子命令）· `references/`（判据真源） | **不依赖**任何宿主：只要能跑 `node`，任何 agent 都能用 |
 | **工具层（三种封装）** | DSH 插件封装 · **MCP 服务器** · 纯 CLI | 见下表 |
 | **客户端半体** | 无（本插件**没有面板**，这是规格硬约束） | — |
 
@@ -25,14 +25,14 @@
 ## 核心设计：一份判据，多宿主共用
 
 MCP 服务器（`bin/mcp-server.mjs`）**不复制任何判据**：模式菜单、意图判据、双模式状态、白名单根、解锁原话
-全部 `import { __test__ } from '../dist/plugin.js'`；24 个子命令一律转发给 `bin/studio.cjs`。
+全部 `import { __test__ } from '../dist/plugin.js'`；25 个子命令一律转发给 `bin/studio.cjs`。
 ⇒ 换宿主**不会**产生"第二套说法"（这是本项目最硬的一条纪律）。
 
 ## 三个工具（MCP 通道）
 
 | 工具 | 作用 |
 |---|---|
-| `paper_studio` | `action=modes` 取五模式菜单 · `action=intent` 判意图 · 其余转发 24 个子命令 |
+| `paper_studio` | `action=modes` 取五模式菜单 · `action=intent` 判意图 · 其余转发 25 个子命令 |
 | `paper_dev` | 双模式：`status/list/read/write/unlock/seal`（默认**用户模式封闭**，写入被拒） |
 | **`paper_progress`** | **宿主中立的"目标"**：长任务在磁盘上留阶段账（`read` 先读 → 干活 → `append` 追加）。宿主没有原生目标工具时，就靠它顶住「写几步就停、要人反复催」这个毛病 |
 

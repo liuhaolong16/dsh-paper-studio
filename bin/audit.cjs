@@ -201,7 +201,9 @@ function runSelftest() {
     const g = gatesMeta();
     return (g.pass === true && g.total === 11 && g.distribution.A === 11) ? true : JSON.stringify(g);
   });
-  check('★ 正控 · 子命令文档覆盖：当前 24 个全部有文档', () => {
+  // ★ 标签里**不写死子命令数**：写死就是漂移源（真事：加了 cost 之后这条自检的标签先红了，
+  //   而它红的理由是"数字对不上"，不是"覆盖不全"）。数量由 skillsCoverage() 现算。
+  check('★ 正控 · 子命令文档覆盖：全部子命令都在 SKILL.md 里写明', () => {
     const s = skillsCoverage();
     return s.pass === true ? true : JSON.stringify(s.missing);
   });

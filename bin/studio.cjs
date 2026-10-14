@@ -374,7 +374,7 @@ function detectGenre(text, pipeline, override) {
 }
 
 /** 阶段词汇表（骨干层）：chain 项必须能解析到真实实现，不许「只是名字」。 */
-const SUBCOMMANDS = ['route', 'gates', 'intake', 'lessons', 'coach', 'method', 'scaffold', 'draft', 'report', 'verify', 'stylecheck', 'polish', 'profile', 'schemacheck', 'revise', 'figures', 'audit', 'state', 'genre', 'sections', 'docx', 'handoff', 'crosscheck', 'selftest'];
+const SUBCOMMANDS = ['route', 'gates', 'intake', 'lessons', 'coach', 'method', 'scaffold', 'draft', 'report', 'verify', 'stylecheck', 'polish', 'profile', 'schemacheck', 'revise', 'figures', 'audit', 'state', 'genre', 'sections', 'docx', 'handoff', 'crosscheck', 'cost', 'selftest'];
 const STAGE_RULES = [
   { rx: /^subcommand:([a-z0-9-]+)$/, need: (m) => SUBCOMMANDS.includes(m[1]), why: (m) => `子命令 ${m[1]} 未实现` },
   { rx: /^gate:([a-z0-9-]+)$/, need: null, why: () => '门 id 未在 gates 表里' },
@@ -1577,6 +1577,14 @@ function main(argv) {
       const audit = require('./audit.cjs');
       if (typeof audit.main !== 'function') { console.error('内部错误：audit.cjs 未导出 main（静默返回 2 会让上游误判为"CLI 失败"）'); return 2; }
       return audit.main();
+    }
+    if (cmd === 'cost') {
+      // V3.2：交付后的**成本总结**（token 事实 + 按价格表算的钱）—— 用户要求"交付完给出实际花销"
+      //   · 用量读会话日志（`assistant/message` 的 usage；日志是**多帧 zstd**，必须按魔数切帧逐帧解）
+      //   · 金额**只按价格表算**；表里没有的模型标"未定价"，**绝不当 0**（当 0 就是假装免费）
+      const cost = require('./cost.cjs');
+      if (typeof cost.main !== 'function') { console.error('内部错误：cost.cjs 未导出 main（静默返回 2 会让上游误判为"CLI 失败"）'); return 2; }
+      return cost.main(argv.slice(1));
     }
     if (cmd === 'selftest') return runSelftest();
     console.error(`未知子命令：${cmd}`);
