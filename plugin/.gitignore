@@ -1,0 +1,4 @@
+# DSH 项目记忆（自动生成，勿手改、勿提交）
+.dsh-project-memory/
+node_modules/
+*.log

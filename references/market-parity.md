@@ -1,0 +1,153 @@
+# 市面能力清单（论文类插件/技能）· 对齐取证
+
+> 目的：用户要求「**拥有市面上所有论文相关插件或技能的功能**」⇒ 先摸清市面、逐条对齐、**如实标注我方缺口**。
+> 建立于 2026-10-14。命名：**「论文方案」**＝论文框架 + 方法论 + 工作流。
+
+---
+
+## 0. 取证方式与**通路真相**（先记，免得下次重复踩）
+
+| 通路 | 状态 | 证据 |
+|---|---|---|
+| `raw.githubusercontent.com` | **不通** | `web_fetch` ⇒ `getaddrinfo ENOENT` |
+| `cdn.jsdelivr.net/gh/...` | **不通** | 302 回源到 raw ⇒ 跨域重定向被拒 |
+| `git clone https://github.com/...` | **不通** | `fatal: unable to access ... Connection timed out after 300012 ms`（实测 300s 超时） |
+| **Gitee `git clone`** | ✅ **可用** | 三家一次成功：`whatalee/awesome-ai-research-writing` · `guluxiaojiaozi/dsh-sci-fault-diag-paper` · `frontxiang/Auto-Empirical-Research-Skills` |
+| **GitHub MCP**（`search_repositories` / `get_file_contents` 目录列举） | ✅ **可用** | 能拿仓库结构（文件/目录名）；**取文件正文返回 embedded resource，本机 harness 无法内联** ⇒ 只能拿结构，拿不到正文 |
+| `web_search` | ✅ 可用 | 拿到 PyPI/GitHub 条目与描述 |
+| PyPI JSON API | 未测（备选通路） | — |
+
+⇒ **结论：GitHub 仓库的"正文级"逆向在本机不可行；但"结构级"（目录/文件名）可行，Gitee 仓库可完整克隆。** 市面清单以**可克隆的 Gitee 仓库 + GitHub 结构 + 搜索结果描述**为准，**不假装读到了正文**。
+
+---
+
+## 1. 竞品矩阵
+
+| 竞品 | 形态 | 我方取证深度 | 定位 |
+|---|---|---|---|
+| **`guluxiaojiaozi/dsh-sci-fault-diag-paper`**（Gitee） | **DSH Cordis 原生插件**（plugin/ + hub/ + skill/） | **README 前 120 行全文** + 672 文件结构 | 故障诊断/知识图谱类 SCI 写作主插件 + 科研中枢；**八阶段流水线 + Checkpoint** |
+| **`whatalee/awesome-ai-research-writing`**（Gitee） | Prompt 模板库 + 技能清单（905 行 README） | README 前 130 行（目录全 + 2 个完整 prompt） | 一线科研人员写作技巧开源：**全生命周期 prompt** |
+| **`wp-a/paper-refine`**（GitHub） | Claude/Codex Skill（`.claude-plugin` + SKILL.md + references/ + evals/ + plugins/ + tests/） | **目录结构 + references/ 逐文件名**（正文不可取） | 中文优先**润色与逻辑重构**，保留科学事实 |
+| **`KalarisLabs/research-agent-skills`**（GitHub） | 生态型（`plugin.json` + catalog/ + skills/ + cli/ + tools/ + evals/ + **benchmarks/** + install.sh/ps1 + mkdocs 站点 + security/ + LICENSES/） | 目录结构 | 学术多学科技能库（写作/文献/引用/工作流） |
+| **`frontxiang/Auto-Empirical-Research-Skills`**（Gitee） | 生态型（`aers_score/` + agents/ + benchmark/ + catalog/ + eval-harness/ + evals/ + plugins/ + demo-notebooks/） | 结构（4603 文件 / 91 MB） | 实证研究自动化（Stata/Python/Jupyter） |
+| `Imbad0202/academic-research-skills`（GitHub，5.2 万星） | Claude Code 插件 | **此前已逆向**（CC BY-NC，只吸思想） | 综述/idea 全流程 |
+| `seele-scholar-agent` · `med-paper-assistant` · `research-plugins`（PyPI） | Python 包 | 仅元数据 | 领域化论文助手 |
+
+---
+
+## 2. 功能对齐表（逐条：谁有 · 我方状态）
+
+> 我方状态口径：**✅ 有**（真源+代码+自检三处齐）· **◐ 部分**（只有规则没有机检/只有其一）· **✗ 缺**
+
+### A. 启动与交互
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| 对话内触发（说"帮我写论文"就进流程） | DSH 插件以**工具**为主，靠模型自己调 | ✗ **待建**（V3 意图判断流程） |
+| **双模式（用户/开发者）** | 未见任何一家有 | ✗ **待建**（这是我方**差异化**） |
+| 每步 Checkpoint / 点点选项 | dsh-sci 有「每阶段 Checkpoint 等你确认」 | ◐（有确认概念，无点击式选项） |
+| 五种写作模式可选 | 未见有（多为固定单流程） | ✗ **待建**（差异化） |
+
+### B. 写作与结构
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| 阶段流水线（S0–S7 / 八阶段） | dsh-sci 八阶段；Leo 五阶段 | ✅ 有（S0–S7 + 阶段契约） |
+| 体裁适配（IMRaD/综述/快报…） | 少数有（Leo） | ✅ 有（`genre` + 分体裁节骨架） |
+| 章节骨架 + 字数预算 | dsh-sci 有 | ✅ 有 |
+| **叙事原则/一句话贡献/摘要五句公式** | **未见**（他们给模板不给原理） | ✅ **有**（V2.9 真源+stylecheck） |
+| 逻辑检查（段落级） | awesome 有「逻辑检查」prompt | ◐（有 stylecheck 的软规则，无段落逻辑检查） |
+| **缩写 / 扩写** | awesome 有（缩写、扩写两个专门 prompt） | ✗ **缺** |
+
+### C. 润色（**竞品最集中的域，也是我方最大缺口**）
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| 表达润色（中/英） | awesome（表达润色英文/中文）；paper-refine | ◐（润色模式只有边界规则，无手法） |
+| **改动账本（逐处改动留痕）** | **paper-refine `change-ledger.md`** | ✗ **缺**（我只有"给理由"的口头要求） |
+| **LaTeX 保真 + 特殊字符转义** | **paper-refine `latex-preservation.md`**；awesome 明列 `95%→95\%` · `model_v1→model\_v1` · `R&D→R\&D`、公式原样 | ✗ **缺** |
+| **去 AI 味（词汇/句式）** | awesome（去 AI 味 LaTeX/Word）；dsh-sci（去AI化词汇表） | ◐（stylecheck 删填充词，无 AI 味词表） |
+| 分节改写指南 | paper-refine `section-revision-guides.md` | ✗ **缺** |
+| 主张-证据边界 | paper-refine `claim-evidence-boundaries.md` | ✅ 有（claim-anchor 门） |
+| 自然学术措辞 | paper-refine `natural-academic-prose.md` | ◐（有模糊词/hedging 清单） |
+| 时态规范（方法/结论用现在时） | awesome 明列 | ✗ 缺 |
+| 禁 `\item`、禁破折号、禁过度排版 | awesome 明列 | ✗ 缺 |
+| 中→英 / 英→中（LaTeX 与 Word 双通道） | awesome 四种通道 | ✗ **缺**（**中文用户刚需**） |
+
+### D. 图表
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| 论文架构图生成 | awesome「论文架构图」 | ✗ 缺 |
+| 实验绘图推荐 + 图/表标题生成 | awesome 三项 | ◐（有图规则，无生成/推荐） |
+| 绘图闭环（图库 + 四阶段） | dsh-sci `plot-is-all-you-need`（119 张图库） | ✗ 缺 |
+| Anti-slop 图表设计原则 | dsh-sci `taste-skill` | ◐（有"图 1 至关重要/图注自包含"） |
+
+### E. 文献与引用
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| **verify-or-drop（核验否则删）/ 严禁编造** | dsh-sci（critical 教训）；Leo | ✅ **有**（V2.8 citation_discipline + 五形态 + 保留打标） |
+| 多源核验（DBLP/CrossRef/arXiv/OpenAlex/S2） | Leo；dsh-sci（12KB 纯 stdlib 后端） | ✅ 有（机制 + 通路分层 403/429/DNS/404） |
+| 文献检索→**交用户勾选** | 少数 | ✗ **待建**（共同创作模式的一步） |
+| 最少引用条数 / 全核验 | dsh-sci 明列（≥40 条） | ◐（有核验，无条数下限） |
+
+### F. 审稿与交付
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| **以 Reviewer 视角整体审视** | awesome 专门 prompt | ◐（有 11 道门 + 跨模型 reviewer 概念，无"审稿人视角通读"流程） |
+| **审稿回复 / rebuttal** | awesome 全生命周期含「审稿回复」 | ✗ **缺**（**重要缺口**） |
+| Camera-ready 定稿 | awesome 含 | ◐（有 docx/artifact 校验） |
+| 投稿件清单/声明集 | 未见系统化 | ✅ 有（declaration-set 门 8/8） |
+
+### G. 工程质量与持久化
+| 功能 | 竞品 | 我方 |
+|---|---|---|
+| **教训库（分级 + 用过次数排序 + 开工自动注入）** | **dsh-sci：62 条，critical/important/note，按触发次数排序，`lessons_brief` 开工注入** | ◐（L-1…L-12 无分级/无计数/无自动注入） |
+| **研究风格档案（结构化，按点路径读写）** | **dsh-sci `style/profile.json`（领域/任务/方法/数据集/目标期刊/最少引用）** | ✗ **缺**（**高价值缺口**） |
+| 归档（只追加、绝不删除） | dsh-sci `sci_archive` | ✅ 有（append-only + 软删 + 历史不丢） |
+| **工具 parameters 严格 JSON Schema** | **dsh-sci v2.1 修过的 400 报错坑**：扁平写法 ⇒ 严格通道 400 拒收、宽松通道静默通过 ⇒ "换模型才报错" | ✗ **待建**（V3 每个工具必须 `type:'object'` + `properties` + `required[]`） |
+| eval / benchmark / score | KalarisLabs（benchmarks/ + evals/）· Auto-Empirical（eval-harness/ + aers_score/） | ✅ **我方更强**（每个检查器带自检 + `calibrate` 真语料标定 + `check-registry` 数字一致性） |
+| 跨会话持久中枢（NAS/hub） | dsh-sci `hub/` | ✅ 有（记忆系统 + 交接账本 + 工件） |
+
+---
+
+## 3. **缺口清单（按优先级）** —— 两家独立竞品在「润色」上**收敛到同一组要素**，这是最强证据
+
+> **状态列**：✅ 已补齐（2026-10-14 起逐步关闭）· ⏳ 待补 · ➖ 决定不做（并写明理由）
+
+| 优先级 | 缺口 | 状态 | 证据来源（收敛） |
+|---|---|---|---|
+| **P0** | **改动账本**（逐处改动 + 理由，可复核） | ✅ **已补**（`bin/polish.cjs ledger`，缺 kind/reason 拒收，可渲染成表） | `paper-refine/change-ledger.md` |
+| **P0** | **LaTeX 保真与转义**（公式原样；`%` `_` `&` 转义；命令不被破坏） | ✅ **已补**（`polish guard`；真 LaTeX 对拍拦下三类违规；60 个真实 .tex 反身性误报 **0%**） | `paper-refine/latex-preservation.md` + awesome |
+| **P0** | **中↔英双通道**（LaTeX / Word 各一） | ✅ **已补**（`polish check --channel cn2en\|en2cn\|word`：残留 CJK / 残留 LaTeX 各报） | awesome 四个专门 prompt |
+| **P0** | **研究风格档案**（结构化，按点路径读写，开工注入） | ✅ **已补**（`bin/profile.cjs`：10 个结构化字段 + 点路径 + `brief` 只列已设置项；**凭证类字段名一律拒收**；BOM/吞引号都能兜） | dsh-sci `style/profile.json` |
+| **P0（兼容）** | **工具 JSON Schema 严格化**（防 400 / 防"换模型才报错"假象） | ✅ **已补**（`bin/schema-check.cjs`：布尔 `required`＝事故签名必报；`--manifest` 结构化 + `--scan` 源码痕迹；真事故插件 dist 扫描 0 处，与其 v2.1 已修一致） | dsh-sci v2.1 实测教训 |
+| **P1** | **去 AI 味**（词汇表 + 句式） | ✅ **已补**（`revise aitone`：20 个记号，英中双语，逐条行号 + 替换建议；**密度只作 advisory**） | awesome + dsh-sci |
+| **P1** | **审稿回复 / rebuttal** 流程 | ✅ **已补**（`revise rebuttal`：逐条 4 段骨架 + 四类硬问题机检＝覆盖/空话/承诺未兑现/对抗措辞） | awesome 全生命周期 |
+| **P1** | **Reviewer 视角整体通读** | ✅ **已补**（`revise readthrough`：机械证据清单（图/表/引用/风格）＋**10 个通读问题**，每个都标明「机械证据」或「需人读」；**只给证据与问题，不判质量**） | awesome 专门 prompt |
+| **P1** | 缩写 / 扩写 | ✅ **已补**（`revise budget`：与真源 `budget_words` 逐节比对 —— 超预算给**删减候选**（AI 味行＋近似重复句），低于预算给该节**必答问题**作补内容方向；**父节含子节词数**（真稿实测踩过 0 词）） | awesome |
+| **P1** | 分节改写指南 | ✅ **已覆盖，不重复造**：`studio sections` 每节已给「解决什么 / 必答 / 篇幅 / 门 / 证据义务 / 常见退回」（真源 `templates.json`） | `paper-refine/section-revision-guides.md` |
+| **P2** | 论文架构图生成 / 图表标题生成 / 绘图推荐 | ✅ **已补（机械部分）**（`bin/figures.cjs`：`caption` 题注模板+体检 · `recommend` 绘图推荐+反模式 · `arch` **Mermaid 源码骨架**。**诚实边界：不生成图片**，只给可渲染源码与规格） | awesome · dsh-sci 图库 |
+| **P2** | 教训库分级 + 用过次数排序 + 自动注入 | ✅ **已补**（`bin/coach.cjs`：**强制级别从 `checkable` 推导**（已挂门＝enforced）· **用过次数账本** `use <id>`（未知 id 拒收）· **`brief` 开工注入**按「用过次数降序 → enforced 优先」取 top-N，一行一条做法；**真实覆盖 6/13 已挂门**，如实报出） | dsh-sci |
+| **P2** | 时态规范、禁 `\item`、禁破折号、禁过度排版 | ✅ **部分已补**（`polish guard` 对 `\item`/破折号给 warn；时态仍缺） | awesome |
+| ➖ | **面板/GUI** | ➖ **决定不做**（用户明确：易崩难做；模式选择改用宿主 `ask_user_question`） | 用户 2026-10-14 指令 |
+
+
+---
+
+## 4. 打包教训（**直接用在我方 V3 插件上**）
+
+**DSH 原生论文插件的结构（`dsh-sci-fault-diag-paper` 实证）**：
+```
+plugin/     ← 安装进 profile node_modules：package.json + cordis.patch.yml（insert 注册清单）+ dist/plugin.js（免编译纯 ESM）
+hub/        ← 跨会话持久中枢（建议 NAS）：lessons/lessons.jsonl（只追加）· style/profile.json · skills/ · tools/
+skill/      ← 平铺 SKILL.md 副本，放进 ~/.agents/skills/ 让 DSH 发现器扫到
+```
+⇒ **我方 V3 对齐**：`plugin/`（严格 schema 的工具）+ `hub/`（教训库 + 风格档案，我方的 lessons/记忆可挂这里）+ `skill/`（SKILL.md）。
+⇒ 另有可借鉴的成熟件：`plugin.json` / `catalog/` / `evals/` / `benchmarks/` / `install.sh`+`install.ps1` / `mkdocs.yml` / `LICENSES/` / `third_party/` / `SECURITY.md`（生态型仓的完整度标准）。
+
+---
+
+## 5. 我方真实差异化（**不许吹**）
+
+1. **双模式（用户封闭 / 开发者可改）** —— 市面**未见**任何一家做权限分层；这是用户要的独有设计。
+2. **五种写作模式 + 点击式选项 + 每项一行小字** —— 市面多为"固定单流程"，无模式选择。
+3. **可机检的门体系 + 真语料标定** —— 竞品有 evals/benchmark，但**未见"误报率随语料口径"的标定纪律**（我方 `calibrate` + `check-registry` 数字一致性 + `gate-runner` 工件哈希复核）。
+4. **外部纪律吸收**（ARIS 的 acceptance-gate / reviewer-independence / assurance / citation-discipline / runstate done≠accepted 等）—— 竞品均为单流程 prompt，无此层。
+5. **知之为知之的诚实记录** —— 本文件第 0 节明写通路受限与"没读到正文"，这是竞品 README 里看不到的东西。
