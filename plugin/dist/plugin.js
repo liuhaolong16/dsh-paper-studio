@@ -272,11 +272,18 @@ function applyInner(ctx) {
           ok: { type: 'boolean' }, action: { type: 'string' }, exit_code: { type: 'integer' },
           stdout: { type: 'string' }, stderr: { type: 'string' }, note: { type: 'string' },
           menu: { type: 'object', description: 'action=modes 时的模式菜单协议' },
+          // ★ 真机抓到的坑（与 presentationMeta 同类）：`additionalProperties: false` 下
+          //   **返回了未声明的键 ⇒ 整个工具调用失败**。加了 intent 动作就必须同时声明它。
+          intent: { type: 'object', description: 'action=intent 时的确定性意图判定（is_paper/score/matched/need_clarify/reason）' },
         },
         required: ['ok', 'action'],
         additionalProperties: false,
       },
-      render: (_args, v) => textOut(v && v.menu ? JSON.stringify(v.menu, null, 2) : [(v && v.stdout) || '', v && v.stderr ? '\n[stderr]\n' + v.stderr : '', v && v.note ? '\n' + v.note : ''].join('')),
+      render: (_args, v) => {
+        if (v && v.menu) return textOut(JSON.stringify(v.menu, null, 2))
+        if (v && v.intent) return textOut(JSON.stringify(v.intent, null, 2) + (v.note ? '\n' + v.note : ''))
+        return textOut([(v && v.stdout) || '', v && v.stderr ? '\n[stderr]\n' + v.stderr : '', v && v.note ? '\n' + v.note : ''].join(''))
+      },
       // ★ 真机冒烟抓到的坑：宿主对 `presentationMeta` 做 lossless-JSON 校验，
       //   返回 `{ exitCode: undefined }` 会被判「non-lossless JSON」而整个工具调用失败。
       //   规则：**只放 JSON 可表示的值**；没有就不放这个键。同一份 meta 也供 presentResult 用。

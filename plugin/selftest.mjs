@@ -258,6 +258,49 @@ asyncChecks.push(['★★ 正控（真机事故）· 交付文件不得带 UTF-8
   return bad.length === 0 ? true : bad.join(' ；')
 }])
 
+// ── 声明 vs 实现（这类错已咬过两次：presentationMeta 的 undefined、intent 漏声明）──
+asyncChecks.push(['★★ 正控 · **每个工具的实际返回值必须符合它自己声明的 output.schema**（additionalProperties:false 下多一个键就整次调用失败）', async () => {
+  // 迷你校验器：只覆盖本插件用到的那部分 JSON Schema 子集
+  const checkVal = (v, s, path) => {
+    if (!s || typeof s !== 'object') return []
+    const bad = []
+    const t = s.type
+    const isObj = v !== null && typeof v === 'object' && !Array.isArray(v)
+    if (t === 'object') { if (!isObj) return [path + ' 应为 object，实为 ' + (v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v)] }
+    else if (t === 'array') { if (!Array.isArray(v)) return [path + ' 应为 array'] }
+    else if (t === 'string') { if (typeof v !== 'string') return [path + ' 应为 string'] }
+    else if (t === 'boolean') { if (typeof v !== 'boolean') return [path + ' 应为 boolean'] }
+    else if (t === 'integer') { if (!Number.isInteger(v)) return [path + ' 应为 integer'] }
+    if (isObj && s.properties) {
+      for (const [k, val] of Object.entries(v)) {
+        if (!(k in s.properties)) { if (s.additionalProperties === false) bad.push(path + '.' + k + ' 未在 schema 中声明（additionalProperties:false ⇒ 会整次失败）'); continue }
+        bad.push(...checkVal(val, s.properties[k], path + '.' + k))
+      }
+      for (const r of s.required || []) if (!(r in v)) bad.push(path + '.' + r + ' 缺失（required）')
+    }
+    return bad
+  }
+  const samples = [
+    ['paper_studio', await studio.execute({ action: 'modes' })],
+    ['paper_studio', await studio.execute({ action: 'intent', text: '帮我写论文' })],
+    ['paper_studio', await studio.execute({ action: 'nope-not-an-action' })],
+    ['paper_dev', await dev.execute({ action: 'status' })],
+    ['paper_dev', await dev.execute({ action: 'list' })],
+    ['paper_dev', await dev.execute({ action: 'write', path: 'references/pipeline.json', content: 'x' })],
+  ]
+  const bad = []
+  for (const [name, value] of samples) {
+    const tool = name === 'paper_studio' ? studio : dev
+    bad.push(...checkVal(value, tool.output.schema, name).map((m) => m))
+    if (typeof tool.output.render === 'function') {
+      const blocks = tool.output.render({}, value)
+      if (!Array.isArray(blocks) || !blocks.every((b) => b && b.type === 'text' && typeof b.text === 'string')) bad.push(name + '.render 返回不合法')
+      if (value && value.intent && !/is_paper/.test(blocks.map((b) => b.text).join(''))) bad.push(name + '.render 未把 intent 渲染出来')
+    }
+  }
+  return bad.length === 0 ? true : bad.slice(0, 6).join(' | ')
+}])
+
 // ── 端到端：真的把 CLI 跑起来 ──
 asyncChecks.push(['★★ 正控（端到端）· paper_studio action=audit 真的跑通 CLI 并返回退出码 0', async () => {
   // ★ 端到端会连带跑 10 个子工具的自检，负载高时可能偶发慢/失败（实测在"全新副本"里出现过 1 次）。
