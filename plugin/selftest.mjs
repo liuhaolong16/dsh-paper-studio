@@ -314,6 +314,21 @@ asyncChecks.push(['★★ 正控 · **每个工具的实际返回值必须符合
   return bad.length === 0 ? true : bad.slice(0, 6).join(' | ')
 }])
 
+asyncChecks.push(['★★ 正控 · 菜单协议内置「自动推进」：收齐信息后先建持久目标，不许每步停下等催', async () => {
+  const r = await studio.execute({ action: 'modes' })
+  const m = (r && r.menu) || {}
+  const a = m.autonomy || {}
+  const bad = []
+  if (!/create_goal/.test(String(a.first || ''))) bad.push('autonomy.first 未要求 create_goal')
+  if (!/逐轮|自动推进/.test(String(a.then || ''))) bad.push('autonomy.then 未写明逐轮自动推进')
+  if (!/用户才有的东西|作者/.test(String(a.blocked || ''))) bad.push('autonomy.blocked 未界定何时才可停')
+  if (!/complete/.test(String(a.done || ''))) bad.push('autonomy.done 未要求收尾标记完成')
+  if (!/create_goal/.test(String(m.after_choice || ''))) bad.push('after_choice 未提示先建目标')
+  // 反面案例必须写进去（这是"为什么要有这一条"的依据，删了就会退回手动催）
+  if (!/催/.test(String(a.why || ''))) bad.push('autonomy.why 未写明反面案例')
+  return bad.length === 0 ? true : bad.join(' | ')
+}])
+
 // ── 端到端：真的把 CLI 跑起来 ──
 asyncChecks.push(['★★ 正控（端到端）· paper_studio action=audit 真的跑通 CLI 并返回退出码 0', async () => {
   // ★ 端到端会连带跑 10 个子工具的自检，负载高时可能偶发慢/失败（实测在"全新副本"里出现过 1 次）。
