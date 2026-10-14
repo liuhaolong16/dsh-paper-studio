@@ -272,18 +272,14 @@ function applyInner(ctx) {
           ok: { type: 'boolean' }, action: { type: 'string' }, exit_code: { type: 'integer' },
           stdout: { type: 'string' }, stderr: { type: 'string' }, note: { type: 'string' },
           menu: { type: 'object', description: 'action=modes 时的模式菜单协议' },
-          // ★ 真机抓到的坑（与 presentationMeta 同类）：`additionalProperties: false` 下
-          //   **返回了未声明的键 ⇒ 整个工具调用失败**。加了 intent 动作就必须同时声明它。
-          intent: { type: 'object', description: 'action=intent 时的确定性意图判定（is_paper/score/matched/need_clarify/reason）' },
         },
         required: ['ok', 'action'],
         additionalProperties: false,
       },
-      render: (_args, v) => {
-        if (v && v.menu) return textOut(JSON.stringify(v.menu, null, 2))
-        if (v && v.intent) return textOut(JSON.stringify(v.intent, null, 2) + (v.note ? '\n' + v.note : ''))
-        return textOut([(v && v.stdout) || '', v && v.stderr ? '\n[stderr]\n' + v.stderr : '', v && v.note ? '\n' + v.note : ''].join(''))
-      },
+      // ★ 兼容性设计（真机换来的）：`additionalProperties: false` 下**新增字段**必须等宿主**重新导入模块**才生效
+      //   （实测：bundle 装载失败时 `set_bundle enabled=true` 会重新装载 ⇒ 当场生效；但**已装载**的模块不会重新导入）。
+      //   所以 intent 的判定结果**放进已声明的 `note`**（字符串 + JSON 代码块）而不是新开字段 ⇒ 新旧 schema 都接受、改完当场可用。
+      render: (_args, v) => textOut(v && v.menu ? JSON.stringify(v.menu, null, 2) : [(v && v.stdout) || '', v && v.stderr ? '\n[stderr]\n' + v.stderr : '', v && v.note ? '\n' + v.note : ''].join('')),
       // ★ 真机冒烟抓到的坑：宿主对 `presentationMeta` 做 lossless-JSON 校验，
       //   返回 `{ exitCode: undefined }` 会被判「non-lossless JSON」而整个工具调用失败。
       //   规则：**只放 JSON 可表示的值**；没有就不放这个键。同一份 meta 也供 presentResult 用。
@@ -309,7 +305,9 @@ function applyInner(ctx) {
       if (action === 'modes') return { ok: true, action, menu: modeMenu() }
       if (action === 'intent') {
         const judge = classifyIntent(a.text)
-        return { ok: true, action, intent: judge, note: judge.reason + (judge.need_clarify ? ' ⇒ **先问一句再决定**（不猜）' : '') }
+        // 判定结果只放在已声明的 `note` 里（见 schema 处注释：新增字段要等模块重新导入，note 不必）
+        const structured = '```json\n' + JSON.stringify(judge, null, 2) + '\n```'
+        return { ok: true, action, note: judge.reason + (judge.need_clarify ? ' ⇒ **先问一句再决定**（不猜）' : '') + '\n' + structured }
       }
       if (!root) return { ok: false, action, note: '前提层错误：找不到 paper-studio 根（设 DSH_PAPER_STUDIO_ROOT，或把 paper-studio 放到 ~/.agents/skills/paper-studio）' }
       const extra = Array.isArray(a.args) ? a.args.map(String) : []

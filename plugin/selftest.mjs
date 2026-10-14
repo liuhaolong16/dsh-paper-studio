@@ -295,9 +295,13 @@ asyncChecks.push(['★★ 正控 · **每个工具的实际返回值必须符合
     if (typeof tool.output.render === 'function') {
       const blocks = tool.output.render({}, value)
       if (!Array.isArray(blocks) || !blocks.every((b) => b && b.type === 'text' && typeof b.text === 'string')) bad.push(name + '.render 返回不合法')
-      if (value && value.intent && !/is_paper/.test(blocks.map((b) => b.text).join(''))) bad.push(name + '.render 未把 intent 渲染出来')
     }
   }
+  // intent 的判定必须真的出现在渲染输出里（它走 note，而不是新开字段）
+  const intentRes = await studio.execute({ action: 'intent', text: '帮我写论文' })
+  const intentText = studio.output.render({}, intentRes).map((b) => b.text).join('')
+  if (!/is_paper/.test(intentText)) bad.push('paper_studio.render 未把 intent 判定渲染出来（应在 note 里）')
+  if ('intent' in intentRes) bad.push('intent 不应新开字段（宿主 schema 未声明 ⇒ 会整次失败）')
   return bad.length === 0 ? true : bad.slice(0, 6).join(' | ')
 }])
 
