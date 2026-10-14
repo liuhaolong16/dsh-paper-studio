@@ -182,14 +182,23 @@ asyncChecks.push(['★★ 正控 · **意图判据的夹具全过**（该启 / �
   return bad.length === 0 ? true : bad.join(' | ')
 }])
 
+// 判定结果走 `note`（字符串 + JSON 代码块），因为 `additionalProperties:false` 下新增字段要等模块重新导入才生效。
+// 这个读取器是**唯一**取判定的方式 —— 夹具与实现必须同步，否则就是"声明 vs 实现"不一致。
+const judgeOf = (r) => {
+  const m = String((r && r.note) || '').match(/```json\s*([\s\S]*?)```/)
+  return m ? JSON.parse(m[1]) : null
+}
+
 asyncChecks.push(['★ 反控 · 空输入不得被当成论文请求（也不得当成"确定不是"，而要问）', async () => {
   const r = await studio.execute({ action: 'intent', text: '' })
-  return (r.ok === true && r.intent.is_paper === false && r.intent.need_clarify === true) ? true : JSON.stringify(r)
+  const j = judgeOf(r)
+  return (r.ok === true && j && j.is_paper === false && j.need_clarify === true) ? true : JSON.stringify({ note: r.note, parsed: j })
 }])
 
 asyncChecks.push(['★ 正控 · action=intent 经工具路径也可用（含判定理由，供模型解释给用户）', async () => {
   const r = await studio.execute({ action: 'intent', text: '帮我写论文' })
-  return (r.ok === true && r.intent.is_paper === true && /强触发/.test(r.intent.reason)) ? true : JSON.stringify(r)
+  const j = judgeOf(r)
+  return (r.ok === true && j && j.is_paper === true && /强触发/.test(j.reason)) ? true : JSON.stringify({ note: r.note, parsed: j })
 }])
 
 // ── 启动安全（重启前必须过：插件抛错会把宿主界面带崩）──
