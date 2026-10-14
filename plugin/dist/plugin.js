@@ -259,7 +259,7 @@ const clip = (s, n = 12000) => (s.length > n ? s.slice(0, n) + `\n…（已截�
 
 // ───────────────────────────── 插件入口 ─────────────────────────────
 
-export function apply(ctx) {
+function applyInner(ctx) {
   const root = resolveRoot()
   const register = (spec) => { try { ctx.tools.register(spec) } catch { /* 保持插件可加载：注册失败不留半态 */ } }
 
@@ -409,6 +409,19 @@ export function apply(ctx) {
       return { kind: 'ask', reason: 'paper_dev write 会改动插件自带资产', displayReason: `即将写入 ${args.path} —— 请确认这是你要的改动` }
     })
   } catch { /* 宿主未提供该事件时忽略 */ }
+}
+
+// ───────────────────────────── 入口（总兜底）─────────────────────────────
+//
+// ★ 为什么要有这一层：历史上（2026-10-13）插件抛错会把界面带崩（连续 6 次白屏）。
+//   内部各处虽已各自 try/catch，但"**apply 永不向宿主抛错**"必须是**保证**而不是推理 ——
+//   哪怕 ctx 形状异常（没有 tools / register 抛错 / 只读环境），也只降级为"本插件不工作"，绝不拖垮宿主。
+export function apply(ctx) {
+  try {
+    return applyInner(ctx)
+  } catch (e) {
+    try { console.error('[dsh-paper-studio-v3] apply 失败，已吞掉（不影响宿主）：' + String((e && e.message) || e)) } catch { /* 连 console 都不可用也认了 */ }
+  }
 }
 
 // 导出给 selftest 用（不依赖宿主即可验证行为）

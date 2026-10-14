@@ -11,6 +11,8 @@
  * 退出码：0 全过 · 1 有失败
  */
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -188,6 +190,38 @@ asyncChecks.push(['★ 反控 · 空输入不得被当成论文请求（也不�
 asyncChecks.push(['★ 正控 · action=intent 经工具路径也可用（含判定理由，供模型解释给用户）', async () => {
   const r = await studio.execute({ action: 'intent', text: '帮我写论文' })
   return (r.ok === true && r.intent.is_paper === true && /强触发/.test(r.intent.reason)) ? true : JSON.stringify(r)
+}])
+
+// ── 启动安全（重启前必须过：插件抛错会把宿主界面带崩）──
+asyncChecks.push(['★★ 正控（冷启动）· 在**全新子进程**里 import + apply（模拟宿主启动加载），不得抛错且注册 2 个工具', async () => {
+  const probe = join(tmpdir(), 'ps-coldstart-' + Date.now() + '.mjs')
+  writeFileSync(probe, `
+    process.env.DSH_PAPER_HUB = process.env.DSH_PAPER_HUB || ''
+    const m = await import('file:///${join(HERE, 'dist', 'plugin.js').replace(/\\/g, '/')}')
+    const regs = []
+    m.apply({ tools: { register: (d) => regs.push(d) }, on: () => {} })
+    if (regs.length !== 2) { console.log('BAD:注册数=' + regs.length); process.exit(1) }
+    console.log('OK:冷启动通过，注册 ' + regs.length + ' 个工具')
+  `, 'utf8')
+  try {
+    const r = spawnSync(process.execPath, [probe], { encoding: 'utf8', env: { ...process.env, DSH_PAPER_HUB: tmpHub }, timeout: 60000 })
+    const ok = r.status === 0 && /OK:冷启动通过/.test(String(r.stdout || ''))
+    return ok ? true : JSON.stringify({ status: r.status, out: String(r.stdout || '').slice(0, 200), err: String(r.stderr || '').slice(0, 300) })
+  } finally { try { rmSync(probe, { force: true }) } catch { /* 忽略 */ } }
+}])
+
+asyncChecks.push(['★★ 正控（必失败面）· 敌意/残缺 ctx 下 apply **不得抛错**（只降级为"本插件不工作"）', async () => {
+  const hostile = [
+    { tools: { register() { throw new Error('register 炸了') } }, on() { throw new Error('on 炸了') } },
+    {},                                   // 完全没有 tools
+    { tools: {} },                        // 有 tools 但没有 register
+    { tools: { register: () => {} } },    // 没有 on
+  ]
+  const thrown = []
+  for (const [i, c] of hostile.entries()) {
+    try { mod.apply(c) } catch (e) { thrown.push('#' + i + '：' + String((e && e.message) || e)) }
+  }
+  return thrown.length === 0 ? true : thrown.join(' | ')
 }])
 
 // ── 端到端：真的把 CLI 跑起来 ──

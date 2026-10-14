@@ -1,6 +1,6 @@
-{
+﻿{
   "name": "dsh-paper-studio-v3",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "论文插件 V3（对话驱动、无面板、双模式、五种写作模式）：把「论文方案」（论文框架 + 方法论 + 工作流）做成 DSH 原生的两个工具 —— paper_studio（一个多路复用入口，桥接已冻结的 paper-studio CLI）与 paper_dev（开发者模式：展示并允许改工作流/框架/数据/脚本；用户模式下写入真被拒）。纯粹用对话驱动：模式选择走宿主的 ask_user_question 可点击选项，不注册任何面板。",
   "license": "MIT",
   "type": "module",
