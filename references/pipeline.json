@@ -3,6 +3,7 @@
   "updated": "2026-10-14",
   "note": "本文件是 paper-studio 的唯一真源：任务类型 / 链路阶段 / 必过门 / 交接契约 / 资产路径。CLI 与（将来的）面板只读它，禁止任何一处另写一份。门的 args 模板由 gate-runner 消费；占位符 {draft} {docx} {anchors} {manifest} {contract} {declaration} 由调用方提供，缺输入一律判「跳过（缺输入）」，绝不当通过。",
   "assets": {
+    "submission_runbook": "references/submission-runbook.md",
     "playbook_root": "D:\\DeepSeek\\research-paper-playbook",
     "playbook_skill": "E:\\DeepSeek\\skills\\research-paper-playbook",
     "writer_skill": "E:\\DeepSeek\\skills\\paper-writer",
@@ -395,7 +396,7 @@
     "missing_input_is_not_pass": true
   },
   "lessons_coverage": {
-    "note": "经验 → 门的映射写在这里（唯一真源），经验库 md 只写「可检性」，两边不得各写一份链路。null = 人读项，不假装是门。",
+    "note": "经验 → 门的映射写在这里（唯一真源），经验库 md 只写「可检性」，两边不得各写一份链路。null = 人读项，不假装是门。 L-14…L-18 属**投稿执行阶段**，全部为 null：本轮无对应机器门。",
     "L-1": "gate:worknote-leak",
     "L-2": "gate:declaration-set",
     "L-3": "gate:contract",
@@ -408,6 +409,11 @@
     "L-10": "gate:claim-anchor + script:_verify-refs.py",
     "L-11": null,
     "L-12": "gates:docx-verify + artifact-sync（2026-10-14 复核确认：**不新建第三门**，避免与既有两门重叠）",
-    "L-13": "gate:artifact-sync（前提层与断言层已分离 + 必失败夹具）"
+    "L-13": "gate:artifact-sync（前提层与断言层已分离 + 必失败夹具）",
+    "L-14": null,
+    "L-15": null,
+    "L-16": null,
+    "L-17": null,
+    "L-18": null
   }
 }

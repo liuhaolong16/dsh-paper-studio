@@ -40,7 +40,7 @@ node bin/studio.cjs route "给这篇稿子做投稿前体检"     :: 判类型 +
 node bin/studio.cjs scaffold --out "<你的稿件目录>" --name "论文名"   :: **开一篇新稿：按 S0–S7 生成骨架 + 复制现成模板**
 node bin/studio.cjs draft --out "<你的稿件目录>" --name "论文名" --journal "目标刊" --lang en
                                                        :: ★ **从 0 写**：出「写作任务书 + 检索计划」并铺好骨架（不给材料 ⇒ 只出框架，不硬写正文）
-node bin/studio.cjs lessons                            :: 初稿经验库 L-1…L-13（每条带出处与"能不能机检"）
+node bin/studio.cjs lessons                            :: 初稿经验库 L-1…L-18（每条带出处与"能不能机检"）
 node bin/studio.cjs coach brief --root "<工作目录>"     :: **开工教练**：教训 × 强制级别（已挂门＝enforced / advisory）× 用过次数 ⇒ 取 top-N（`coach use <id>` 记使用）
 node bin/studio.cjs stylecheck --file "<稿.md>"         :: 写作质量机检（HARD＝低信息化开头；SOFT＝填充词/hedge/模糊词/贡献句/摘要无数字）
 node bin/studio.cjs polish guard --before a.tex --after b.tex   :: **LaTeX 保真守卫**（数学与命令必须原样；抓新引入的未转义特殊字符；`\item`/破折号 warn）
@@ -105,6 +105,12 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 **新增判定 `skipped_not_applicable`（体裁不适用）**：**既不算通过、也不算失败**，且**不 spawn 那道门**；
 它与「跳过（缺输入）」**分列不合并**（缺输入 ≠ 不适用）；**全不适用 ⇒ 退出码 1** —— 体裁判错时绝不许变成静默假绿。
 
+### 2.2 投稿执行（人机协作）
+
+投稿阶段的做法与陷阱见 `references/submission-runbook.md`（2026-10-16 首次实测：JoES / Elsevier 新门户）：
+提交前对表 → 提交中逐件上传（**SI 必须单独上传**）→ 提交后**回读确认页与列表页**（这是"真提交"的唯一证据）→ 落盘「投稿执行记录」段。
+**人工边界**：法律 / 伦理 attestation 与 `Complete your submission` 由**作者本人**点；密码 / 验证码不由 AI 接触 —— 与本文件 §4 红线一致。
+
 ## 3. 必过门
 
 见 `references/pipeline.json` 的 `gates`。当前接入（**引用 D 盘 playbook 现成脚本，不复制**）：
@@ -138,7 +144,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 
 - ❌ **不做"降 AI 率 / 规避 AI 检测"**：外部仓库里有这类模块（`ai_humanizer`），本技能**明确不采纳**——学术诚信红线（已在 `DESIGN.md` §3 记录拒绝原因）。
 - ❌ 不无材料凭空生成正文；不替作者下研究结论。
-- ❌ 不自动投稿、不代填期刊系统、不碰账号与凭证。
+- ❌ **不代替作者做提交决定**：不自动投稿、不代填期刊系统、不碰账号与凭证（**AI 可协作导航与回读**，但法律 / 伦理声明与最终 `Complete your submission` 必须由作者本人点；口径见 `references/submission-runbook.md`）。
 - ❌ 不复制第三方技能/仓库正文：`paper-writer` / `paper-polish` 为 **CC-BY-NC-SA-4.0**（个人自用可，**随包分发不可**）；`academic-research-skills` 为 **CC BY-NC**；`XtraGPT` **无许可**（一行代码都不进产物）。许可边界见 `references/licenses.md`。
 
 ## 5. 许可与归属

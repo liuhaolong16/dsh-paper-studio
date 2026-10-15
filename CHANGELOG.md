@@ -1,5 +1,12 @@
 # 变更记录
 
+## v3.0.2 —— 2026-10-16
+
+**新增：投稿执行 Runbook（首次实战：*Journal of Energy Storage* / Elsevier 新门户）**
+- 增 `references/submission-runbook.md`：提交前 / 中 / 后三段 + 8 条陷阱（**两套入口**：投递在新门户、跟踪在 EM · **回读确认页才算提交** · **稿号未生成不得编造** · **附件与 SI 属"未核实"** · 门户不列附件清单 · SSRF 守卫挡取页改用真实浏览器 · PowerShell 变量大小写陷阱 · 未核实不写成已完成）。
+- 经验库扩到 **L-18**：L-14「点了提交 ≠ 提交」· L-15 稿号口径 · L-16 附件 / SI 未核实 · L-17 两套入口 · L-18 人工边界（attestation 与凭据不代点 / 代填）。
+- `pipeline.json.lessons_coverage` 如实登记 L-14…L-18 = `null`（**人读项，不虚构门映射**）；`assets` 登记 runbook 路径。`SKILL.md` 新增 §2.2 引用，§4 红线按 Runbook 口径精确化。
+
 ## v3.0.1 —— 2026-10-14
 
 **插件（`plugin/`）**
