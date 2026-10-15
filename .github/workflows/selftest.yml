@@ -1,0 +1,19 @@
+name: selftest
+
+# 论文插件的自检（29 项，含"必失败"正控）——本地实测 exit 0 且不依赖已安装的 DSH，故可直接进 CI。
+# 用 windows runner：自检覆盖 12 宿主适配器与 Windows 路径语义，与本机结论保持一致。
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  plugin-selftest:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 插件自检 plugin/selftest.mjs
+        run: node plugin/selftest.mjs
