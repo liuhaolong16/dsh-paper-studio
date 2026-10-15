@@ -186,6 +186,6 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 | 地域 `region` | `cn` / `intl` | 投稿入口形态、**特有材料**（国内=盖章/签署三件套；国外=系统内 attestation）、费用口径 |
 | 语言 `language` | `zh` / `en` / `bilingual` | 体例（中图分类号/中英摘要对等 vs Title page）、**参考文献标准**（GB/T 7714—2025 vs Vancouver） |
 
-**路由**：`cn+zh` → `references/cn-journals.md` · `intl+en` → `references/submission-runbook.md` · 混合象限两侧各取所需。机器真源见 `references/pipeline.json` 的 `journal_classes`；人类可读说明见 `references/journal-taxonomy.md`。
+**路由**：`cn+zh` → `references/cn-journals.md` · `intl+en` → `references/submission-runbook.md` · 混合象限两侧各取所需。**PLOS 系另有专章**：`intl+en` 且目标为 PLOS ONE 时，先读 `references/plos-one.md`（差异对照表 + 排版/图件/参考文献硬项 + Cover Letter 必含项）。机器真源见 `references/pipeline.json` 的 `journal_classes`；人类可读说明见 `references/journal-taxonomy.md`。
 
 **一条硬差别**（最常踩）：中文刊参考文献按 **GB/T 7714—2025**（**2026-07-01 起施行**）——责任者超 3 人**只著录前 3 人后加「，等」**；英文刊多为 Vancouver——前 **6** 位作者 + et al.。**同一稿中英双投必须分别生成两版参考文献，不许直译**。

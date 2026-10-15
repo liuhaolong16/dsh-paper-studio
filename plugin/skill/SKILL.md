@@ -121,5 +121,6 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 
 - `cn+zh` ⇒ 读 `references/cn-journals.md`（收录体系 · 平台逐字操作步骤 · 来稿体例 · 国内特有材料 · 逐刊档案）+ 该刊契约；**清单必须有「盖章/签署类材料」一栏**（三态，不许留白）。
 - `intl+en` ⇒ 读 `references/submission-runbook.md` + 该刊契约；**清单必须有「系统内声明（attestation）」一栏**。
+- `intl+en` 且目标刊为 **PLOS ONE** ⇒ 追加读 `references/plos-one.md`（与 Elsevier 系的差异对照表 · 图件单独 TIFF · 参考文献 Vancouver · **资助不进正文** · Cover Letter 不得提减免）。
 - 参考文献按语言选标准：中文 ⇒ **GB/T 7714—2025**（前 3 人 + 等）；英文 ⇒ 刊约（多为 Vancouver，前 6 人 + et al.）。中英双投**分开生成两版**。
 - 机器真源：`references/pipeline.json` 的 `journal_classes`；说明见 `references/journal-taxonomy.md`。
