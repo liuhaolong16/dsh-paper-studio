@@ -46,6 +46,9 @@ jobs:
     #   selftest.yml 保留用于「有人直接向 GitHub 推送」或将来改用 PAT 的场景。
     needs: mirror
     runs-on: windows-latest
+    env:
+      # 自检要能定位技能根：CI 里仓库根即技能根
+      DSH_PAPER_STUDIO_ROOT: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
