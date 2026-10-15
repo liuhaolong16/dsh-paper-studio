@@ -38,3 +38,18 @@ jobs:
           echo "Gitee main = $(git rev-parse main)"
           git push --force "$DST" main:refs/heads/main
           echo "已镜像到 ${{ github.repository }}"
+
+  selftest:
+    # 为什么把自检写在本工作流里（而不是单独的 selftest.yml）：
+    #   镜像推送用的是运行器自带 GITHUB_TOKEN，而 **GITHUB_TOKEN 触发的推送不会唤起其它工作流**
+    #   （GitHub 的防环规则）。因此「镜像完再校验」必须留在这条工作流内，否则只有手动 dispatch 才会跑到。
+    #   selftest.yml 保留用于「有人直接向 GitHub 推送」或将来改用 PAT 的场景。
+    needs: mirror
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 插件自检 plugin/selftest.mjs（29 项，含"必失败"正控）
+        run: node plugin/selftest.mjs
