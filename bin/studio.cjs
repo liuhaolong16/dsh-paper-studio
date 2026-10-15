@@ -73,6 +73,58 @@ function routeTask(taskText, pipeline) {
   return { type, matched: hits.filter((h) => h.id === best).map((h) => h.kw), note: '' };
 }
 
+/** 期刊分类路由：按「地域轴 × 语言轴」判该读哪份资产（真源：pipeline.journal_classes）
+ *
+ *  为什么要有它：分类轴与路由表原先只写在真源与 SKILL.md 里靠模型判读，CLI 的 route 不会
+ *  吐出来 ⇒「给个中文刊任务，插件自己告诉该读哪份资产」无法机检。本函数把它变成可执行路由，
+ *  并配两条硬纪律（都来自本项目铁律）：
+ *    ① 判出分类却解析不出任何资产路径 ⇒ 抛 JOURNAL_ASSET_UNRESOLVED（不许静默无输出）；
+ *    ② 解析出的资产在磁盘上不存在 ⇒ 显形记为缺失（route 退出码 1）——这条同时兜住
+ *       「只装了插件包、仓库根 references/ 不在」的分发缺口（npm 打包面不含 references）。
+ */
+function journalRoute(taskText, pipeline) {
+  const jc = (pipeline || {}).journal_classes || {};
+  const routing = jc.routing || {};
+  if (Object.keys(routing).length === 0) {
+    const e = new Error('前提层失败：真源里没有 journal_classes.routing');
+    e.code = 'JOURNAL_CLASSES_MISSING';
+    throw e;
+  }
+  const text = String(taskText || '');
+  const lc = text.toLowerCase();
+  const hit = (arr) => arr.filter((k) => lc.includes(k.toLowerCase()));
+  const PLOS = hit(['plos', 'pone']);
+  const CN = hit(['中文核心', '北大核心', 'cscd', '科技核心', '中文期刊', '中文刊', '国内期刊', '学报', '中图分类号', 'gb/t 7714', '知网', '腾云', '万方', '维普', '中文投稿', '国内刊']);
+  const INTL = hit(['elsevier', 'sciencedirect', 'editorial manager', 'editorialmanager', '英文期刊', '外文期刊', '国外期刊']);
+  const ZH = hit(['中文', '中图分类号', '中译', '汉语']);
+  const EN = hit(['英文', 'english']);
+  let key = '';
+  let matched = [];
+  let note = '';
+  if (PLOS.length) { key = 'intl+en+plos'; matched = PLOS; }
+  else if (CN.length && EN.length && !ZH.length) { key = 'cn+en'; matched = CN.concat(EN); }
+  else if (INTL.length && ZH.length && !EN.length) { key = 'intl+zh'; matched = INTL.concat(ZH); }
+  else if (INTL.length) { key = 'intl+en'; matched = INTL; }
+  else if (CN.length) { key = 'cn+zh'; matched = CN; }
+  if (!key) return { key: '', matched: [], assets: [], boundaries: jc.boundaries || [], note: '未命中期刊分类关键词 ⇒ 不输出期刊资产（不猜）' };
+  if (!routing[key]) {
+    note = '真源 routing 里没有 ' + key + ' ⇒ 回退到该地域缺省键';
+    key = key.startsWith('cn') ? 'cn+zh' : 'intl+en';
+  }
+  const raw = String(routing[key] || '');
+  const paths = Array.from(new Set(raw.match(/references\/[^\s，。；、（）()]+\.md/g) || []));
+  if (paths.length === 0) {
+    const e = new Error('判出期刊分类 ' + key + ' 却解析不出资产路径（真源 routing 取值必须含显式 references/*.md）：' + raw);
+    e.code = 'JOURNAL_ASSET_UNRESOLVED';
+    throw e;
+  }
+  const assets = paths.map((rel) => {
+    const full = path.resolve(ROOT, rel);
+    return { path: rel, full, exists: fs.existsSync(full) };
+  });
+  return { key, matched, assets, boundaries: jc.boundaries || [], routing_raw: raw, note };
+}
+
 /** 门的真实路径与运行时可可用性 */
 function resolveGate(gate, pipeline) {
   const base = (pipeline.assets && pipeline.assets[gate.rel]) || '';
@@ -219,6 +271,13 @@ function printRoute(res, pipeline) {
   }
   if (t.precondition) lines.push(`前置条件：${t.precondition}`);
   lines.push(`产出：${(t.outputs || []).join(' · ')}`);
+  const jr = res.journal;
+  if (jr && jr.key) {
+    lines.push('期刊分类路由（真源：references/pipeline.json 的 journal_classes）：');
+    lines.push(`  - 判定：${jr.key}${jr.matched.length ? '（命中：' + jr.matched.join(' / ') + '）' : ''}${jr.note ? ' · ' + jr.note : ''}`);
+    for (const a of jr.assets) lines.push(`  - 该读：${a.path}  [${a.exists ? '存在' : '缺失'}]${a.exists ? '' : ' ⇒ 缺它不得当作通过'}`);
+    for (const b of (jr.boundaries || [])) lines.push(`  - 边界：${b}`);
+  }
   return lines.join('\n');
 }
 
@@ -868,6 +927,48 @@ function runSelftest() {
     return (r.type.id === 'write' && r.type.tier === 'T2') || `得到 ${r.type.id}/${r.type.tier}`;
   });
 
+  // ★ 2026-10-16（v3.1.8）：期刊分类路由可执行化 —— 分类轴从「只写在真源里」变成「route 会吐出来且可机检」
+  check('期刊分类路由：中文刊任务 ⇒ cn+zh 且资产存在', () => {
+    const r = journalRoute('把这篇稿子按中文核心期刊要求改好再投《储能科学与技术》', pipeline);
+    if (r.key !== 'cn+zh') return '得到 ' + r.key;
+    if (!r.assets.some((a) => a.path === 'references/cn-journals.md')) return 'assets=' + JSON.stringify(r.assets);
+    return r.assets.every((a) => a.exists) || '有资产缺失：' + JSON.stringify(r.assets.filter((a) => !a.exists));
+  });
+  check('期刊分类路由：PLOS 任务 ⇒ intl+en+plos 且指向 plos-one.md', () => {
+    const r = journalRoute('把这稿改成 PLOS ONE 版式并过图件规格', pipeline);
+    return (r.key === 'intl+en+plos' && r.assets.some((a) => a.path === 'references/plos-one.md')) || JSON.stringify(r);
+  });
+  check('期刊分类路由：Elsevier 任务 ⇒ intl+en 且指向 submission-runbook.md', () => {
+    const r = journalRoute('按 Elsevier 的 Journal of Energy Storage 要求改稿', pipeline);
+    return (r.key === 'intl+en' && r.assets.some((a) => a.path === 'references/submission-runbook.md')) || JSON.stringify(r);
+  });
+  check('期刊分类路由：无期刊关键词的任务不得输出资产（不猜）', () => {
+    const r = journalRoute('给这篇稿子做投稿前体检', pipeline);
+    return (r.key === '' && r.assets.length === 0) || JSON.stringify(r);
+  });
+  check('期刊分类路由回归：routing 每个取值都必须含显式 references 路径（真源自洽）', () => {
+    const bad = [];
+    for (const [k, v] of Object.entries(pipeline.journal_classes.routing)) {
+      if (!/references\/[^\s，。；、（）()]+\.md/.test(String(v))) bad.push(k);
+    }
+    return bad.length === 0 ? true : '以下取值没有显式路径：' + bad.join(', ');
+  });
+  check('必失败：真源缺 journal_classes.routing 必须抛 JOURNAL_CLASSES_MISSING', () => {
+    const bad = JSON.parse(JSON.stringify(pipeline)); bad.journal_classes = { routing: {} };
+    try { journalRoute('中文核心期刊', bad); return '没抛错 ⇒ 判据失效'; }
+    catch (e) { return e.code === 'JOURNAL_CLASSES_MISSING' || ('抛错但 code=' + e.code); }
+  });
+  check('必失败：判出分类却解析不出资产路径必须抛 JOURNAL_ASSET_UNRESOLVED', () => {
+    const bad = JSON.parse(JSON.stringify(pipeline)); bad.journal_classes.routing['cn+zh'] = '读国内刊专章（故意不写路径）';
+    try { journalRoute('中文核心期刊', bad); return '没抛错 ⇒ 判据失效'; }
+    catch (e) { return e.code === 'JOURNAL_ASSET_UNRESOLVED' || ('抛错但 code=' + e.code); }
+  });
+  check('必失败：资产文件缺失必须显形（同时兜住 npm 包缺 references 的分发缺口）', () => {
+    const bad = JSON.parse(JSON.stringify(pipeline)); bad.journal_classes.routing['cn+zh'] = 'references/__no_such_asset__.md';
+    const r = journalRoute('中文核心期刊', bad);
+    return (r.assets.length === 1 && r.assets[0].exists === false) || '未显形：' + JSON.stringify(r.assets);
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1320,12 +1421,19 @@ function main(argv) {
     }
     const pipeline = readPipeline();
     if (cmd === 'route') {
-      const res = routeTask(args.slice(1).join(' '), pipeline);
-      if (json) console.log(JSON.stringify({ task_type: res.type.id, tier: res.type.tier, matched: res.matched, chain: res.type.chain, gates: res.type.gates, note: res.note }, null, 2));
+      const text = args.slice(1).join(' ');
+      const res = routeTask(text, pipeline);
+      res.journal = journalRoute(text, pipeline); // 可能抛：前提层失败（真源缺表 / 取值无路径）
+      const jr = res.journal;
+      if (json) console.log(JSON.stringify({ task_type: res.type.id, tier: res.type.tier, matched: res.matched, chain: res.type.chain, gates: res.type.gates, note: res.note, journal_class: jr.key, journal_matched: jr.matched, journal_assets: jr.assets, journal_boundaries: jr.boundaries }, null, 2));
       else console.log(printRoute(res, pipeline));
       // 有门不可用 ⇒ 退出码 1（不完整，但不是前提层失败）
       const gs = (res.type.gates || []).map((id) => (pipeline.gates || []).find((g) => g.id === id)).filter(Boolean).map((g) => resolveGate(g, pipeline));
-      return gs.every((g) => g.scriptOk && g.runtimeOk) ? 0 : 1;
+      const gatesOk = gs.every((g) => g.scriptOk && g.runtimeOk);
+      // 期刊资产缺失 ⇒ 退出码 1（缺输入一律 FAIL，不许静默通过）
+      const assetsOk = (jr.assets || []).every((a) => a.exists);
+      if (!assetsOk) console.error(`期刊资产缺失 ${jr.assets.filter((a) => !a.exists).map((a) => a.path).join(', ')} ⇒ 退出码 1（缺输入一律 FAIL）`);
+      return gatesOk && assetsOk ? 0 : 1;
     }
     if (cmd === 'gates') {
       const list = (pipeline.gates || []).map((g) => resolveGate(g, pipeline));

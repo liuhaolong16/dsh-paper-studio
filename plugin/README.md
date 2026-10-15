@@ -47,9 +47,29 @@ node bin\studio.cjs audit     :: 出厂审查 6 项（完整性 + 重复性 + �
 | 线 | 位置 | 当前 |
 |---|---|---|
 | 技能版本 | `SKILL.md` 的 `metadata.version` | **2.4.0** |
-| 插件包版本 | `plugin/package.json` 的 `version` | **3.1.1** |
+| 插件包版本 | `plugin/package.json` 的 `version` | **3.1.8** |
 
 插件包从 V3 起独立编号（V3 = 去面板 + 双模式），因此包版本号高于技能版本号**属正常**，不要为"对齐"而改任何一侧。判定兼容性只看**插件包版本**；判定流水线/判据能力只看**技能版本**。
+
+## 分发口径（v3.1.8 新增 · 重要）
+
+**本插件只支持从仓库安装（git），不支持只装 `plugin/` 目录的 npm 包。**
+
+- 原因：判据与资产在**仓库根** —— `references/pipeline.json`（唯一真源）与它登记的资产（`references/cn-journals.md`、`plos-one.md`、`submission-runbook.md`、`journal-taxonomy.md`）。而 `plugin/package.json` 的 `files` 只含 `plugin/` 内部目录（`dist` / `bin` / `skill` / `adapters` / `hub` / `cordis.patch.yml` / `README.md`），**打不出 `../references`**。
+- 为什么不把资产复制进 `plugin/`：那会造出**第二份真源**，两边必然分叉（本项目的第一条纪律就是「单一真源，不内联第二份」）。
+- **怎么自证装对了**（一条命令）：
+
+  ```
+  node bin/studio.cjs route "把这篇稿子按中文核心期刊的要求改一遍"
+  ```
+
+  输出里必须出现 `期刊分类路由` 块，且 `该读：references/cn-journals.md  [存在]`；**若资产缺失，会显形打印缺失路径并让退出码变 1**（缺输入一律 FAIL，不许静默通过）。JSON 模式下看 `journal_class` 与 `journal_assets`。
+
+## 期刊分类路由可执行化（v3.1.8 新增）
+
+- `route` 不再只给任务类型/链路/门，还会输出**期刊分类路由**：判定键（`cn+zh` / `intl+en` / `intl+en+plos` / `cn+en` / `intl+zh`）+ 命中的关键词 + **该读哪份资产**（含磁盘存在性）+ 真源里的边界条款。
+- 两条硬纪律（都进自检，且各有必失败夹具）：① 分类判出来了却**解析不出资产路径**（真源取值没写显式 `references/*.md`）⇒ 抛 `JOURNAL_ASSET_UNRESOLVED`；② 解析出的资产**在磁盘上不存在** ⇒ 显形并让 `route` 退出码 1。第 ② 条同时兜住「只装了插件包、仓库根的 references 不在」这类分发缺口。
+- 自检新增 **8 条夹具（含 4 条必失败）**：中文刊任务⇒`cn+zh` 且资产存在 · PLOS⇒`intl+en+plos` 指向 `plos-one.md` · Elsevier⇒`intl+en` 指向 `submission-runbook.md` · 无期刊关键词的任务**不得输出资产**（不猜）· 真源 routing 自洽性 · 上述两条硬纪律的必失败面 · 资产缺失必显形。
 
 ## PLOS 系投稿规范（v3.1.1 新增）
 

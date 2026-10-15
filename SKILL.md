@@ -36,7 +36,7 @@ metadata:
 
 ```bat
 cd /d E:\DeepSeek\skills\paper-studio
-node bin/studio.cjs route "给这篇稿子做投稿前体检"     :: 判类型 + 出链路 + 出必过门
+node bin/studio.cjs route "给这篇稿子做投稿前体检"     :: 判类型 + 出链路 + 出必过门 + 出**期刊分类路由**（该读哪份资产 + 存在性 + 边界）
 node bin/studio.cjs scaffold --out "<你的稿件目录>" --name "论文名"   :: **开一篇新稿：按 S0–S7 生成骨架 + 复制现成模板**
 node bin/studio.cjs draft --out "<你的稿件目录>" --name "论文名" --journal "目标刊" --lang en
                                                        :: ★ **从 0 写**：出「写作任务书 + 检索计划」并铺好骨架（不给材料 ⇒ 只出框架，不硬写正文）
@@ -186,6 +186,6 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 | 地域 `region` | `cn` / `intl` | 投稿入口形态、**特有材料**（国内=盖章/签署三件套；国外=系统内 attestation）、费用口径 |
 | 语言 `language` | `zh` / `en` / `bilingual` | 体例（中图分类号/中英摘要对等 vs Title page）、**参考文献标准**（GB/T 7714—2025 vs Vancouver） |
 
-**路由**：`cn+zh` → `references/cn-journals.md` · `intl+en` → `references/submission-runbook.md` · 混合象限两侧各取所需。**PLOS 系另有专章**：`intl+en` 且目标为 PLOS ONE 时，先读 `references/plos-one.md`（差异对照表 + 排版/图件/参考文献硬项 + Cover Letter 必含项）。机器真源见 `references/pipeline.json` 的 `journal_classes`；人类可读说明见 `references/journal-taxonomy.md`。
+**路由（CLI 已可执行 · v3.1.8）**：`route` 会直接吐出「期刊分类路由」块 —— 判定键 + 命中词 + **该读资产与存在性** + 边界；资产缺失即退出码 1。`cn+zh` → `references/cn-journals.md` · `intl+en` → `references/submission-runbook.md` · 混合象限两侧各取所需。**PLOS 系另有专章**：`intl+en` 且目标为 PLOS ONE 时，先读 `references/plos-one.md`（差异对照表 + 排版/图件/参考文献硬项 + Cover Letter 必含项）。机器真源见 `references/pipeline.json` 的 `journal_classes`；人类可读说明见 `references/journal-taxonomy.md`。
 
 **一条硬差别**（最常踩）：中文刊参考文献按 **GB/T 7714—2025**（**2026-07-01 起施行**）——责任者超 3 人**只著录前 3 人后加「，等」**；英文刊多为 Vancouver——前 **6** 位作者 + et al.。**同一稿中英双投必须分别生成两版参考文献，不许直译**。

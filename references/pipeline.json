@@ -17,41 +17,127 @@
     "phrase_bank": "E:\\DeepSeek\\skills\\ai-workbench\\references\\phrase-bank.json",
     "note": "只引用路径，不复制内容；第三方许可各自保留。python_exe = 首选解释器（playbook 自带 venv）；PATH 上的 python/python3 在本机是 WindowsApps 商店占位符，不是真解释器，须跳过。"
   },
-
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",
     "axes": {
-      "region": { "cn": "国内：投稿入口多为期刊采编系统，特有盖章/签署类材料", "intl": "国外：EM/ScholarOne/出版社门户，声明在系统内勾选" },
-      "language": { "zh": "中文：GB/T 7714 体例 + 中图分类号 + 中英摘要信息对等", "en": "英文：Title page + 刊自定参考文献体例（多为 Vancouver）", "bilingual": "中英双语：两套体例都要满足" }
+      "region": {
+        "cn": "国内：投稿入口多为期刊采编系统，特有盖章/签署类材料",
+        "intl": "国外：EM/ScholarOne/出版社门户，声明在系统内勾选"
+      },
+      "language": {
+        "zh": "中文：GB/T 7714 体例 + 中图分类号 + 中英摘要信息对等",
+        "en": "英文：Title page + 刊自定参考文献体例（多为 Vancouver）",
+        "bilingual": "中英双语：两套体例都要满足"
+      }
     },
     "routing": {
       "cn+zh": "references/cn-journals.md",
       "intl+en": "references/submission-runbook.md",
       "intl+en+plos": "references/plos-one.md（PLOS 系专章：Vancouver 参考文献 + 图件单独 TIFF + 资助不进正文）",
-      "cn+en": "cn-journals（入口与材料）+ submission-runbook（正文体例）",
-      "intl+zh": "submission-runbook（入口与流程）+ 刊约体例"
+      "cn+en": "references/cn-journals.md（入口与材料）+ references/submission-runbook.md（正文体例）",
+      "intl+zh": "references/submission-runbook.md（入口与流程）+ 该刊契约里的中文体例（中图分类号 / 中英摘要信息对等）"
     },
     "reference_style_by_language": {
       "zh": "GB/T 7714—2025 顺序编码制；责任者超 3 人只著录前 3 人后加『，等』",
       "en": "刊约（Vancouver 多为前 6 位作者 + et al.）"
     },
-    "platforms": ["cnki-tengyun", "magtech", "qinyun", "editorial-manager", "scholarone", "publisher-portal", "self-hosted"],
-    "indexes_cn": ["北大核心", "CSSCI", "CSCD", "科技核心(CSTPCD)", "AMI", "WJCI"],
-    "checklist_rules": ["国内刊清单必须含『盖章/签署类材料』一栏，三态取值：已签署上传 / 待单位盖章 / 该刊不需要，不允许留白", "国外刊清单必须含『系统内声明（attestation）』一栏"],
-    "boundaries": ["收录体系只做核对提示，不替作者判定是否达线", "商业中介站点（代发/代投/加急）不作依据；费用只认刊约与编辑部公告", "不碰账号与凭据：注册/登录由作者本人完成"]
+    "platforms": [
+      "cnki-tengyun",
+      "magtech",
+      "qinyun",
+      "editorial-manager",
+      "scholarone",
+      "publisher-portal",
+      "self-hosted"
+    ],
+    "indexes_cn": [
+      "北大核心",
+      "CSSCI",
+      "CSCD",
+      "科技核心(CSTPCD)",
+      "AMI",
+      "WJCI"
+    ],
+    "checklist_rules": [
+      "国内刊清单必须含『盖章/签署类材料』一栏，三态取值：已签署上传 / 待单位盖章 / 该刊不需要，不允许留白",
+      "国外刊清单必须含『系统内声明（attestation）』一栏"
+    ],
+    "boundaries": [
+      "收录体系只做核对提示，不替作者判定是否达线",
+      "商业中介站点（代发/代投/加急）不作依据；费用只认刊约与编辑部公告",
+      "不碰账号与凭据：注册/登录由作者本人完成"
+    ]
   },
   "genres": {
     "note": "稿件体裁模型（V1.5 新增 · 模型层）：**体裁决定哪些门适用**。判定只用**标题与摘要区**（摘要区在下一个标题处结束）—— 避免被参考文献里的字样误触发；摘要区无信号时再回退到方法节特征。调用方可用 --genre 显式覆盖。",
     "default": "empirical",
     "kinds": [
-      { "id": "empirical", "label": "实证研究（自有数据 / 实验）", "signals": ["we measured", "we collected", "we trained", "error bar", "replicate", "experimental setup", "我们实测", "我们采集", "实验组", "测量了"] },
-      { "id": "review", "label": "二次研究（系统综述 / 范围综述 / 元分析 / 报道规范审计）", "signals": ["systematic review", "scoping review", "meta-analysis", "literature review", "review of", "audit of", "系统综述", "文献综述", "范围综述", "元分析", "系统评价"] },
-      { "id": "methodological", "label": "方法学 / 基准再评估（提出或对比方法、评估协议）", "signals": ["we propose", "ablation", "evaluation protocol", "benchmark suite", "我们提出", "消融实验", "评估协议"] },
-      { "id": "secondary-analysis", "label": "公开数据二次分析（无自有数据，用公开数据集）", "signals": ["public dataset", "open data", "secondary data analysis", "we re-analys", "公开数据集", "二次分析", "面板数据", "we query"] }
+      {
+        "id": "empirical",
+        "label": "实证研究（自有数据 / 实验）",
+        "signals": [
+          "we measured",
+          "we collected",
+          "we trained",
+          "error bar",
+          "replicate",
+          "experimental setup",
+          "我们实测",
+          "我们采集",
+          "实验组",
+          "测量了"
+        ]
+      },
+      {
+        "id": "review",
+        "label": "二次研究（系统综述 / 范围综述 / 元分析 / 报道规范审计）",
+        "signals": [
+          "systematic review",
+          "scoping review",
+          "meta-analysis",
+          "literature review",
+          "review of",
+          "audit of",
+          "系统综述",
+          "文献综述",
+          "范围综述",
+          "元分析",
+          "系统评价"
+        ]
+      },
+      {
+        "id": "methodological",
+        "label": "方法学 / 基准再评估（提出或对比方法、评估协议）",
+        "signals": [
+          "we propose",
+          "ablation",
+          "evaluation protocol",
+          "benchmark suite",
+          "我们提出",
+          "消融实验",
+          "评估协议"
+        ]
+      },
+      {
+        "id": "secondary-analysis",
+        "label": "公开数据二次分析（无自有数据，用公开数据集）",
+        "signals": [
+          "public dataset",
+          "open data",
+          "secondary data analysis",
+          "we re-analys",
+          "公开数据集",
+          "二次分析",
+          "面板数据",
+          "we query"
+        ]
+      }
     ]
   },
   "gate_meta": {
-    "applies_to_default": ["*"],
+    "applies_to_default": [
+      "*"
+    ],
     "note": "门的**体裁适用性模型**：每个门可声明 `applies_to`（体裁 id 数组，`*` = 全体裁）。**缺省 = 全体裁适用**；凡有体裁边界的门**必须显式声明**（如综述门只对 review 适用）。不适用 ⇒ 执行器判 `skipped_not_applicable`：**既不算通过、也不算失败**，不参与退出码判定；但**任何体裁都没有适用的门时必须显式报错**（不许把「全不适用」读成「全通过」—— 这正是分形纪律的一个实例）。",
     "primary_section_note": "**待修项该算到哪一节** —— 必须**声明**，不许由执行器猜（V2.2 的由来：报告的按节视图曾把 31 项 `contract` 待修项全塞进「标题」，因为 `contract` 被多节引用而我取了第一节）。取值：章节 id，或 `*` 表示**跨节**（这类门的待修项本来就是全文按行分布，报告会单列一个「跨节」桶，不假装它属于某一节）。自检断言：① 每个门都必须声明 primary_section；② 声明为章节 id 时，该节必须在**两套章节集**里都存在、且在自己的 `gates` 里列出该门。",
     "judge_type_note": "**门类型（A/B）**（V2.5 · 外部吸收：ARIS `acceptance-gate.md`，MIT）。纪律：**门分两类，且必须显式声明** —— **A 类＝客观/执行门**（机器可判的『发生了什么』：退出码、计数、路径存在、字段是否在场；分界问句：『一个没有品味的笨脚本能回答吗？』能 ⇒ A）· **B 类＝质量/正确性/验收门**（对价值或正确性的判断 ⇒ **绝不许同族自判，必须路由给不同模型家族**）。→ **本插件的门全部是 A 类**，因此有一条硬性认识论：**全绿只证明『该做的检查都做了、该有的要件都在』，不等于稿子质量通过**；质量裁决属 B 类，须走跨模型 reviewer（双条件停止门：`score ≥ 6` **AND** `verdict ∈ {ready, almost}` —— 该措辞已从 ARIS 原文核对，注意其历史文档曾误写成 OR）。另两条同源纪律：① **复合门要拆开，不要平均**（B 部分不会因为不方便而消失，它是**被路由**）；② 自审检测——**若移除跨模型 reviewer 后本流程仍能决定『通过』，那就是在自我宣判**。",
@@ -71,16 +157,50 @@
     "verdict_taxonomy": {
       "note": "**判定状态机 + 保证级别轴**（V2.6 · 外部吸收：ARIS `assurance-contract.md`，MIT）。ARIS 把「门为什么没给结论」分得很细，我原先只分四种，**把最危险的一种混进了无害的那种**：`skipped_missing_input`（该跑但缺前提）在 ARIS 里叫 **`BLOCKED`**，其原文定性是『**BLOCKED is more dangerous than NOT_APPLICABLE**』——『应该审却审不了』不等于『没什么可审』，它必须**阻断**；而我原先把缺输入当成不阻断的跳过（这正是 ARIS 文档里记录过的失效模式：beast 档产出草稿质量论文、三道投稿门全被静默跳过）。修法不是直接改默认行为（会破坏现有用法），而是**引入独立的保证级别轴**：`draft`＝现状不变（只有 fail/error 阻断）· `submission`＝**blocked 亦阻断**。另两条同源纪律：① **子门只负责『永远出判定』，不自己阻断**（『Always Emit, Never Block』），阻断决策**只在一处**（聚合层 + 保证级别）；② **NOT_APPLICABLE 必须留痕**（它表示『审过，且确实没有可审的』），而静默跳过不留痕、外部无法区分『查过没有』与『忘了查』。",
       "classes": {
-        "pass": { "class": "pass", "submit_blocking": false, "aris": "PASS" },
-        "fail": { "class": "fail", "submit_blocking": true, "aris": "FAIL" },
-        "skipped_not_applicable": { "class": "not_applicable", "submit_blocking": false, "aris": "NOT_APPLICABLE" },
-        "skipped_missing_input": { "class": "blocked", "submit_blocking": true, "aris": "BLOCKED" },
-        "precondition_fail": { "class": "error", "submit_blocking": true, "aris": "ERROR" }
+        "pass": {
+          "class": "pass",
+          "submit_blocking": false,
+          "aris": "PASS"
+        },
+        "fail": {
+          "class": "fail",
+          "submit_blocking": true,
+          "aris": "FAIL"
+        },
+        "skipped_not_applicable": {
+          "class": "not_applicable",
+          "submit_blocking": false,
+          "aris": "NOT_APPLICABLE"
+        },
+        "skipped_missing_input": {
+          "class": "blocked",
+          "submit_blocking": true,
+          "aris": "BLOCKED"
+        },
+        "precondition_fail": {
+          "class": "error",
+          "submit_blocking": true,
+          "aris": "ERROR"
+        }
       },
-      "reserved": { "warn": { "class": "warn", "submit_blocking": false, "aris": "WARN", "note": "**保留态**：本插件目前没有门会发 WARN（有问题的项按行号进『需修改』清单）。保留它是因为 ARIS 的六态里 WARN 是『发现了问题但不致命』，将来若要区分『致命/非致命』不该另起名字。" } },
+      "reserved": {
+        "warn": {
+          "class": "warn",
+          "submit_blocking": false,
+          "aris": "WARN",
+          "note": "**保留态**：本插件目前没有门会发 WARN（有问题的项按行号进『需修改』清单）。保留它是因为 ARIS 的六态里 WARN 是『发现了问题但不致命』，将来若要区分『致命/非致命』不该另起名字。"
+        }
+      },
       "assurance": {
-        "levels": ["draft", "submission"],
-        "derive_from_tier": { "T0": "draft", "T1": "draft", "T2": "submission" },
+        "levels": [
+          "draft",
+          "submission"
+        ],
+        "derive_from_tier": {
+          "T0": "draft",
+          "T1": "draft",
+          "T2": "submission"
+        },
         "semantics": "draft：仅 fail / error 阻断（＝现状，向后兼容）· submission：**blocked（缺输入）亦阻断**；两者都不改变『不适用不阻断』与『全不适用 ⇒ 退出码 1』。",
         "override": "执行器 `--assurance submission`（与档位解耦：可以『正常深度 + 严格审计』，也可以『最高深度 + 不设审计闸』）",
         "backward_compat": "默认按档位推导（T0/T1 ⇒ draft）⇒ 现有用法行为完全不变 —— 这是 ARIS 的兼容纪律：改语义必须由新轴显式开启，不能直接翻转默认。"
@@ -99,7 +219,13 @@
         "真主题 + 不存在的 DOI",
         "**预印本与正式版被静默合并成一条**（最阴的一种）"
       ],
-      "five_steps": ["SEARCH（具体检索：标题+第一作者 / 方法+数据集）", "VERIFY（**≥2 个可信源**确认存在：title/首作者/年份/DOI 或 arXiv 号对得上）", "RETRIEVE（**程序化取 BibTeX**：DBLP → DOI content negotiation）", "**VALIDATE（核实被引论文真的支持该主张 —— 最常被跳过、却最重要的一步）**", "ADD（类型/作者/年份/场地/键名/查重都过一遍）"],
+      "five_steps": [
+        "SEARCH（具体检索：标题+第一作者 / 方法+数据集）",
+        "VERIFY（**≥2 个可信源**确认存在：title/首作者/年份/DOI 或 arXiv 号对得上）",
+        "RETRIEVE（**程序化取 BibTeX**：DBLP → DOI content negotiation）",
+        "**VALIDATE（核实被引论文真的支持该主张 —— 最常被跳过、却最重要的一步）**",
+        "ADD（类型/作者/年份/场地/键名/查重都过一遍）"
+      ],
       "retention_over_silent_removal": "**未核验的条目必须留在输出里并打 `[UNVERIFIED]` 标** —— 原文：『**静默移除会掩盖检索质量问题**』。（V2.6 的 blocked/not_applicable 留痕是同一纪律；本条把它升级成**逐条打标**。）",
       "placeholder_policy": "核验失败 ⇒ 留**显式占位**（`% TODO: verify before submission` / `.bib` 里 `% [VERIFY] …`）：**让不确定性可见、把坏元数据挡在终稿之外、定稿前报出未决项**。"
     },
@@ -120,39 +246,132 @@
       },
       "effort_allocation": "**摘要 : 引言 : 图 : 其余全部 ≈ 1:1:1:1**（原文强调「这不是夸张」）—— 多数审稿人在细读方法之前就已形成初判。阅读顺序：**标题 → 摘要 → 引言 → 图（尤其图 1）→ 其余** ⇒ 别把主贡献埋在第 3 节之后；**前两页不清楚，后面的精彩可能永远看不到**。",
       "abstract_formula": "五句公式（Farquhar）：①做出了什么 ②问题为何重要且难 ③怎么做 ④什么证据支撑 ⑤**读者该记住的数字/结果/保证**。硬要求：≥1 个**显式量化结果** · 独立可读 · 无未定义缩写 · **不依赖引用来解释自己**。",
-      "openings_to_delete": ["Large language models have achieved remarkable success…", "In recent years, deep learning has…", "Neural networks have revolutionized…"],
+      "openings_to_delete": [
+        "Large language models have achieved remarkable success…",
+        "In recent years, deep learning has…",
+        "Neural networks have revolutionized…"
+      ],
       "introduction": "约 1–1.5 页；**方法最迟第 2–3 页出现**；**2–4 条贡献 bullet**（具体、可否证、每条 1–2 行）；六段式：开场钩子 → 背景与难点 → 方法概览与关键洞见 → 贡献 bullet → 结果预告（把最强结果提前）→ 可选路线图。「We study problem X / We perform extensive experiments / We make several contributions」这类**无法被同意或质疑**的不算贡献。",
-      "sentence_rules_gopen_swan": ["主谓靠近", "**重要信息放句尾**", "**语境放句首**", "**从旧到新**（读者更顺）", "一句一段只干一件事", "**把动作放进动词**（We performed an analysis of ⇒ We analyzed）", "**先铺台再上新料**（公式/定理/结果之前先说它为何重要）"],
+      "sentence_rules_gopen_swan": [
+        "主谓靠近",
+        "**重要信息放句尾**",
+        "**语境放句首**",
+        "**从旧到新**（读者更顺）",
+        "一句一段只干一件事",
+        "**把动作放进动词**（We performed an analysis of ⇒ We analyzed）",
+        "**先铺台再上新料**（公式/定理/结果之前先说它为何重要）"
+      ],
       "micro_tactics": {
         "pronouns": "this / it / these 指代不明 ⇒ 换成具体名词（This shows… ⇒ These ablation results show…）",
-        "fillers_to_cut": ["actually", "very", "really", "quite", "basically", "essentially", "Importantly,", "Notably,", "It is worth noting that"],
+        "fillers_to_cut": [
+          "actually",
+          "very",
+          "really",
+          "quite",
+          "basically",
+          "essentially",
+          "Importantly,",
+          "Notably,",
+          "It is worth noting that"
+        ],
         "paragraph_shape": "首句＝论点 · 中间＝支撑 · 末句＝强化或过渡；**别把关键句埋在中间**"
       },
       "word_choice": {
         "hedging": "除非不确定是真实的，否则少用 may / can / might / potentially —— **过度 hedging 读起来像自我怀疑，而不是严谨**。",
-        "vague_to_specific": { "performance": "accuracy / F1 / latency / throughput", "improves": "increases by X% / reduces by Y", "large": "1B parameters / 100M tokens", "fast": "3x faster / 50ms latency", "good results": "92% accuracy / 0.85 F1" },
+        "vague_to_specific": {
+          "performance": "accuracy / F1 / latency / throughput",
+          "improves": "increases by X% / reduces by Y",
+          "large": "1B parameters / 100M tokens",
+          "fast": "3x faster / 50ms latency",
+          "good results": "92% accuracy / 0.85 F1"
+        },
         "terminology_consistency": "同一概念别换名：model / network / architecture · training / learning / optimization · sample / instance / example —— 选最好的那个并保持稳定。",
         "vocabulary_signaling": "combine / modify / extend / expand **听起来像拼装**；develop / propose / introduce / characterize 更强。不是机械替换，而是**措辞会改变审稿人对「这是不是真贡献」的直觉**。"
       },
-      "figure_rules": ["**图 1 至关重要**：讲清方法 / 展示最强对比 / 给主张一个最简视觉总结（三者至少一）", "**图注必须自包含**（只看图注就懂：在比什么、该注意到什么）", "**图内不放装饰性标题**（挪进图注）", "尽量矢量图（PDF/EPS）", "**色觉可达性**：色盲友好调色板、避免红绿配对、灰度下仍可读、除颜色外再用线型与标记"],
-      "math_writing": ["目的是让读者**跟上**，不是显得高深", "**定理之前先正式陈述假设**", "证明与推导要配直觉", "记号一致 + 首次出现即定义", "标量小写斜体 · 向量小写粗体 · 矩阵大写粗体 · 集合手写体 · 具名函数正体"],
+      "figure_rules": [
+        "**图 1 至关重要**：讲清方法 / 展示最强对比 / 给主张一个最简视觉总结（三者至少一）",
+        "**图注必须自包含**（只看图注就懂：在比什么、该注意到什么）",
+        "**图内不放装饰性标题**（挪进图注）",
+        "尽量矢量图（PDF/EPS）",
+        "**色觉可达性**：色盲友好调色板、避免红绿配对、灰度下仍可读、除颜色外再用线型与标记"
+      ],
+      "math_writing": [
+        "目的是让读者**跟上**，不是显得高深",
+        "**定理之前先正式陈述假设**",
+        "证明与推导要配直觉",
+        "记号一致 + 首次出现即定义",
+        "标量小写斜体 · 向量小写粗体 · 矩阵大写粗体 · 集合手写体 · 具名函数正体"
+      ],
       "common_mistakes": {
-        "structural": ["引言超 1.5 页 ⇒ 背景挪进相关工作", "方法埋太晚 ⇒ 前置贡献并压缩引言", "缺贡献 bullet ⇒ 补 2–4 条具体主张", "**实验未与主张绑定** ⇒ 写清每个实验在检验什么"],
-        "writing": ["空泛摘要开头 ⇒ 从本文实际贡献写起", "术语不一致 ⇒ 一名一概念", "被动语态过多 ⇒ 优先主动", "到处 hedging ⇒ 只在不确定真实处保留"],
-        "figure": ["位图 ⇒ 矢量输出", "红绿配色 ⇒ 色盲友好", "图内标题 ⇒ 挪进图注", "图注依赖正文 ⇒ 改成自包含"]
+        "structural": [
+          "引言超 1.5 页 ⇒ 背景挪进相关工作",
+          "方法埋太晚 ⇒ 前置贡献并压缩引言",
+          "缺贡献 bullet ⇒ 补 2–4 条具体主张",
+          "**实验未与主张绑定** ⇒ 写清每个实验在检验什么"
+        ],
+        "writing": [
+          "空泛摘要开头 ⇒ 从本文实际贡献写起",
+          "术语不一致 ⇒ 一名一概念",
+          "被动语态过多 ⇒ 优先主动",
+          "到处 hedging ⇒ 只在不确定真实处保留"
+        ],
+        "figure": [
+          "位图 ⇒ 矢量输出",
+          "红绿配色 ⇒ 色盲友好",
+          "图内标题 ⇒ 挪进图注",
+          "图注依赖正文 ⇒ 改成自包含"
+        ]
       },
-      "pre_submission_checklist": ["一句话能说出贡献", "引言讲清 What/Why/So What", "每个主要实验支撑一条明确主张", "摘要符合五句公式", "引言 1–1.5 页 · 方法第 2–3 页出现 · 贡献 bullet 2–4 条", "局限性写清楚", "术语一致 · 无空泛领域背景开场 · 去掉不必要的 hedging", "关键图注自包含", "引用已核验 · 误差棒与统计报告清楚 · 算力已记录 · 代码/数据可得性已声明"]
+      "pre_submission_checklist": [
+        "一句话能说出贡献",
+        "引言讲清 What/Why/So What",
+        "每个主要实验支撑一条明确主张",
+        "摘要符合五句公式",
+        "引言 1–1.5 页 · 方法第 2–3 页出现 · 贡献 bullet 2–4 条",
+        "局限性写清楚",
+        "术语一致 · 无空泛领域背景开场 · 去掉不必要的 hedging",
+        "关键图注自包含",
+        "引用已核验 · 误差棒与统计报告清楚 · 算力已记录 · 代码/数据可得性已声明"
+      ]
     },
     "hard_invariants": {
       "note": "**硬不变量**（V2.10 · 外部吸收：ARIS `effort-contract.md`，MIT）。原话：「**effort never moves the reviewer tier in either direction**」—— 档位只改工作量，**永不改这些**。列在这里是为了让「降档省钱」不能偷偷把纪律一起降掉。",
       "items": [
-        { "setting": "门的判定词汇与类别映射", "value": "固定（pass/fail/not_applicable/blocked/error + 保留 warn）", "why": "判定词汇随便动 ⇒ 历史结论无法复算；改词汇属于真源变更，必须走版本记录" },
-        { "setting": "保证级别轴语义", "value": "draft 只有 fail/error 阻断 · submission 下 blocked 亦阻断", "why": "语义被降档改写 ⇒ 会出现「审过但没结论」被当成通过" },
-        { "setting": "跨模型复核下限（B 类裁决）", "value": "**不因降档而取消**", "why": "质量裁决是跨模型行为；省钱的旋钮不该动它（这条直接对应 acceptance-gate 的 A/B 分界）" },
-        { "setting": "数字三点映射（数字↔源码↔输出）", "value": "始终执行", "why": "数字可追溯性是投稿诚信底线，不是可选的深度项" },
-        { "setting": "隐私/数据外发判据", "value": "始终执行（HARD）", "why": "合规与信任边界不随预算变化" },
-        { "setting": "强制项必须出判定（永不静默跳过）", "value": "始终执行", "why": "静默跳过不留痕 ⇒ 外部无法区分「查过没有」与「忘了查」" },
-        { "setting": "工件与输入哈希记账", "value": "始终执行", "why": "没有它就无法判断结论是否已过期（V2.7 的 STALE 机制依赖它）" }
+        {
+          "setting": "门的判定词汇与类别映射",
+          "value": "固定（pass/fail/not_applicable/blocked/error + 保留 warn）",
+          "why": "判定词汇随便动 ⇒ 历史结论无法复算；改词汇属于真源变更，必须走版本记录"
+        },
+        {
+          "setting": "保证级别轴语义",
+          "value": "draft 只有 fail/error 阻断 · submission 下 blocked 亦阻断",
+          "why": "语义被降档改写 ⇒ 会出现「审过但没结论」被当成通过"
+        },
+        {
+          "setting": "跨模型复核下限（B 类裁决）",
+          "value": "**不因降档而取消**",
+          "why": "质量裁决是跨模型行为；省钱的旋钮不该动它（这条直接对应 acceptance-gate 的 A/B 分界）"
+        },
+        {
+          "setting": "数字三点映射（数字↔源码↔输出）",
+          "value": "始终执行",
+          "why": "数字可追溯性是投稿诚信底线，不是可选的深度项"
+        },
+        {
+          "setting": "隐私/数据外发判据",
+          "value": "始终执行（HARD）",
+          "why": "合规与信任边界不随预算变化"
+        },
+        {
+          "setting": "强制项必须出判定（永不静默跳过）",
+          "value": "始终执行",
+          "why": "静默跳过不留痕 ⇒ 外部无法区分「查过没有」与「忘了查」"
+        },
+        {
+          "setting": "工件与输入哈希记账",
+          "value": "始终执行",
+          "why": "没有它就无法判断结论是否已过期（V2.7 的 STALE 机制依赖它）"
+        }
       ]
     },
     "primary_section": {
@@ -171,7 +390,13 @@
   },
   "stage_kinds": {
     "note": "链路阶段的**词汇表**（V1.5 新增 · 骨干层）：每个阶段名都必须解析到**真实实现**，不允许出现「只是名字」的阶段。这条纪律来自一次真实教训：`handoff:paper-writer` 曾长期只是一个字符串，既无命令也无产物定义。",
-    "allowed": ["subcommand:<studio 子命令>", "gate:<门 id>", "handoff:<外部技能>", "manual:<谁做>", "report:<阶段语义>"],
+    "allowed": [
+      "subcommand:<studio 子命令>",
+      "gate:<门 id>",
+      "handoff:<外部技能>",
+      "manual:<谁做>",
+      "report:<阶段语义>"
+    ],
     "resolver": "自检断言：每个 chain 项必须匹配 allowed 之一（子命令须真实存在）；`handoff:` 阶段必须在该任务类型的 outputs 或 precondition 里写明由谁做。"
   },
   "task_types": [
@@ -179,29 +404,109 @@
       "id": "check",
       "label": "投稿前体检",
       "tier": "T1",
-      "keywords": ["投稿前", "体检", "过门", "检查表", "查一遍", "还差什么", "总检查"],
-      "chain": ["subcommand:intake", "report:run-gates", "report:collect-findings", "report:artifact-status"],
-      "gates": ["worknote-leak", "declaration-set", "confidentiality", "review-protocol", "claim-anchor", "phrase", "contract", "journal-contract", "docx-verify", "artifact-sync"],
-      "outputs": ["待修项清单（带行号）", "门通过表（逐门退出码 + stdout 是否为空）", "成品件状态"]
+      "keywords": [
+        "投稿前",
+        "体检",
+        "过门",
+        "检查表",
+        "查一遍",
+        "还差什么",
+        "总检查"
+      ],
+      "chain": [
+        "subcommand:intake",
+        "report:run-gates",
+        "report:collect-findings",
+        "report:artifact-status"
+      ],
+      "gates": [
+        "worknote-leak",
+        "declaration-set",
+        "confidentiality",
+        "review-protocol",
+        "claim-anchor",
+        "phrase",
+        "contract",
+        "journal-contract",
+        "docx-verify",
+        "artifact-sync"
+      ],
+      "outputs": [
+        "待修项清单（带行号）",
+        "门通过表（逐门退出码 + stdout 是否为空）",
+        "成品件状态"
+      ]
     },
     {
       "id": "polish",
       "label": "忠实润色 / 中译英",
       "tier": "T1",
-      "keywords": ["润色", "改语言", "中译英", "语病", "降重", "通顺", "tone", "过强断言"],
-      "chain": ["subcommand:intake", "handoff:paper-polish", "report:run-gates", "report:collect-findings"],
-      "gates": ["worknote-leak", "phrase", "claim-anchor"],
-      "outputs": ["润色稿", "改动说明（不改变科学含义的改动与需作者确认的改动分开）"],
+      "keywords": [
+        "润色",
+        "改语言",
+        "中译英",
+        "语病",
+        "降重",
+        "通顺",
+        "tone",
+        "过强断言"
+      ],
+      "chain": [
+        "subcommand:intake",
+        "handoff:paper-polish",
+        "report:run-gates",
+        "report:collect-findings"
+      ],
+      "gates": [
+        "worknote-leak",
+        "phrase",
+        "claim-anchor"
+      ],
+      "outputs": [
+        "润色稿",
+        "改动说明（不改变科学含义的改动与需作者确认的改动分开）"
+      ],
       "precondition": "语言改写本身交给**外部技能** `paper-polish` 执行（本插件只编排与过门，不复制其正文；该技能为 CC-BY-NC-SA，只引路径）；本插件负责三件事：交什么给它、拿回来后过哪几道门、待作者确认项怎么列。"
     },
     {
       "id": "write",
       "label": "起草辅助（须有作者材料）",
       "tier": "T2",
-      "keywords": ["起草", "扩写", "搭框架", "写一段", "写成论文", "撰写", "写正文", "帮我写", "代写", "从0写", "从零写", "写一篇论文", "写论文", "初稿"],
-      "chain": ["subcommand:intake", "subcommand:draft", "gate:author-material", "handoff:paper-writer", "report:run-gates", "report:collect-findings"],
-      "gates": ["author-material", "contract", "claim-anchor", "phrase"],
-      "outputs": ["正文草稿（零占位符）", "证据-断言对照（每条事实的来源）", "待作者确认项"],
+      "keywords": [
+        "起草",
+        "扩写",
+        "搭框架",
+        "写一段",
+        "写成论文",
+        "撰写",
+        "写正文",
+        "帮我写",
+        "代写",
+        "从0写",
+        "从零写",
+        "写一篇论文",
+        "写论文",
+        "初稿"
+      ],
+      "chain": [
+        "subcommand:intake",
+        "subcommand:draft",
+        "gate:author-material",
+        "handoff:paper-writer",
+        "report:run-gates",
+        "report:collect-findings"
+      ],
+      "gates": [
+        "author-material",
+        "contract",
+        "claim-anchor",
+        "phrase"
+      ],
+      "outputs": [
+        "正文草稿（零占位符）",
+        "证据-断言对照（每条事实的来源）",
+        "待作者确认项"
+      ],
       "precondition": "必须有作者材料 / 已验证检索 / 领域常识三者之一；皆无 ⇒ 只给框架 + 检索计划（由 `author-material` 门机械判定，不再只是一句约定）。逐节正文起草交给**外部技能** `paper-writer`（本插件只编排与过门；该技能为 CC-BY-NC-SA，只引路径不搬运内容）。"
     }
   ],
@@ -213,11 +518,24 @@
       "entry": "_gate-author-material.py",
       "rel": "playbook_root",
       "scope": "declaration",
-      "args": ["--declaration", "{declaration}"],
-      "required_placeholders": ["{declaration}"],
-      "report_args": ["--json"],
-      "exit_codes": { "0": "前提成立", "1": "声明不达标（逐字段列出）", "2": "前提层失败（声明缺失/坏 JSON/参数错）" },
-      "used_by": ["write"],
+      "args": [
+        "--declaration",
+        "{declaration}"
+      ],
+      "required_placeholders": [
+        "{declaration}"
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "前提成立",
+        "1": "声明不达标（逐字段列出）",
+        "2": "前提层失败（声明缺失/坏 JSON/参数错）"
+      },
+      "used_by": [
+        "write"
+      ],
       "note": "把 `task_types[write].precondition` 与 `handoff.contracts[material-check→paper-writer]` 的必填字段（material_kind / material_path_or_note / claim_policy）变成**可机械判定**的东西：路径须真存在且非空壳（<512 字节判空壳）、说明须 ≥40 字且不含占位符、口径须自洽（materials_only 只能配作者材料）。**明确不扫正文占位符**——那是 worknote-leak 的活（L-12 的教训：不建重叠判据）。缺 {declaration} ⇒ runner 判「跳过（缺输入）」，**绝不当通过**。"
     },
     {
@@ -227,12 +545,30 @@
       "entry": "_gate-confidentiality.py",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}"],
-      "required_placeholders": ["{draft}"],
-      "optional_args": [{ "flag": "--docx", "placeholder": "{docx}" }],
-      "report_args": ["--json"],
-      "exit_codes": { "0": "无硬项（可有 SOFT 提示）", "1": "有 HARD（审稿痕迹/内部路径/敏感标识）", "2": "前提层失败" },
-      "used_by": ["check"],
+      "args": [
+        "--draft",
+        "{draft}"
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "optional_args": [
+        {
+          "flag": "--docx",
+          "placeholder": "{docx}"
+        }
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "无硬项（可有 SOFT 提示）",
+        "1": "有 HARD（审稿痕迹/内部路径/敏感标识）",
+        "2": "前提层失败"
+      },
+      "used_by": [
+        "check"
+      ],
       "note": "面向**审稿人/编辑视角**：管的是「这段内容该不该出现在投稿稿里」—— 此前十道门没有一道管它。**HARD**（⇒ 失败）：审稿/编辑通信痕迹混进正文（response letter 的内容）/ 内部路径与内部材料名（本机路径、共享盘、内网）/ 敏感个人标识（身份证、手机号、病历号、患者或受试者编号）。**SOFT**（⇒ 只提示，不改退出码）：联系邮箱（作者信息正常，但要确认是否该放正文）/ 引用未发表内容 / 提到受试者却全稿无伦理表述。出处：本地精读的 OA 论文（Lee et al. 2025, JEEHP 22:4 §Key challenges）把隐私与保密、**过早数据披露**列为审稿流程两大风险 ⇒ 本门把作者侧该守的几条变成判据。**不重叠纪律**：伦理声明「在不在」不在本门（那属 declaration-set 的四段；本门只报「提到受试者却无任何伦理表述」与 **V2.3 新增的「写了 AI 使用却未交代未发表数据是否外发第三方服务」**（后者依据本地精读的 Lee et al. 2025 JEEHP §Privacy：pre-publication data protection 与 model data retention 属三大关切）。"
     },
     {
@@ -242,12 +578,27 @@
       "entry": "_gate-review-protocol.py",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}"],
-      "required_placeholders": ["{draft}"],
-      "report_args": ["--json"],
-      "exit_codes": { "0": "方法要件全命中（或判为不适用对象）", "1": "综述类稿件缺方法要件（逐条列出）", "2": "前提层失败（文件缺失/参数错）" },
-      "used_by": ["check"],
-      "applies_to": ["review"],
+      "args": [
+        "--draft",
+        "{draft}"
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "方法要件全命中（或判为不适用对象）",
+        "1": "综述类稿件缺方法要件（逐条列出）",
+        "2": "前提层失败（文件缺失/参数错）"
+      },
+      "used_by": [
+        "check"
+      ],
+      "applies_to": [
+        "review"
+      ],
       "note": "面向**二次研究**（系统综述/范围综述/元分析/报道规范审计）：判 8 条方法要件 —— 检索来源+时间窗 / 检索式 / 纳排标准 / **二次数据标注**（他人数字须标 as reported by）/ 可得性与可重采 / **「没测就不下结论」的显式表述** / 下界口径 / 局限节。★ **体裁边界**：`applies_to: [review]` —— 非综述体裁由链路层统一判 `skipped_not_applicable`（**不适用**：既不算通过也不算失败）；门自身再有一层适用性判定（只看标题与摘要区，摘要区在下一个标题处结束），两层都不误伤实证稿。学自同行系统综述的真实做法（见 `references/good-practices-learned.md`）。"
     },
     {
@@ -257,14 +608,40 @@
       "entry": "_gate-claim-anchor.cjs",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}", "--json"],
-      "optional_args": [
-        { "placeholder": "{anchors}", "if_file_exists": true, "args": ["--anchors", "{anchors}"] },
-        { "placeholder": "{manifest}", "if_file_exists": true, "args": ["--manifest", "{manifest}"] }
+      "args": [
+        "--draft",
+        "{draft}",
+        "--json"
       ],
-      "required_placeholders": ["{draft}"],
-      "exit_codes": { "0": "通过（无 HIGH 阻断）", "2": "有 HIGH 阻断项" },
-      "used_by": ["check", "write"]
+      "optional_args": [
+        {
+          "placeholder": "{anchors}",
+          "if_file_exists": true,
+          "args": [
+            "--anchors",
+            "{anchors}"
+          ]
+        },
+        {
+          "placeholder": "{manifest}",
+          "if_file_exists": true,
+          "args": [
+            "--manifest",
+            "{manifest}"
+          ]
+        }
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "exit_codes": {
+        "0": "通过（无 HIGH 阻断）",
+        "2": "有 HIGH 阻断项"
+      },
+      "used_by": [
+        "check",
+        "write"
+      ]
     },
     {
       "id": "phrase",
@@ -273,11 +650,28 @@
       "entry": "_phrase-lint.py",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}", "--phrases", "{phrase_bank}"],
-      "required_placeholders": ["{draft}"],
-      "precondition_files": ["{phrase_bank}"],
-      "exit_codes": { "0": "无 HIGH", "1": "有 LOW（措辞可改进）", "2": "有 HIGH（违反语料库禁令/绝对化副词）" },
-      "used_by": ["check", "polish", "write"],
+      "args": [
+        "--draft",
+        "{draft}",
+        "--phrases",
+        "{phrase_bank}"
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "precondition_files": [
+        "{phrase_bank}"
+      ],
+      "exit_codes": {
+        "0": "无 HIGH",
+        "1": "有 LOW（措辞可改进）",
+        "2": "有 HIGH（违反语料库禁令/绝对化副词）"
+      },
+      "used_by": [
+        "check",
+        "polish",
+        "write"
+      ],
       "note": "脚本里 BOOSTERS 是**硬编码**的（proves/prove that/clearly/definitely/obviously/certainly…），词库 --phrases 用于其它节；但脚本的默认词库路径指向 ai-workbench，**本插件必须显式传 --phrases**，否则依赖变成隐式的。词库缺失 ⇒ 前提层失败（不冒充通过）。"
     },
     {
@@ -287,10 +681,22 @@
       "entry": "_journal-contract.cjs",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}", "--contract", "{contract}"],
-      "required_placeholders": ["{draft}", "{contract}"],
-      "exit_codes": { "0": "通过" },
-      "used_by": ["check"]
+      "args": [
+        "--draft",
+        "{draft}",
+        "--contract",
+        "{contract}"
+      ],
+      "required_placeholders": [
+        "{draft}",
+        "{contract}"
+      ],
+      "exit_codes": {
+        "0": "通过"
+      },
+      "used_by": [
+        "check"
+      ]
     },
     {
       "id": "docx-verify",
@@ -299,10 +705,21 @@
       "entry": "_verify-docx.py",
       "rel": "playbook_root",
       "scope": "artifact",
-      "args": ["{docx}"],
-      "required_placeholders": ["{docx}"],
-      "exit_codes": { "0": "通过", "1": "正文有残留 Markdown 标记", "2": "与期望数不符", "10": "参数错" },
-      "used_by": ["check"]
+      "args": [
+        "{docx}"
+      ],
+      "required_placeholders": [
+        "{docx}"
+      ],
+      "exit_codes": {
+        "0": "通过",
+        "1": "正文有残留 Markdown 标记",
+        "2": "与期望数不符",
+        "10": "参数错"
+      },
+      "used_by": [
+        "check"
+      ]
     },
     {
       "id": "artifact-sync",
@@ -311,10 +728,22 @@
       "entry": "_gate-artifact-sync.py",
       "rel": "playbook_root",
       "scope": "pair",
-      "args": ["--md", "{draft}", "--docx", "{docx}"],
-      "required_placeholders": ["{draft}", "{docx}"],
-      "exit_codes": { "0": "通过" },
-      "used_by": ["check"]
+      "args": [
+        "--md",
+        "{draft}",
+        "--docx",
+        "{docx}"
+      ],
+      "required_placeholders": [
+        "{draft}",
+        "{docx}"
+      ],
+      "exit_codes": {
+        "0": "通过"
+      },
+      "used_by": [
+        "check"
+      ]
     },
     {
       "id": "contract",
@@ -323,10 +752,20 @@
       "entry": "_contract-check.cjs",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["{draft}"],
-      "required_placeholders": ["{draft}"],
-      "exit_codes": { "0": "无硬失败", "1": "有硬失败" },
-      "used_by": ["check", "write"],
+      "args": [
+        "{draft}"
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "exit_codes": {
+        "0": "无硬失败",
+        "1": "有硬失败"
+      },
+      "used_by": [
+        "check",
+        "write"
+      ],
       "note": "该脚本接受**位置参数文件**（argv 里非 -- 项），且 path.resolve(ROOT, f) 对绝对路径原样保留 ⇒ 传绝对路径时**只扫这一个文件**，于是它可以是单稿门。不传文件时它扫整仓（实测 114 文件 / 硬失败 37）——那是 repo 用法，不再是默认路径。"
     },
     {
@@ -336,14 +775,35 @@
       "entry": "_gate-worknote-leak.py",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}"],
-      "optional_args": [
-        { "placeholder": "{docx}", "if_file_exists": true, "args": ["--docx", "{docx}"] }
+      "args": [
+        "--draft",
+        "{draft}"
       ],
-      "required_placeholders": ["{draft}"],
-      "report_args": ["--json"],
-      "exit_codes": { "0": "通过（正文无工作注记）", "1": "有泄漏（逐条带行号）", "2": "前提层失败（文件不存在/参数错）" },
-      "used_by": ["check", "polish"],
+      "optional_args": [
+        {
+          "placeholder": "{docx}",
+          "if_file_exists": true,
+          "args": [
+            "--docx",
+            "{docx}"
+          ]
+        }
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "通过（正文无工作注记）",
+        "1": "有泄漏（逐条带行号）",
+        "2": "前提层失败（文件不存在/参数错）"
+      },
+      "used_by": [
+        "check",
+        "polish"
+      ],
       "note": "L-1 的真实事故发生在**成品件**里（Word 手稿混进 11 处工作标记）⇒ 给了 --docx 时必须同时扫成品（docx 无行号，报段落号）。标记表刻意**窄**：行首 `Verification:` 算标记，正文句 `Verification of the dataset…` **不算**（各有夹具）。"
     },
     {
@@ -353,14 +813,34 @@
       "entry": "_gate-declaration-set.py",
       "rel": "playbook_root",
       "scope": "draft",
-      "args": ["--draft", "{draft}"],
-      "optional_args": [
-        { "placeholder": "{docx}", "if_file_exists": true, "args": ["--docx", "{docx}"] }
+      "args": [
+        "--draft",
+        "{draft}"
       ],
-      "required_placeholders": ["{draft}"],
-      "report_args": ["--json"],
-      "exit_codes": { "0": "四段齐全", "1": "有缺段（逐段列出）", "2": "前提层失败（文件不存在/参数错）" },
-      "used_by": ["check"],
+      "optional_args": [
+        {
+          "placeholder": "{docx}",
+          "if_file_exists": true,
+          "args": [
+            "--docx",
+            "{docx}"
+          ]
+        }
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "四段齐全",
+        "1": "有缺段（逐段列出）",
+        "2": "前提层失败（文件不存在/参数错）"
+      },
+      "used_by": [
+        "check"
+      ],
       "note": "**只判「有没有」，不判「写得对不对」**（内容属实性是人读项）；AI 使用声明必须出现生成式 AI 语境词，只写「AI」两字不算。红线：本门不提供任何规避 AI 检测的措辞。"
     }
   ],
@@ -370,45 +850,170 @@
       {
         "from": "subcommand:intake",
         "to": "report:run-gates",
-        "required": ["doc_path", "doc_kind", "task_type", "lang"],
-        "optional": ["target_journal", "deadline", "author_materials"],
-        "types": { "doc_path": "string", "doc_kind": "string", "task_type": "string", "lang": "string",
-                   "target_journal": "string", "deadline": "string", "author_materials": "string" },
-        "closed_sets": { "doc_kind": ["draft", "docx", "both"], "task_type": ["check", "polish", "write"], "lang": ["en", "zh", "unknown"] },
-        "field_rules": { "doc_path": { "must_be_existing_path": true } },
+        "required": [
+          "doc_path",
+          "doc_kind",
+          "task_type",
+          "lang"
+        ],
+        "optional": [
+          "target_journal",
+          "deadline",
+          "author_materials"
+        ],
+        "types": {
+          "doc_path": "string",
+          "doc_kind": "string",
+          "task_type": "string",
+          "lang": "string",
+          "target_journal": "string",
+          "deadline": "string",
+          "author_materials": "string"
+        },
+        "closed_sets": {
+          "doc_kind": [
+            "draft",
+            "docx",
+            "both"
+          ],
+          "task_type": [
+            "check",
+            "polish",
+            "write"
+          ],
+          "lang": [
+            "en",
+            "zh",
+            "unknown"
+          ]
+        },
+        "field_rules": {
+          "doc_path": {
+            "must_be_existing_path": true
+          }
+        },
         "note": "doc_path 必须指向真实存在的文件（校验器会查存在性）；lang 允许 unknown（样本不足时不猜）。"
       },
       {
         "from": "gate:author-material",
         "to": "handoff:paper-writer",
-        "required": ["material_kind", "material_path_or_note", "claim_policy"],
-        "optional": ["notes"],
-        "types": { "material_kind": "string", "material_path_or_note": "string", "claim_policy": "string", "notes": "string" },
-        "closed_sets": { "material_kind": ["author_data", "author_text", "verified_retrieval", "field_common_knowledge"],
-                         "claim_policy": ["materials_only", "verified_retrieval", "field_common_knowledge"] },
+        "required": [
+          "material_kind",
+          "material_path_or_note",
+          "claim_policy"
+        ],
+        "optional": [
+          "notes"
+        ],
+        "types": {
+          "material_kind": "string",
+          "material_path_or_note": "string",
+          "claim_policy": "string",
+          "notes": "string"
+        },
+        "closed_sets": {
+          "material_kind": [
+            "author_data",
+            "author_text",
+            "verified_retrieval",
+            "field_common_knowledge"
+          ],
+          "claim_policy": [
+            "materials_only",
+            "verified_retrieval",
+            "field_common_knowledge"
+          ]
+        },
         "field_rules": {
-          "material_path_or_note": { "only_if_not_path": true, "min_chars": 40,
-                                     "forbid_patterns": ["待补", "待填", "待定", "待确认", "待提供", "TBD", "TODO", "FIXME", "XXX", "见附件", "同上", "稍后", "以后再说", "见 run", "见run", "placeholder", "…"] }
+          "material_path_or_note": {
+            "only_if_not_path": true,
+            "min_chars": 40,
+            "forbid_patterns": [
+              "待补",
+              "待填",
+              "待定",
+              "待确认",
+              "待提供",
+              "TBD",
+              "TODO",
+              "FIXME",
+              "XXX",
+              "见附件",
+              "同上",
+              "稍后",
+              "以后再说",
+              "见 run",
+              "见run",
+              "placeholder",
+              "…"
+            ]
+          }
         },
         "conditional_rules": [
-          { "when": { "field": "claim_policy", "equals": "materials_only" },
-            "then": { "field": "material_path_or_note", "must_be_existing_path": true, "min_bytes": 512 },
-            "why": "口径为「只用作者材料」时，那里必须是**真实存在的路径**且不是空壳——否则等于没有材料就硬写" },
-          { "when": { "field": "claim_policy", "equals": "materials_only" },
-            "then": { "field": "material_kind", "in": ["author_data", "author_text"] },
-            "why": "口径自洽：materials_only 只能配 author_data / author_text" }
+          {
+            "when": {
+              "field": "claim_policy",
+              "equals": "materials_only"
+            },
+            "then": {
+              "field": "material_path_or_note",
+              "must_be_existing_path": true,
+              "min_bytes": 512
+            },
+            "why": "口径为「只用作者材料」时，那里必须是**真实存在的路径**且不是空壳——否则等于没有材料就硬写"
+          },
+          {
+            "when": {
+              "field": "claim_policy",
+              "equals": "materials_only"
+            },
+            "then": {
+              "field": "material_kind",
+              "in": [
+                "author_data",
+                "author_text"
+              ]
+            },
+            "why": "口径自洽：materials_only 只能配 author_data / author_text"
+          }
         ],
         "note": "**与 `_gate-author-material.py` 同口径**：闭集取值、≥40 字门槛、占位符清单、512 字节空壳门槛、路径与非路径分岔（路径查体积、非路径查长度与占位符）全部对齐；由 `studio crosscheck` 自动回归两边是否同判。**V1.8 的由来**：契约最初只查「字段有没有」，与这道门对同一份声明结论相反 —— 不一致的根因就是这些内容规则没写进真源。"
       },
       {
         "from": "report:run-gates",
         "to": "report:collect-findings",
-        "required": ["gate_results", "findings", "exit_codes"],
-        "optional": ["genre"],
-        "types": { "gate_results": "array", "findings": "array", "exit_codes": "object", "genre": "string" },
+        "required": [
+          "gate_results",
+          "findings",
+          "exit_codes"
+        ],
+        "optional": [
+          "genre"
+        ],
+        "types": {
+          "gate_results": "array",
+          "findings": "array",
+          "exit_codes": "object",
+          "genre": "string"
+        },
         "item_schemas": {
-          "gate_results": { "required": ["id", "rc", "stdout_empty", "verdict"],
-                            "closed_sets": { "verdict": ["pass", "fail", "skipped_missing_input", "skipped_not_applicable", "precondition_fail"] } }
+          "gate_results": {
+            "required": [
+              "id",
+              "rc",
+              "stdout_empty",
+              "verdict"
+            ],
+            "closed_sets": {
+              "verdict": [
+                "pass",
+                "fail",
+                "skipped_missing_input",
+                "skipped_not_applicable",
+                "precondition_fail"
+              ]
+            }
+          }
         },
         "note": "gate_results 每项的 verdict 必须在闭集内（V1.5 新增 skipped_not_applicable）；rc≠0 且 stdout_empty=true ⇒ 归前提层失败（precondition_fail），不是「结果为空」。"
       }

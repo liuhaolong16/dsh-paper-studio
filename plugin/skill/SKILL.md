@@ -84,7 +84,7 @@ metadata:
 ## 4. 干活时怎么调工具
 
 - **一个入口**：`paper_studio`（`action` + `args`）。常用：
-  - `action=route` 判任务类型与必过门 · `gates` 列门 · `intake` 登记稿件
+  - `action=route` 判任务类型与必过门 · `gates` 列门 · `intake` 登记稿件；**`route` 还输出期刊分类路由**（该读哪份资产 + 存在性 + 边界，缺资产即失败退出）
   - `draft` / `scaffold` 起新稿 · `genre` 判体裁 · `sections` 出章节骨架（含篇幅预算与必答问题）
   - `verify` 跑门 · `stylecheck` 写作质量 · `polish` 润色保障（保真守卫 + 改动账本）· `revise` 审稿回复/去 AI 味/通读/缩写扩写
   - `figures` 题注与绘图建议 · `profile` 研究风格档案 · `coach` 开工教练 · `audit` 出厂审查
@@ -123,4 +123,4 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 - `intl+en` ⇒ 读 `references/submission-runbook.md` + 该刊契约；**清单必须有「系统内声明（attestation）」一栏**。
 - `intl+en` 且目标刊为 **PLOS ONE** ⇒ 追加读 `references/plos-one.md`（与 Elsevier 系的差异对照表 · 图件单独 TIFF · 参考文献 Vancouver · **资助不进正文** · Cover Letter 不得提减免）。
 - 参考文献按语言选标准：中文 ⇒ **GB/T 7714—2025**（前 3 人 + 等）；英文 ⇒ 刊约（多为 Vancouver，前 6 人 + et al.）。中英双投**分开生成两版**。
-- 机器真源：`references/pipeline.json` 的 `journal_classes`；说明见 `references/journal-taxonomy.md`。
+- 机器真源：`references/pipeline.json` 的 `journal_classes`；说明见 `references/journal-taxonomy.md`。**routing 取值必须含显式 `references/*.md` 路径**（否则 CLI 抛 `JOURNAL_ASSET_UNRESOLVED`）；CLI `route` 会把它吐出来并检查存在性。

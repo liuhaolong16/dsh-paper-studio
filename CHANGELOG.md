@@ -1,5 +1,16 @@
 # 变更记录
 
+## v3.1.8 —— 2026-10-16
+
+**期刊分类路由从「声明式」变「可执行」+ 分发口径显形化（A/B 两项）**
+
+- **A · `route` 现在输出「期刊分类路由」块**：判定键（`cn+zh` / `intl+en` / `intl+en+plos` / `cn+en` / `intl+zh`）+ 命中词 + **该读哪份资产（含磁盘存在性）** + 真源边界条款；`--json` 模式新增 `journal_class` / `journal_matched` / `journal_assets` / `journal_boundaries`。实跑：中文刊任务 ⇒ `cn+zh · references/cn-journals.md [存在]`；PLOS ⇒ `intl+en+plos · references/plos-one.md [存在]`。
+- **两条硬纪律（各有必失败夹具）**：① 判出分类却解析不出资产路径（真源取值没写显式 `references/*.md`）⇒ 抛 `JOURNAL_ASSET_UNRESOLVED`；② 资产在磁盘上不存在 ⇒ 显形打印缺失路径并让 `route` **退出码 1**（缺输入一律 FAIL）。第 ② 条同时兜住「只装插件包、仓库根 references 缺失」的分发缺口。
+- **真源自洽修复**：`journal_classes.routing` 的 `cn+en` 与 `intl+zh` 原为简写（无路径）⇒ 补成显式 `references/*.md`（并加一条自检回归：**每个 routing 取值都必须含显式路径**）。
+- **自检 53 → 61（+8 条，含 4 条必失败）**：中文刊/PLOS/Elsevier 三条正控 · 无期刊关键词的任务**不得输出资产（不猜）** · routing 自洽 · 真源缺表必抛 · 取值无路径必抛 · 资产缺失必显形。
+- **B · 分发口径写进 `plugin/README.md` 并显形化**：明确**只支持从仓库安装**（`plugin/package.json` 的 `files` 打不出仓库根的 `../references`），给出**一条自证命令**（`route` 中文刊任务，须见 `[存在]` 与退出码 0），并说明**不把资产复制进 `plugin/`** 的理由（避免第二份真源分叉）。
+- 文档同步：根 `SKILL.md`（route 用法行 + §9 路由段）· `plugin/skill/SKILL.md`（route 说明 + 真源取值约束）· `plugin/README.md`（版本单元格 + 两个新节）。
+
 ## v3.1.7 —— 2026-10-16
 
 **收官：两刊官方口径复核（§6 两行改写）+ 刊代码陷阱判据（§9 第 6 条）+ §7 全部勾完**
