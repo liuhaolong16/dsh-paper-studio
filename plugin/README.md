@@ -50,3 +50,9 @@ node bin\studio.cjs audit     :: 出厂审查 6 项（完整性 + 重复性 + �
 | 插件包版本 | `plugin/package.json` 的 `version` | **3.1.0** |
 
 插件包从 V3 起独立编号（V3 = 去面板 + 双模式），因此包版本号高于技能版本号**属正常**，不要为"对齐"而改任何一侧。判定兼容性只看**插件包版本**；判定流水线/判据能力只看**技能版本**。
+
+## 期刊分类与国内刊专章（v3.1.0 新增）
+
+- `references/cn-journals.md` —— **国内中文期刊专章**：六套收录体系 · 知网腾云/玛格泰克/勤云三平台的注册与逐字投稿步骤 · 国内刊标准书写顺序与量化硬项 · **GB/T 7714—2025** 著录要点 · 国内特有材料（著作权转让协议/申请单/利益冲突声明）· 审稿规则 · **逐刊档案（含《储能科学与技术》《电工技术学报》等）**。
+- `references/journal-taxonomy.md` —— **两轴分类与路由**（region × language 四象限），说明「该查哪份资产、该走哪条清单」。
+- 机器真源：`references/pipeline.json` 的 `journal_classes`（含 `reference_style_by_language`、`checklist_rules`、`boundaries`）。

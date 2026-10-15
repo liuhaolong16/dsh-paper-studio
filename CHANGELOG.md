@@ -1,5 +1,16 @@
 # 变更记录
 
+## v3.1.0 —— 2026-10-16
+
+**新增：国内中文期刊专章 + 期刊分类（地域轴 × 语言轴）——把「国内/国外、中文/外文」做成可路由的分类，而不是靠记忆**
+
+- **新资产 `references/cn-journals.md`（v0.2）**：六套收录体系（北大核心/CSSCI/CSCD/科技核心/AMI/WJCI）· 三平台注册与**逐字投稿步骤**（知网腾云 = 注册三步 + 导航式/一步式 + 标准七步 + **著作权转让协议必传**；玛格泰克 = `journalx/authorLogOn.action?mag_Id=N` 作者端形态；勤云待补）· 国内刊标准书写顺序（12 段）与量化硬项 · **GB/T 7714—2025**（2026-07-01 起施行；前 3 人 + 等）· 国内特有材料（著作权转让协议真实条款要点/申请单/利益冲突声明）· 审稿规则（双盲/查重/时间窗/一稿多投惩罚）· **逐刊档案**（《储能科学与技术》《河南工业大学学报》《中国预防医学杂志》《推进技术》《电工技术学报》）。
+- **新资产 `references/journal-taxonomy.md`**：两轴分类（`region` × `language`）四象限 + 路由表 + 边界（不替作者判等级、不采信商业中介、不碰账号凭据）。
+- **机器真源**：`pipeline.json` 新增 `journal_classes`（axes/routing/reference_style_by_language/platforms/indexes_cn/checklist_rules/boundaries），并在 `assets` 注册两个新资产。
+- **手工取证纪律**：商业中介站点（代发/代投/加急）一律不作依据；PDF/DOCX 类官方规范用「下载 + PyMuPDF/python-docx 抽文本」通路（fetch 工具不支持）；不可达站点如实记（本轮 `www.pcsee.org` 本机 DNS 解析失败）。
+- 文档同步：根 `SKILL.md` §9 · `plugin/skill/SKILL.md` §8 · `plugin/README.md` · `references/submission-runbook.md` §6。
+
+
 ## v3.0.3 —— 2026-10-16
 
 **修：开发者模式解锁从「逐字比对」改为「逐字 + 意图等价」（用户裁定；原实现比 spec 更严）**

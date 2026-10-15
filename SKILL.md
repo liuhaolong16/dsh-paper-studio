@@ -176,3 +176,16 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 本编排层为自建（MIT，见 `LICENSE`）；它**引用的第三方技能与仓库各自保留原许可**，本仓只登记路径与用途、**不分发其内容**（三分类口径见 `NOTICE.md`）。
 - Python 门需要真解释器：本机**优先用 playbook 自带 venv**（`D:\DeepSeek\research-paper-playbook\.venv\Scripts\python.exe`，列在 `pipeline.json` 的 `assets.python_exe`）；
   **PATH 上的 `python`/`python3` 在 Windows 上常是 Microsoft Store 占位符，脚本会跳过它**。真缺解释器时 `gates` 如实标注「运行时不可用 + 已试过哪些」，**不假装通过**。
+
+## 9. 期刊分类与投稿路由（国内/国外 × 中文/外文）
+
+**两轴正交，必须分别记录**（国内有英文刊、国外也有中文刊，不允许只写「中文刊/外文刊」）：
+
+| 轴 | 取值 | 决定什么 |
+|---|---|---|
+| 地域 `region` | `cn` / `intl` | 投稿入口形态、**特有材料**（国内=盖章/签署三件套；国外=系统内 attestation）、费用口径 |
+| 语言 `language` | `zh` / `en` / `bilingual` | 体例（中图分类号/中英摘要对等 vs Title page）、**参考文献标准**（GB/T 7714—2025 vs Vancouver） |
+
+**路由**：`cn+zh` → `references/cn-journals.md` · `intl+en` → `references/submission-runbook.md` · 混合象限两侧各取所需。机器真源见 `references/pipeline.json` 的 `journal_classes`；人类可读说明见 `references/journal-taxonomy.md`。
+
+**一条硬差别**（最常踩）：中文刊参考文献按 **GB/T 7714—2025**（**2026-07-01 起施行**）——责任者超 3 人**只著录前 3 人后加「，等」**；英文刊多为 Vancouver——前 **6** 位作者 + et al.。**同一稿中英双投必须分别生成两版参考文献，不许直译**。

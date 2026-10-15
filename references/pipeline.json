@@ -4,6 +4,8 @@
   "note": "本文件是 paper-studio 的唯一真源：任务类型 / 链路阶段 / 必过门 / 交接契约 / 资产路径。CLI 与（将来的）面板只读它，禁止任何一处另写一份。门的 args 模板由 gate-runner 消费；占位符 {draft} {docx} {anchors} {manifest} {contract} {declaration} 由调用方提供，缺输入一律判「跳过（缺输入）」，绝不当通过。",
   "assets": {
     "submission_runbook": "references/submission-runbook.md",
+    "cn_journals": "references/cn-journals.md",
+    "journal_taxonomy": "references/journal-taxonomy.md",
     "playbook_root": "D:\\DeepSeek\\research-paper-playbook",
     "playbook_skill": "E:\\DeepSeek\\skills\\research-paper-playbook",
     "writer_skill": "E:\\DeepSeek\\skills\\paper-writer",
@@ -13,6 +15,28 @@
     ],
     "phrase_bank": "E:\\DeepSeek\\skills\\ai-workbench\\references\\phrase-bank.json",
     "note": "只引用路径，不复制内容；第三方许可各自保留。python_exe = 首选解释器（playbook 自带 venv）；PATH 上的 python/python3 在本机是 WindowsApps 商店占位符，不是真解释器，须跳过。"
+  },
+
+  "journal_classes": {
+    "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",
+    "axes": {
+      "region": { "cn": "国内：投稿入口多为期刊采编系统，特有盖章/签署类材料", "intl": "国外：EM/ScholarOne/出版社门户，声明在系统内勾选" },
+      "language": { "zh": "中文：GB/T 7714 体例 + 中图分类号 + 中英摘要信息对等", "en": "英文：Title page + 刊自定参考文献体例（多为 Vancouver）", "bilingual": "中英双语：两套体例都要满足" }
+    },
+    "routing": {
+      "cn+zh": "references/cn-journals.md",
+      "intl+en": "references/submission-runbook.md",
+      "cn+en": "cn-journals（入口与材料）+ submission-runbook（正文体例）",
+      "intl+zh": "submission-runbook（入口与流程）+ 刊约体例"
+    },
+    "reference_style_by_language": {
+      "zh": "GB/T 7714—2025 顺序编码制；责任者超 3 人只著录前 3 人后加『，等』",
+      "en": "刊约（Vancouver 多为前 6 位作者 + et al.）"
+    },
+    "platforms": ["cnki-tengyun", "magtech", "qinyun", "editorial-manager", "scholarone", "publisher-portal", "self-hosted"],
+    "indexes_cn": ["北大核心", "CSSCI", "CSCD", "科技核心(CSTPCD)", "AMI", "WJCI"],
+    "checklist_rules": ["国内刊清单必须含『盖章/签署类材料』一栏，三态取值：已签署上传 / 待单位盖章 / 该刊不需要，不允许留白", "国外刊清单必须含『系统内声明（attestation）』一栏"],
+    "boundaries": ["收录体系只做核对提示，不替作者判定是否达线", "商业中介站点（代发/代投/加急）不作依据；费用只认刊约与编辑部公告", "不碰账号与凭据：注册/登录由作者本人完成"]
   },
   "genres": {
     "note": "稿件体裁模型（V1.5 新增 · 模型层）：**体裁决定哪些门适用**。判定只用**标题与摘要区**（摘要区在下一个标题处结束）—— 避免被参考文献里的字样误触发；摘要区无信号时再回退到方法节特征。调用方可用 --genre 显式覆盖。",

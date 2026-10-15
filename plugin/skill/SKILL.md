@@ -114,3 +114,12 @@ metadata:
 node plugin\selftest.mjs      :: 插件自检（注册形态 · 严格 schema · 真封闭 · 差异化 · 端到端）
 node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字一致性 6 项）
 ```
+
+## 8. 期刊分类（国内/国外 × 中文/外文）
+
+开写前先定两个字段：`region`（cn/intl）与 `language`（zh/en/bilingual）——**缺一个不许开写**。
+
+- `cn+zh` ⇒ 读 `references/cn-journals.md`（收录体系 · 平台逐字操作步骤 · 来稿体例 · 国内特有材料 · 逐刊档案）+ 该刊契约；**清单必须有「盖章/签署类材料」一栏**（三态，不许留白）。
+- `intl+en` ⇒ 读 `references/submission-runbook.md` + 该刊契约；**清单必须有「系统内声明（attestation）」一栏**。
+- 参考文献按语言选标准：中文 ⇒ **GB/T 7714—2025**（前 3 人 + 等）；英文 ⇒ 刊约（多为 Vancouver，前 6 人 + et al.）。中英双投**分开生成两版**。
+- 机器真源：`references/pipeline.json` 的 `journal_classes`；说明见 `references/journal-taxonomy.md`。
