@@ -94,7 +94,7 @@ metadata:
 ## 5. 双模式（用户模式 / 开发者模式）
 
 - **用户模式（默认，封闭）**：只能**使用**。`paper_dev` 的 `write` 会**真的被拒**并给出解锁指引 —— 这是设计如此，不是出错；**不要**用别的工具绕过（绕过即违背用户规格）。
-- **开发者模式**：用户**明确说出**「进入论文插件开发者模式」之类的话时，先用 `paper_dev action=unlock phrase=<用户原话>` 解锁（原话不符会被拒），随后 `list` / `read` / `write` 白名单资产（`references/`、`bin/`、`SKILL.md`、`plugin/**`）。
+- **开发者模式**：用户**明确说出**「进入论文插件开发者模式」之类的话时，先用 `paper_dev action=unlock phrase=<用户原话>` 解锁（**意图等价也放行**：含「开发者模式」即视为同一意图，回执回显识别依据；与本意图无关的话仍拒），随后 `list` / `read` / `write` 白名单资产（`references/`、`bin/`、`SKILL.md`、`plugin/**`）。
   - 展示要**有结构**：分类 + 路径 + 一句话说明（`list` 已按此返回）。
   - 改完**必须自检**：跑 `paper_studio action=audit`（出厂审查 6 项）与相关工具的自检；把读数贴出来。
   - 用完建议 `paper_dev action=seal` 收回封闭。

@@ -59,14 +59,19 @@ async function toolStudio(a) {
 async function toolDev(a) {
   const action = String((a && a.action) || '')
   const st = readState()
-  const guide = st.sealed ? `（要改插件自带内容，请让用户明确说「${DEVELOPER_PHRASE}」）` : ''
+  const guide = st.sealed ? `（要改插件自带内容，请让用户说「${DEVELOPER_PHRASE}」（含「开发者模式」的等价说法亦可））` : ''
   if (action === 'status') return { ok: true, sealed: st.sealed, action, note: st.sealed ? '当前：**用户模式**（封闭）' : '当前：**开发者模式**（已解锁）' }
   if (action === 'seal') { writeState({ sealed: true, unlock_phrase: '' }); return { ok: true, sealed: true, action, note: '已重新封闭（用户模式）' } }
   if (action === 'unlock') {
     const phrase = String((a && a.phrase) || '')
-    if (phrase !== DEVELOPER_PHRASE) return { ok: false, sealed: true, action, note: `解锁失败：需要用户的明确原话「${DEVELOPER_PHRASE}」` }
-    writeState({ sealed: false, unlock_phrase: phrase })
-    return { ok: true, sealed: false, action, note: '已进入开发者模式，可 list/read/write 白名单资产' }
+        const m = matchDeveloperIntent(phrase)
+        if (!m.ok) {
+          return { ok: false, sealed: true, action,
+      note: `解锁失败：请让用户说「${DEVELOPER_PHRASE}」——含「开发者模式」的等价说法也按**意图等价**放行；当前给的是「${phrase || '（空）'}」` }
+        }
+    writeState({ sealed: false, unlock_phrase: phrase, unlock_form: m.form, unlocks: st.unlocks + 1 })
+    return { ok: true, sealed: false, action,
+          note: `已进入开发者模式（第 ${st.unlocks + 1} 次 · 识别依据：${m.form === 'exact' ? '逐字原话' : '意图等价（含「开发者模式」）'}）。可 list/read/write 白名单资产；改完请 action=seal 或让我跑 audit 自检` }
   }
   if (action === 'list') {
     const listing = []

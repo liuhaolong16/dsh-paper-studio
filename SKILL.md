@@ -155,7 +155,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 ## 6. 兼容性
 
 - 纯技能 + CLI（`bin/studio.cjs` 带 `require.main` 守卫，被 require 时必须静默零副作用）。
-- **同时提供 DSH 插件**（`plugin/`，2026-10-14 起）：对话驱动、**无面板**、双模式（用户模式默认封闭 / 开发者模式需用户原话解锁）、五种写作模式。安装：`plugin_manager install_bundle target="link:<本仓路径>/plugin"`。插件**只注册两个工具**（`paper_studio` / `paper_dev`），不注册任何客户端 Slot、路由或前端资源 —— 因此**不会出现"面板消失/白屏"类事故**（这也是当初决定不做面板的原因）。
+- **同时提供 DSH 插件**（`plugin/`，2026-10-14 起）：对话驱动、**无面板**、双模式（用户模式默认封闭 / 开发者模式需用户表达进入意图（**逐字原话或含「开发者模式」的等价说法**，两者都回显识别依据））、五种写作模式。安装：`plugin_manager install_bundle target="link:<本仓路径>/plugin"`。插件**只注册两个工具**（`paper_studio` / `paper_dev`），不注册任何客户端 Slot、路由或前端资源 —— 因此**不会出现"面板消失/白屏"类事故**（这也是当初决定不做面板的原因）。
 - 零第三方依赖；Node ≥ 20。
 
 ## 7. 质量验收（A 类门 ≠ 质量通过）

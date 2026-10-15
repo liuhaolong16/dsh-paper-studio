@@ -83,6 +83,21 @@ asyncChecks.push(['★★ 正控 · 用户模式下 write 被拒，且目标文�
   return ok ? true : JSON.stringify({ ok: r.ok, sealed: r.sealed, note: r.note, before, after })
 }])
 
+asyncChecks.push(['★★ 正控 · **意图等价**可解锁：只说「进入开发者模式」也放行，且回显识别依据（2026-10-16 用户裁定）', async () => {
+  const un = await dev.execute({ action: 'unlock', phrase: '进入开发者模式' })
+  const st = mod.__test__.readState()
+  const okForm = /意图等价/.test(String(un.note))
+  const r1 = (un.ok === true && un.sealed === false && st.sealed === false && okForm) ? true : JSON.stringify({ un, st })
+  await dev.execute({ action: 'seal' })
+  return r1
+}])
+
+asyncChecks.push(['★ 必失败 · 与本意图无关的话仍不解锁（原话不符且不含「开发者模式」）', async () => {
+  const bad = await dev.execute({ action: 'unlock', phrase: '帮我看看插件' })
+  const st = mod.__test__.readState()
+  return (bad.ok === false && st.sealed === true && /开发者模式/.test(String(bad.note))) ? true : JSON.stringify({ bad, st })
+}])
+
 asyncChecks.push(['★ 必失败 · 越界路径（../ 穿越）一律拒收，且与模式无关（先判安全再判模式）', async () => {
   const r = await dev.execute({ action: 'read', path: '../../Windows/System32/drivers/etc/hosts' })
   return (r.ok === false && /拒收|白名单/.test(r.note)) ? true : JSON.stringify(r)

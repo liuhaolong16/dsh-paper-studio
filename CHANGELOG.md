@@ -1,5 +1,14 @@
 # 变更记录
 
+## v3.0.3 —— 2026-10-16
+
+**修：开发者模式解锁从「逐字比对」改为「逐字 + 意图等价」（用户裁定；原实现比 spec 更严）**
+- `references/plugin-spec-v3.md` 的文字标准是「用户说出『进入论文插件开发者模式』**或类似意思**」，但代码只认逐字原话 ⇒ 用户说「进入开发者模式」被拒，形成**无意义往返**。
+- 落法：新增 `matchDeveloperIntent()`（`plugin/dist/plugin.js` 与 `plugin/bin/mcp-server.mjs` **同判**）——强形式＝逐字原话（form=exact）；弱形式＝含「开发者模式」（或 dev mode）即 form=intent；空话 empty；无关话 none。**两种形式都在回执里回显识别依据**，解锁状态额外记 `unlock_form`（便于事后审计）。
+- 拒绝信息改为**可直接复制**的原话 + 说明等价说法也放行。
+- **新增 2 条夹具**：① 正控「只说『进入开发者模式』也放行且 form=intent」；② 必失败「与本意图无关的话仍不解锁（form=none）」。
+- 文档同步：`plugin/skill/SKILL.md` §5 · 根 `SKILL.md` §6 · `plugin/README.md`。
+
 ## v3.0.2 —— 2026-10-16
 
 **新增：投稿执行 Runbook（首次实战：*Journal of Energy Storage* / Elsevier 新门户）**

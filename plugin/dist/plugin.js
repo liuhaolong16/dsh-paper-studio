@@ -61,6 +61,18 @@ function writeState(patch) {
 
 const DEVELOPER_PHRASE = '进入论文插件开发者模式'
 
+/** 解锁原话的**意图等价**判定（2026-10-16 用户裁定）：本仓 spec 的口径本就是「或**类似意思**」，
+ *  代码不该比 spec 更严 —— 逐字比对曾造成无意义往返。强形式＝逐字原话；弱形式＝含「开发者模式」
+ *  （或 dev mode）即视为同一意图（调用 paper_dev 本身即改插件语境）。两种形式都回显识别依据，便于审计。 */
+function matchDeveloperIntent(phrase) {
+  const raw = String(phrase || '').trim()
+  const p = raw.replace(/\s+/g, '')
+  if (!p) return { ok: false, form: 'empty' }
+  if (p.includes(DEVELOPER_PHRASE)) return { ok: true, form: 'exact' }
+  if (/开发者模式|开发模式|dev(?:eloper)?mode/i.test(p)) return { ok: true, form: 'intent' }
+  return { ok: false, form: 'none' }
+}
+
 // ───────────────────────────── CLI 桥接 ─────────────────────────────
 
 /**
@@ -359,15 +371,20 @@ function applyInner(ctx) {
       const a = args || {}
       const st = readState()
       const action = String(a.action || '')
-      const guide = '（进入开发者模式：在对话里说「' + DEVELOPER_PHRASE + '」，我会先弹出确认再解锁；用户模式下插件自带内容只读，这是设计如此，不是出错）'
+      const guide = '（进入开发者模式：在对话里说「' + DEVELOPER_PHRASE + '」——**只说「进入开发者模式」等同义说法也放行**（意图等价）；我会先弹出确认再解锁；用户模式下插件自带内容只读，这是设计如此，不是出错）'
 
       if (action === 'status') return { ok: true, sealed: st.sealed, action, note: st.sealed ? '当前：**用户模式**（封闭）' : '当前：**开发者模式**（已解锁）' }
       if (action === 'seal') { writeState({ sealed: true, unlock_phrase: '' }); return { ok: true, sealed: true, action, note: '已重新封闭（用户模式）' } }
       if (action === 'unlock') {
         const phrase = String(a.phrase || '').trim()
-        if (phrase !== DEVELOPER_PHRASE) return { ok: false, sealed: true, action, note: `解锁失败：需要用户的明确原话「${DEVELOPER_PHRASE}」，当前给的是「${phrase || '（空）'}」` }
-        writeState({ sealed: false, unlock_phrase: phrase, unlocks: st.unlocks + 1 })
-        return { ok: true, sealed: false, action, note: `已进入开发者模式（第 ${st.unlocks + 1} 次）。可 list/read/write 白名单资产；改完请 action=seal 或让我跑 audit 自检` }
+        const m = matchDeveloperIntent(phrase)
+        if (!m.ok) {
+          return { ok: false, sealed: true, action,
+            note: `解锁失败：请让用户说「${DEVELOPER_PHRASE}」——含「开发者模式」的等价说法也按**意图等价**放行；当前给的是「${phrase || '（空）'}」` }
+        }
+        writeState({ sealed: false, unlock_phrase: phrase, unlock_form: m.form, unlocks: st.unlocks + 1 })
+        return { ok: true, sealed: false, action,
+          note: `已进入开发者模式（第 ${st.unlocks + 1} 次 · 识别依据：${m.form === 'exact' ? '逐字原话' : '意图等价（含「开发者模式」）'}）。可 list/read/write 白名单资产；改完请 action=seal 或让我跑 audit 自检` }
       }
       if (!root) return { ok: false, sealed: st.sealed, action, note: '前提层错误：找不到 paper-studio 根', }
 
@@ -450,4 +467,4 @@ export function apply(ctx) {
 }
 
 // 导出给 selftest 用（不依赖宿主即可验证行为）
-export const __test__ = { resolveRoot, hubDir, readState, writeState, modeMenu, MODES, STUDIO_ACTIONS, DEV_ROOTS, DEVELOPER_PHRASE, PAPER_STUDIO_TOOL, PAPER_DEV_TOOL, classifyIntent, INTENT_CASES }
+export const __test__ = { resolveRoot, hubDir, readState, writeState, modeMenu, MODES, STUDIO_ACTIONS, DEV_ROOTS, DEVELOPER_PHRASE, matchDeveloperIntent, PAPER_STUDIO_TOOL, PAPER_DEV_TOOL, classifyIntent, INTENT_CASES }
