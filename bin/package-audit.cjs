@@ -83,13 +83,17 @@ function cslLock(root) {
 
 /** 从真源推导**声明的**外部对照件路径（`__LOCAL__` 未解析时返回空 ⇒ 判 SKIP 而不是假装绑定了身份）。 */
 function declaredExternal(root) {
+  /* ★ v3.2.84 修正：真源（pipeline.json）**只允许 studio.cjs 读** —— 本工具此前自己 readFileSync，
+     被自家 `audit` 的 single-source 审查器抓成"两套真相"（反控夹具直接扫真实仓库，属真违规）。
+     现在改为：经 studio 的导出读取真源，并复用它的 resolveGateScript 解析 `__LOCAL__` 本机路径表。
+     解析不到（干净安装 / 未配本机路径表）⇒ 返回空 ⇒ gateParity 判 SKIP（不是 PASS）。 */
   try {
-    const P = JSON.parse(fs.readFileSync(path.join(root, 'references', 'pipeline.json'), 'utf8'));
+    const studio = require(path.join(root, 'bin', 'studio.cjs'));
+    const P = studio.readPipeline();
     const g = (P.gates || []).find((x) => x.entry === '_journal-contract.cjs');
     if (!g) return '';
-    const base = (P.assets || {})[g.rel] || '';
-    if (!base || /^__LOCAL__/.test(String(base))) return '';
-    return path.join(base, g.entry);
+    const r = studio.resolveGateScript(g, P);   // 传**完整** gate（含 rel）——只给 {id,entry} 会丢外部路径
+    return (r && r.source === 'external' && r.script) ? r.script : '';
   } catch (e) { return ''; }
 }
 
