@@ -1256,6 +1256,38 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'preflight'], { encoding: 'utf8' });
     return (r.status === 2 && /需要 --draft/.test(String(r.stderr || ''))) || ('exit=' + r.status);
   });
+  check('anchors --resolve·正控：identifiers 取自**稿件题录**（有则采/无则留空并标注），不联网', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ares-'));
+    const d = path.join(tmp, 'd.md');
+    /* ★ 复现真稿条件：CRLF（此前夹具只写 \n ⇒ 漏掉了"`.` 不匹配 `\r`"这条失效路径） */
+    fs.writeFileSync(d, ('# T\n\n## Abstract\n\nWords [1] and [2].\n\nAlso cites [3].\n\n'
+      + '## References\n\n**[1]** *Alpha study of thing.* Journal A, 2019. `10.1016/j.alpha.2019.01`\n\n'
+      + '**[2]** *Beta study without id.* Journal B, 2020.\n\n**[3]** *Gamma study.* Journal C, 2021. https://example.org/gamma\n')
+      .replace(/\n/g, '\r\n'));
+    const out = path.join(tmp, 'a.json');
+    const r = spawnSync(process.execPath, [__filename, 'anchors', '--draft', d, '--resolve', '--out', out], { encoding: 'utf8' });
+    let J = null;
+    try { J = JSON.parse(fs.readFileSync(out, 'utf8')); } catch {}
+    const by = {}; for (const a of (J && J.anchors) || []) by[a.marker] = a;
+    const ok = r.status === 0 && J && J.anchors.length === 3
+      && by['1'] && by['1'].identifier.doi === '10.1016/j.alpha.2019.01' && !by['1']._unresolved
+      && by['3'] && by['3'].identifier.url === 'https://example.org/gamma'
+      && by['2'] && by['2'].identifier.doi === '' && by['2']._unresolved
+      && /题录区：/.test(String(r.stdout || '')) && /未解析\/待人工 1 条/.test(String(r.stdout || ''));
+    return ok || ('exit=' + r.status + ' ｜ ' + JSON.stringify(by['1'] && by['1'].identifier) + ' ｜ 未解析=' + (by['2'] && by['2']._unresolved));
+  });
+  check('anchors --resolve·必失败面：在线兜底**相似度不达标必须留空**（不得为了凑数采用低分匹配）', () => {
+    const fake = () => JSON.stringify({ message: { items: [{ DOI: '10.9999/wrong', title: ['Totally unrelated topic about fish'] }] } });
+    const entries = [{ key: '9', raw: 'Some battery paper title here', title: 'Some battery paper title here', doi: '', url: '', pmid: '' }];
+    const log = resolveRefsOnline(entries, fake, { minScore: 0.7 });
+    const kept = entries[0].doi;
+    const below = log.some((l) => l.stage === 'below-threshold') && kept === '';
+    const strict = resolveRefsOnline([{ key: '9', raw: 'Some battery paper title here', title: 'Some battery paper title here', doi: '', url: '', pmid: '' }],
+      () => JSON.stringify({ message: { items: [{ DOI: '10.1/ok', title: ['Some battery paper title here'] }] } }), { minScore: 0.7 });
+    const good = entries.length && strict.length >= 0;
+    return (below && good) || ('kept=' + kept + ' log=' + JSON.stringify(log).slice(0, 140));
+  });
   check('anchors·正控：工作单列出全部引用键与行号，且骨架字段留空（不预填来源）', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'anch-'));
@@ -2049,7 +2081,7 @@ const ANCHOR_SKELETON = (key) => ({
 });
 function extractCitations(text) {
   const hits = new Map();
-  const lines = String(text || '').split('\n');
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
   const add = (key, line, sentence) => {
     if (!hits.has(key)) hits.set(key, { key, lines: [], sentences: [] });
     const h = hits.get(key);
@@ -2073,6 +2105,133 @@ function extractCitations(text) {
   });
   return hits;
 }
+/** 解析稿件**自己的题录区**（v3.2.22）
+ *  为什么：锚点表要 identifier{doi|pmid|url}，而很多稿件的题录里**已经写了 DOI** ——
+ *  从稿件自身确定性解析，既不联网、也不存在"猜"的问题。解析不到的**留空并标注**，绝不编号码。 */
+function parseReferenceList(text) {
+  /* ★ CRLF 陷阱（真稿实测踩到）：JS 里 `.`/`.*` **不匹配 `\r`**（`\r` 是行终止符），而 `$` 只认字符串末尾
+     ⇒ 任何 `…(.*)$` 形态的模式在 CRLF 文件上级级失配（题录明明在、却解析出 0 条）。
+     夹具当初用 `\n` 写内容 ⇒ **没复现真稿条件** ⇒ 一律先归一行尾。 */
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*#{1,6}\s*(?:References|REFERENCES|参考文献|文献)\s*$/.test(lines[i])) { start = i; break; }
+  }
+  if (start < 0) return { entries: [], start: -1 };
+  const out = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    const L = lines[i];
+    if (/^\s*#{1,6}\s/.test(L)) break;                       // 下一个标题即题录结束
+    const m = /^\s*\*{0,2}\[(\d+)\]\*{0,2}\s*(.*)$/.exec(L);
+    if (m) { out.push({ key: m[1], line: i + 1, raw: m[2].trim() }); continue; }
+    if (out.length && L.trim()) out[out.length - 1].raw += ' ' + L.trim();   // 续行拼回上一条
+  }
+  for (const e of out) {
+    const doi = /(10\.\d{4,9}\/[^\s`)\]},;]+)/.exec(e.raw);
+    const url = /(https?:\/\/[^\s`)\]]+)/.exec(e.raw);
+    const pmid = /\bPMID:?\s*(\d{6,9})/i.exec(e.raw);
+    const title = /\*([^*]{10,300})\*/.exec(e.raw);
+    const year = /\b(?:19|20)\d{2}\b/.exec(e.raw);
+    const clean = (s) => String(s || '').replace(/[.,;：]+$/, '');
+    e.doi = doi ? clean(doi[1]) : '';
+    e.url = url ? clean(url[1]) : '';
+    e.pmid = pmid ? pmid[1] : '';
+    e.title = title ? title[1].trim() : '';
+    e.year = year ? year[0] : '';
+  }
+  return { entries: out, start };
+}
+/** 在线兜底（可选）：按题录文本查 Crossref，**必须过相似度阈值**才采用；不达标就留空。
+ *  fetcher 可注入 —— 夹具用假 fetcher，绝不在自检里联网。 */
+function titleTokens(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff ]+/g, ' ').split(/\s+/).filter((x) => x.length > 2);
+}
+function similarity(a, b) {
+  const A = new Set(titleTokens(a)); const B = new Set(titleTokens(b));
+  if (!A.size || !B.size) return 0;
+  let inter = 0; for (const x of A) if (B.has(x)) inter++;
+  return inter / Math.min(A.size, B.size);
+}
+function resolveRefsOnline(entries, fetcher, opts) {
+  const o = opts || {};
+  const minScore = o.minScore === undefined ? 0.7 : o.minScore;
+  const log = [];
+  for (const e of entries) {
+    if (e.doi || e.url || e.pmid) continue;                   // 已经解析到就不联网
+    const q = encodeURIComponent(String(e.raw).slice(0, 300));
+    const url = 'https://api.crossref.org/works?rows=3&select=DOI,title&query.bibliographic=' + q;
+    let body = '';
+    try { body = fetcher(url) || ''; } catch (err) { log.push({ key: e.key, stage: 'fetch-failed', why: String((err && err.message) || err) }); continue; }
+    if (!body) { log.push({ key: e.key, stage: 'empty', why: '在线查询无返回' }); continue; }
+    let items = [];
+    try { items = (((JSON.parse(body) || {}).message) || {}).items || []; } catch (err) { log.push({ key: e.key, stage: 'parse-failed', why: '返回体不是 JSON' }); continue; }
+    let best = null;
+    for (const it of items) {
+      const ttl = (it.title && it.title[0]) || '';
+      const sc = similarity(e.raw, ttl || '') + similarity(e.title || e.raw, ttl || '');
+      const s = sc / 2;
+      if (!best || s > best.score) best = { doi: it.DOI || '', title: ttl, score: Math.round(s * 100) / 100 };
+    }
+    if (best && best.doi && best.score >= minScore) {
+      e.doi = best.doi; e._online = best; log.push({ key: e.key, stage: 'resolved', why: 'Crossref 匹配 ' + best.score + '：' + best.title });
+    } else {
+      log.push({ key: e.key, stage: 'below-threshold', why: '最佳匹配相似度 ' + (best ? best.score : 0) + ' < 阈值 ' + minScore + '（**不采用**，留空待人工）' + (best ? '；候选：' + best.title : '') });
+    }
+  }
+  return log;
+}
+function cmdResolve(args, argv, draftAbs, keys, hits) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const text = fs.readFileSync(draftAbs, 'utf8');
+  const refs = parseReferenceList(text);
+  const byKey = new Map(refs.entries.map((e) => [String(e.key), e]));
+  const log = [];
+  if (A.indexOf('--online') >= 0) {
+    const { spawnSync } = require('child_process');
+    const fetcher = (url) => {
+      const r = spawnSync('curl', ['-sS', '--max-time', '25', '-H', 'User-Agent: paper-studio/3.2.22 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
+      if (r.error) throw new Error('curl 不可用：' + r.error.message);
+      if (r.status !== 0) throw new Error('curl 退出码 ' + r.status + '：' + String(r.stderr || '').slice(0, 120));
+      return r.stdout || '';
+    };
+    log.push(...resolveRefsOnline(refs.entries, fetcher));
+  }
+  const anchors = [];
+  const unresolved = [];
+  const seen = new Set();
+  for (const k of keys) {
+    seen.add(String(k));
+    const e = byKey.get(String(k));
+    if (!e) { unresolved.push({ key: k, why: '**题录里没有与该标记对应的条目** ⇒ 须人工补' }); anchors.push(Object.assign(ANCHOR_SKELETON(k), { _unresolved: '题录缺对应条目' })); continue; }
+    const hasId = !!(e.doi || e.url || e.pmid);
+    const a = Object.assign(ANCHOR_SKELETON(k), {
+      identifier: { doi: e.doi || '', pmid: e.pmid || '', url: e.url || '' },
+      locator: { kind: hasId ? 'bibliographic-list' : 'none-pending', value: '稿件题录 [第 ' + e.line + ' 行]' + (hasId ? '' : '（题录未给标识符）'), quote: '' },
+      retrieval_method: 'bibliographic-list',
+      _resolution: { source: 'manuscript-reference-list', line: e.line, doi_from_manuscript: e.doi || '', title: e.title || '', year: e.year || '', online: e._online || null },
+    });
+    if (!hasId) { a._unresolved = '题录未给 DOI/URL/PMID ⇒ 须人工补（或用 --online 兜底）'; unresolved.push({ key: k, why: a._unresolved }); }
+    anchors.push(a);
+  }
+  const extra = refs.entries.filter((e) => !seen.has(String(e.key)));
+  const outPath = val('out') || path.join(path.dirname(draftAbs), 'anchors-已解析.json');
+  fs.writeFileSync(path.resolve(outPath), JSON.stringify({
+    _note: '★ 由 `studio.cjs anchors --resolve` 生成：identifier 来自**稿件自己的题录**（有则采、无则留空），_unresolved 标出须人工补的条目；'
+      + 'locator 仅登记"题录位置"，**未读原文 ⇒ 不构成"人已复核"**（要升级为人已复核，须补 kind:"page-quote" + 页号 + ≥30 字原句）。',
+    _generated_at: new Date().toISOString(),
+    anchors,
+  }, null, 2) + '\n', 'utf8');
+  console.log('锚点表解析（--resolve）· ' + path.basename(draftAbs));
+  console.log('  题录区：' + (refs.start >= 0 ? 'L' + (refs.start + 1) + ' 起 · 条目 ' + refs.entries.length + ' 条' : '**未找到**（## References / ## 参考文献）'));
+  console.log('  引用键 ' + keys.length + ' 个 ⇒ 已生成 ' + anchors.length + ' 条锚点；**未解析/待人工 ' + unresolved.length + ' 条**');
+  for (const u of unresolved) console.log('    · [' + u.key + '] ' + u.why);
+  if (extra.length) console.log('  题录里但有正文未引用的条目：' + extra.map((e) => e.key).join(', '));
+  if (log.length) { console.log('  在线兜底明细：'); for (const l of log) console.log('    · [' + l.key + '] ' + l.stage + '：' + l.why); }
+  console.log('  写出：' + path.resolve(outPath));
+  return 0;
+}
+
 function cmdAnchors(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -2106,6 +2265,10 @@ function cmdAnchors(args, argv) {
   } catch (e) { gateWhy = String((e && e.message) || e); }
   const byKey = new Map();
   if (gate) for (const h of (gate.HIGH || []).concat(gate.LOW || [])) if (!byKey.has(String(h.key))) byKey.set(String(h.key), h);
+
+  /* --resolve：从**稿件自己的题录**解析 identifier（确定性、不联网）生成草稿锚点表；
+     可选 --online 用 Crossref 兜底（过相似度阈值才采用）。 */
+  if (has('resolve')) return cmdResolve(args, argv, draftAbs, keys, hits);
 
   const L = [];
   L.push('# 引用锚点表工作单 · ' + path.basename(draftAbs));
