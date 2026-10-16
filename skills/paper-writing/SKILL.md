@@ -29,6 +29,7 @@ description: |
 - `assets/phrase-bank.json（本仓自产词库）`
 - `references/pipeline.json（篇幅预算 budget_words）`
 - `references/external-adoptions.md`
+- `bin/figures-kit.cjs（自研图模板生成 + 九条图法判据复核）· references/figure-style-rubric.md`
 
 ## 边界（这些事本模块不做）
 

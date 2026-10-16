@@ -1367,7 +1367,8 @@
     "sync-skill-table.cjs": "node bin/sync-skill-table.cjs --selftest",
     "license-scan.cjs": "node bin/license-scan.cjs --selftest",
     "license-audit.cjs": "node bin/license-audit.cjs --selftest",
-    "sync-skill-modules.cjs": "node bin/sync-skill-modules.cjs --selftest"
+    "sync-skill-modules.cjs": "node bin/sync-skill-modules.cjs --selftest",
+    "figures-kit.cjs": "node bin/figures-kit.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1509,7 +1510,8 @@
       "assets": [
         "assets/phrase-bank.json（本仓自产词库）",
         "references/pipeline.json（篇幅预算 budget_words）",
-        "references/external-adoptions.md"
+        "references/external-adoptions.md",
+        "bin/figures-kit.cjs（自研图模板生成 + 九条图法判据复核）· references/figure-style-rubric.md"
       ],
       "boundaries": [
         "**改动账本**：每处改动必须留 kind 与 reason，缺了拒收",
