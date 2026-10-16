@@ -124,7 +124,7 @@ function runOneGate(gate, inputs, pipeline, opts) {
   };
   if (!script || !fs.existsSync(script)) {
     rec.verdict = 'precondition_fail';
-    rec.note = '门脚本不存在';
+    rec.note = '门脚本不存在' + hintIfLocal(script);
     return rec;
   }
   const exe = interpreterFor(gate.runtime, pipeline);
