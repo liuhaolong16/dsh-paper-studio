@@ -25,7 +25,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          # ★ 不要写 registry-url：它会往 .npmrc 塞 `_authToken=${NODE_AUTH_TOKEN}`，
+          #   而本工作流**不存任何 secret**；Trusted Publishing 要求 CLI 自动探测 OIDC 环境。
+      # ★ Trusted Publishing 的硬前提（npm 官方文档）：npm CLI ≥ 11.5.1 + Node ≥ 22.14.0。
+      #   setup-node 附带的 npm 是 10.x ⇒ 必须显式升级，否则发布会在鉴权处失败。
+      - name: Use npm CLI >= 11.5.1 (trusted publishing requirement)
+        run: |
+          npm install -g npm@11
+          node --version
+          npm --version
       # 自检先跑：不过就不发布（把门放在发布之前）
       - name: Self-checks (must pass before publishing)
         run: |
