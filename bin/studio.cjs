@@ -6985,6 +6985,8 @@ if (cmd === 'form') {
             const opt = (f.framework || []).filter((x) => !x.required);
             if (opt.length) console.log('可选件：' + opt.map((x) => x.label).join(' / '));
             console.log('篇幅与格式口径：' + (((f.norms || {}).length) || '（未写）'));
+                if (f.core) console.log('★本形态核心（什么算成功）：' + f.core);
+                if ((f.methodology || []).length) { console.log('本形态常用方法论：'); for (const x of f.methodology) console.log('  · ' + x); }
             console.log('本形态重点（与其它形态的差异就在这几行）：');
             for (const x of (f.focus || [])) console.log('  · ' + x);
             console.log('工作流：'); for (const x of (f.workflow || [])) console.log('  · ' + x);
