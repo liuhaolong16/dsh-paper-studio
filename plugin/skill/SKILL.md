@@ -147,11 +147,11 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 - `reviewers grade <transcript.md> --target 45 --max 75`：**问答演练评分**（逐答计时 / 未答 / 对冲开头 / 填充词密度 / 是否把答案埋在 yes-no 之后）。
 - `review --reviews <意见.md> [--draft <稿.md>] [--budget N --unit chars|words]`：**审稿意见分诊**（严重度×成本 · 共识升级 · must/should/brief 三带 · 按回复预算分配；**分类未完成退 1**）。
 - 以上 `talk` / `reviewers` / 严重度分诊的**规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0）**，实现为本仓自有 Node 纯函数，**未复制其代码**；来源见 `references/external-adoptions.md`。
-<!-- AUTO:agent-facing:start 本段由脚本生成（_ef/gen-flat-skill.py）；不要手改，改了会被锁抓 -->
+<!-- AUTO:agent-facing:start 本段由 `bin/sync-skill-table.cjs` 生成；不要手改（改了会被跨面文档锁抓） -->
 
 ## 真源 agent_facing 命令总表（34 个 · 自动同步自 references/pipeline.json）
 
-> 本表由脚本从**真源**生成：根 `SKILL.md` 写用法，本表保证**对话侧文档不漏任何一个命令**（插件自检的跨面文档锁会核这一份）。
+> 根 `SKILL.md` 写每条的用法（命令侧权威）；本表保证**对话侧文档不漏任何一个命令** —— 插件自检的跨面文档锁核的就是这一份。
 
 - `anonymize`：**双盲投稿匿名化**：抹作者/单位/邮箱/ORCID/电话/基金号/致谢整节，**逐条记 original→replacement 进清单**（清单用于复核与还原，不写进正文）；自引表述与仓库链接**只提醒不擅改**；既无名单又无作者行 ⇒ 明确「未检查」退 1；**文档属性(docx/PDF 元数据)与图内水印不在覆盖范围**（如实标注）
 - `model`：**面板凭据的 CLI 通道**（与面板写同一份本机存储；`set` 用 `--key` 或 `--from-file`）

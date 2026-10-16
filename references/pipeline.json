@@ -1363,7 +1363,8 @@
     "criteria-abcd.cjs": "A/B/C/D 证据纪律四条（--selftest 15 条）",
     "package-audit.cjs": "node bin/package-audit.cjs --selftest",
     "talk.cjs": "node bin/talk.cjs --selftest",
-    "reviewers.cjs": "node bin/reviewers.cjs --selftest"
+    "reviewers.cjs": "node bin/reviewers.cjs --selftest",
+    "sync-skill-table.cjs": "node bin/sync-skill-table.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
