@@ -123,9 +123,13 @@ function selftest() {
     return (r.status === 'FAIL' && r.issues.some((x) => x.check === 'author-in-pdf-properties')) ? true : JSON.stringify(r.issues);
   });
 
-  ck('★必失败面：字节里命中邮箱 ⇒ ERROR（即使元数据里没有）', () => {
+  ck('★必失败面：字节里命中邮箱 ⇒ **WARN（疑似）**，且不把整份判 FAIL（分级见 v3.12.0）', () => {
     const r = readPdf(mk('email.pdf', EMAIL), { blind: true });
-    return (r.status === 'FAIL' && r.issues.some((x) => x.check === 'email-in-pdf')) ? true : JSON.stringify(r.issues);
+    const hit = r.issues.find((x) => x.check === 'email-in-pdf');
+    if (!hit) return '未命中邮箱：' + JSON.stringify(r.issues);
+    if (hit.level !== 'WARN') return '字节命中应为 WARN（元数据命中才是 ERROR）：' + JSON.stringify(r.issues);
+    if (r.status !== 'PASS') return '仅字节疑似不应判整体 FAIL，实际 ' + r.status;
+    return true;
   });
 
   ck('★必失败面：**读不到任何元数据 ⇒ UNCHECKED（不是 PASS）**，并说明可能是对象流压缩', () => {

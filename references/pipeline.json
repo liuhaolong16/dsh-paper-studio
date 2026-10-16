@@ -1373,7 +1373,8 @@
     "bakeoff.cjs": "node bin/bakeoff.cjs --selftest",
     "refs-verify.cjs": "node bin/refs-verify.cjs --selftest",
     "triage.cjs": "node bin/triage.cjs --selftest",
-    "tense-check.cjs": "node bin/tense-check.cjs --selftest"
+    "tense-check.cjs": "node bin/tense-check.cjs --selftest",
+    "pdf-meta.cjs": "node bin/pdf-meta.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1611,7 +1612,8 @@
       ],
       "assets": [
         "references/pipeline.json（handoff.contracts）",
-        "bin/triage.cjs（审稿意见分诊：判定空间 + severity×effort 评分 + 分带 + 矩阵；建议值需人工确认）"
+        "bin/triage.cjs（审稿意见分诊：判定空间 + severity×effort 评分 + 分带 + 矩阵；建议值需人工确认）",
+        "bin/pdf-meta.cjs（编译产物 PDF 元数据实读：Info 字典 + XMP + 分级身份检查；三态含「读不到 ⇒ 未核对」）"
       ],
       "boundaries": [
         "**咨询性、不预测结果**：风险带只帮你在还能改的时候发现问题",

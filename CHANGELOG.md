@@ -3,6 +3,20 @@
 
 # 变更记录
 
+## v3.12.0 —— 2026-10-17
+
+**backlog 收敛：编译产物 PDF 的元数据实读 —— 这是**双方都没做**的一项是（对手自己也写着 "no compiled PDF ⇒ PDF metadata not checked"）。**
+
+- **★新增 `bin/pdf-meta.cjs`（自检 9/9）**：
+  - 读 **Info 字典**（`/Author /Title /Creator /Producer /Subject /Keywords /CreationDate`）与 **XMP**（`dc:creator` 等）；
+  - **分级身份检查**：**元数据字典命中 ⇒ ERROR**（确定）· **原始字节命中 ⇒ WARN（疑似，可能来自压缩流/噪声，须人工确认）**；
+  - **三态**：`FAIL` / `PASS` / **`UNCHECKED`**（**读不到 Info 字典与 XMP ⇒ 明说未核对，绝不判 PASS**）· 非 PDF 或文件不存在 ⇒ **SKIP**；
+  - 默认按**双盲稿**判定（`--no-blind` 放宽）；`--dir` 可扫整包 PDF。
+- **★真文件实跑抓出并修掉一处系统性假阳性**：2.7 MB 出版社 PDF 的**压缩流二进制**里命中 `K@48G9-.BYBGNPTUT`，被过宽的邮箱正则当成邮箱 ⇒ 修法两条：**TLD 限已知列表** + **字节命中降级为 WARN**（元数据命中才是 ERROR）。这正是铁律 20「机器判据也有系统性假阳性」的又一实例。
+- **真文件读数**：论文 A 的 **5 个图 PDF ⇒ PASS**（读到 `Creator=Matplotlib v3.11.2` / `Producer=Matplotlib pdf backend`）· 下载的 **2.7 MB 出版社 PDF ⇒ PASS**（`Producer=OpenPDF 1.4.2`）。
+- **★如实记的边界**：① 本工具**不做正文文本抽取** ⇒ 压缩内容流里的身份读不到（写进回执）；② **本机没有编译产物手稿 PDF**（只有图与参考文献 PDF）⇒ 对"手稿 PDF 属性含作者"这一情形，**本轮只有夹具证据、尚无真稿证据**。
+- **接线**：真源 `selfchecks` + `paper-reviewing` 资产 + 登记表 `env.paper-pdf-meta`（总数 **78**）；模块文档已再生成。
+
 ## v3.11.0 —— 2026-10-17
 
 **补用户缺口表里两项"仍缺"：① 审稿意见分诊矩阵（Task E 最大缺口）② 时态规范机检。**
