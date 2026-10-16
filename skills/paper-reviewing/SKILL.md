@@ -26,6 +26,7 @@ description: |
 ## 相关真源与资产
 
 - `references/pipeline.json（handoff.contracts）`
+- `bin/triage.cjs（审稿意见分诊：判定空间 + severity×effort 评分 + 分带 + 矩阵；建议值需人工确认）`
 
 ## 边界（这些事本模块不做）
 

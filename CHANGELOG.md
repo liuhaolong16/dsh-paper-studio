@@ -3,6 +3,31 @@
 
 # 变更记录
 
+## v3.11.0 —— 2026-10-17
+
+**补用户缺口表里两项"仍缺"：① 审稿意见分诊矩阵（Task E 最大缺口）② 时态规范机检。**
+
+- **★新增 `bin/triage.cjs`（自检 8/8）** —— 吸收 `lifecycle-skills/triage-reviews` 的**判定空间**（misunderstanding / real-flaw / requested-experiment / clarification / disagreement）、**五步决策树**、**评分法**（severity 30/20/10 · class +6/+4/+3/+2/+1 · effort +3/+2/+1）、**三条分带**（必答/应答/简述）、**严重度×工作量矩阵**与**预算分配**（70%/25%/5%），"`disagreement` 占比 >20% 要复核"的自评偏差提示。**A 路径：方法吸收、代码自写。**
+  - **我方两处不同设计（诚实优先）**：① **不假装会语义分类** —— 骨架只给**建议值 + 关键词证据 + 待确认**，`final` 全留空；② **未分诊 ≠ 通过** —— 字段为空的意见**不进矩阵**，单列并计数。
+  - 自检含 5 条必失败面：非法枚举 ⇒ FAIL 并指出字段 · 字段 null ⇒ 不进矩阵且单列 · `disagreement>20%` ⇒ 提示（附反面对照不误报）· 全空 ⇒ SKIP · 切条与"待确认"。
+- **★新增 `bin/tense-check.cjs`（自检 6/6）** —— **时态规范机检**（用户缺口表明写"仍缺"）：方法/结果节里用**现在时**描述做过的动作 ⇒ WARN（命中原句 + 行号）；结论/讨论节用**过去时**下一般性断言 ⇒ INFO；**刻意不报**惯例现在时（`we propose/present/describe`、`the results show`）。
+  - **修两处自身缺陷（都由自检与真稿抓出）**：① **SKIP 判据写错**——原先按"有没有匹配到过程动词"判，导致明明有 `## 2. Methods` 的论文 B 被判"没识别到方法节"；正确应按**节是否存在**判，节存在但零命中 ⇒ 记 **INFO**（"本工具只认关键词表，不等于写法正确"）。② 过程动词表缺 **PRISMA/综述用词**（search/screen/extract/code/assess…）⇒ 论文 B 方法节零命中，补表后覆盖正常。
+  - **真稿实跑**：论文 B（46 KB 英文综述）⇒ PASS，逐节给出"过去时/现在时"计数，并对零命中节逐条记 INFO。
+- **接线**：`triage` → 真源 `selfchecks` + `paper-reviewing` 资产；`tense-check` → `selfchecks` + `paper-writing` 资产；登记表 +2（`env.paper-triage` · `env.paper-tense-check`，**总数 77**）；模块文档已再生成。
+
+## v3.10.0 —— 2026-10-17
+
+**对拍 backlog 第 1 项落地：审稿意见**分诊矩阵**（Task E 的最大缺口）—— 吸收其判定空间与评分法，代码自写，并加两处我方设计。**
+
+- **对手能力（实测）**：`lifecycle-skills/skills/triage-reviews` = `parse_reviews.py`(15.3 KB) + **`build_matrix.py`(13.2 KB)** + **`triage-rubric.md`(9.5 KB)**；评分法**成文且确定性**。
+- **★新增 `bin/triage.cjs`（自检 8/8）**：
+  - `--reviews <意见.md>` ⇒ **分诊骨架**：切条（`Comment 1.1` / `R2.3` / `[3.1]` / `Reviewer 2` 分节）· 每条给**建议分类 + 依据词 + 待确认**，`final` 全留空。
+  - `--matrix <triage.json>` ⇒ 校验枚举 · 计算**优先级 = severity + class + effort** · **三条分带**（必答/应答/简述）· **严重度×工作量矩阵** · 按分带的**预算分配**（70%/25%/5%）· **自评偏差提示**（`disagreement` 占比 >20% ⇒ 提示复核，因作者常把真缺陷归为分歧）。
+- **吸收的评分法**（`triage-rubric`）：severity critical **30** / major **20** / minor **10**；class misunderstanding **+6** / real-flaw **+4** / requested-experiment **+3** / clarification **+2** / disagreement **+1**；effort low **+3** / medium **+2** / high **+1**；分带 `critical` 或 `major 且非 disagreement` ⇒ **必答**；`major` 或 `minor 且 misunderstanding` ⇒ 应答；其余简述。**A 路径：方法吸收、代码自写。**
+- **★我方两处不同设计（诚实优先）**：① **不假装会语义分类** —— 骨架只给建议值与关键词证据，进矩阵必须人工把值填进 `final`；② **未分诊 ≠ 通过** —— 字段为空的意见**不进矩阵**，单列「未分诊」并计入回执。
+- **自检含 5 条必失败面**：非法枚举 ⇒ FAIL 并指出字段 · 字段 null ⇒ 不进矩阵且单列 · `disagreement>20%` ⇒ 提示（附**反面对照**不误报）· 全空 ⇒ SKIP · 切条与"待确认"。
+- **实跑**：Task E 的 9 条审稿意见 ⇒ 骨架生成成功（1.1 → `requested-experiment`/`high`；2.1 → `clarification`/`low`，均待人工确认）。
+
 ## v3.9.0 —— 2026-10-17
 
 **真对拍 Task F（图表题注与规格）完成 —— 六个任务全跑完；本轮新增两项能力，并在论文 A 的**真实投稿包**里查出真缺陷。**
