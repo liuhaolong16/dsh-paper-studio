@@ -12,7 +12,16 @@
     "manuscript_max_chars": 8500,
     "heading_max_chars": 15,
     "keywords_min": 3,
-    "keywords_max": 5
+    "keywords_max": 5,
+    "figure_spec": {
+      "allowed_formats": [
+        "jpg",
+        "jpeg"
+      ],
+      "min_file_kb": 3072,
+      "dpi_required": false,
+      "source": "references/cn-journals.md §2（归档口径）：图 ≥3 MB、jpg；**该口径未写分辨率** ⇒ 不设 min_dpi、不要求 dpi（避免把\"未取证的要求\"变成失败）"
+    }
   },
   "structure": {
     "section_aliases": {
@@ -55,7 +64,8 @@
     "参考文献": "十类著录式逐条给出（[J]/[M]/[A]/[C]/[D]/[N]/[EB/OL]/[S]/[R]/[P]），可作模板——§2 与 §2.1（GB/T 7714—2025）",
     "书写顺序": "题目→作者姓名→单位全称→所在地名→邮编→中文摘要→中文关键词→中图分类号→文献标志码→英文题名→作者姓名（拼音）→单位（英文）→英文摘要→英文关键词→正文→参考文献——§2",
     "篇幅口径冲突提醒": "河南工大该刊官网（2026 一手）为\"摘要 300 字左右\"，而 §2 表为\"≤200 字\" ⇒ **同一刊两来源不一致**，本契约对汉江只采用 §2 口径并标 archived-secondary；改投前一律以官网为准。",
-    "费用": "前轮记录样本为「不收取任何费用」——**属历史记录，非本轮一手** ⇒ 列为 human_only 复核项。"
+    "费用": "前轮记录样本为「不收取任何费用」——**属历史记录，非本轮一手** ⇒ 列为 human_only 复核项。",
+    "图件": "≥3 MB、jpg —— §2 归档口径（**须人工重核**）；分辨率要求：**该口径未提及**，故不设阈值"
   },
   "human_only": [
     "题名上限：§2 表内该数字**明确标注来源为《推进技术》** ⇒ 不得推定适用于本刊，须查本刊须知",
@@ -81,9 +91,11 @@
     "keywords_present",
     "heading_max_chars",
     "keywords_count",
+    "figure_spec",
     "required_sections",
-    "checkable_ids_covered",
+    "package_dir",
     "contract_recheck_required",
+    "checkable_ids_covered",
     "checkable_ids_covered"
   ],
   "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；声明了却没执行的检查会被 `checkable_ids_covered` 判失败。",

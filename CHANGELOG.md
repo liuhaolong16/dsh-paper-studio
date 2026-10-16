@@ -3,6 +3,19 @@
 
 # 变更记录
 
+## v3.2.19 —— 2026-10-16
+
+**补一个此前完全没查、却是投稿被打回常见原因的维度：图件规格（格式/分辨率/尺寸/体积）。**
+
+- **门新增 `limits.figure_spec` 检查**（纯 JS 读**图片头部真实值**，不靠元数据/人工声明）：
+  `allowed_formats`（归一 jpeg→jpg、tiff→tif）· `min_dpi` + `dpi_required` · `min_width_mm`/`max_width_mm`（按实测 dpi 折算毫米）· `min_file_kb`/`max_file_kb`。
+  支持 **PNG**（IHDR + **pHYs** 物理分辨率）· **JPEG**（SOFn 尺寸 + **JFIF 密度**，dpi 与 dots-per-cm 两种单位）· **EPS**（`%%BoundingBox`/`%%HiResBoundingBox`）· **SVG**（width/height 属性）· **GIF/BMP**（像素尺寸，无物理分辨率字段）。
+  逐张给**文件名 + 实测值**（`ok-300dpi.png[ok 300dpi 101.6mm]`）⇒ 结论带位置（D 条）。
+  **★ 纪律**：读不出分辨率 ⇒ 记"核不了"；契约写 `dpi_required: true` 时**判失败**——**核不了 ≠ 通过**。包里没有图件却声明了规格 ⇒ 也判失败。
+- **接进汉江契约**：`limits.figure_spec = { allowed_formats: ['jpg','jpeg'], min_file_kb: 3072, dpi_required: false }`，来源写明是该契约的**归档口径**（§2「图 ≥3 MB、jpg」）；**该口径未写分辨率 ⇒ 不设 min_dpi**（不把未取证的要求变成失败）。
+- 门自检：**33 → 37/37**（4 条新夹具：1200px@300dpi 正控 · 72 dpi 必失败（含文件名与实测值）· `dpi_required` 下"未标注分辨率"必失败 · 不允许格式（bmp）必失败）。夹具里的 PNG/JPEG 头是**按规范手工合成**的（含 pHYs 11811 px/m = 300 dpi）。
+- **★ 过程中自查出的两个错**：① 检查首版读的是 `S`（structure）而契约字段在 **`limits`** 下 ⇒ 检查**从不执行**、4 条夹具全 `undefined`；② 格式判断写成 `!A.indexOf(x) >= 0`（取反后比大小、**恒真**）⇒ 连允许的 `png` 都被判"不在允许列表"。两处都是"看起来在跑、其实判错"的形态，靠夹具当场暴露。
+
 ## v3.2.18 —— 2026-10-16
 
 **端到端验证"别人装完就有全部能力"（真打包 + 干净目录从零跑）⇒ 抓到两处真缺陷并修正。**
