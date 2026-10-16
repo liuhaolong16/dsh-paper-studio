@@ -1300,6 +1300,34 @@ function runSelftest() {
     return (r.status === 0 && /投稿信要素核对/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
   });
   /* ★ v3.2.43：**逐个命令都测**（此前只测 cover ⇒ `anchors` 的落点污染一路漏过去，直到包卫生门把 A 稿判红）。 */
+  /* ★ v3.2.45：**不得从"要求清单/证据表"里借作者**。真身事故：B 稿的包内搜索从
+     `9-期刊投稿要求核实清单.md` 抽到 `**作者**：<被引论文六位作者>` 当本稿作者块 ⇒ 会把别人名字填进作者栏。 */
+  check('v3.2.45·不借作者：要求清单/证据表里的"作者"不得当作本稿作者块（取不到就判缺失）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'au-'))
+    const d = path.join(tmp, 'manuscript.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody text.\n\n**Keywords:** a; b\n');
+    fs.writeFileSync(path.join(tmp, '9-期刊投稿要求核实清单.md'), '**题名**：Someone else paper\n\n**作者**：Fengqing Jiang · Yichen Feng · Yuetai Li\n');
+    const r = spawnSync(process.execPath, [__filename, 'submission-fields', '--draft', d, '--package', tmp, '--json'], { encoding: 'utf8' });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    const row = j && j.rows ? j.rows.find((x) => /Authors/.test(x.field)) : null;
+    if (!row) return '没找到 Authors 行';
+    if (/Fengqing/.test(String(row.value || ''))) return '把要求清单里被引论文的作者借来了：' + row.value;
+    return row.state === 'missing' ? true : ('state=' + row.state + ' value=' + row.value);
+  });
+  check('v3.2.45·不借作者·正控：包内 Cover-Letter 里的 Authors 仍必须取到（防"一律判缺失"）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'au2-'))
+    const d = path.join(tmp, 'manuscript.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody text.\n\n**Keywords:** a; b\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'Dear Editor,\n\n**Authors:** Hao Liu\n');
+    const r = spawnSync(process.execPath, [__filename, 'submission-fields', '--draft', d, '--package', tmp, '--json'], { encoding: 'utf8' });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    const row = j && j.rows ? j.rows.find((x) => /Authors/.test(x.field)) : null;
+    return (row && row.state === 'ok' && /Hao Liu/.test(String(row.value))) ? true : ('row=' + JSON.stringify(row));
+  });
   check('★报告默认落点不得写进投稿包目录（**逐个会写报告的命令都测**：cover / anchors / preflight）', () => {
     const { spawnSync } = require('node:child_process');
     const results = [];
@@ -3073,11 +3101,21 @@ function findEvidence(text, patterns) {
 }
 /** ★ 包内回退：有些门户字段（作者块/通讯作者）在**稿件正文里没有**，而在投稿包的其他文件里（如 Cover Letter）。
  *   回退查找**只搬运**、并记录来源文件 ⇒ 逐字不变量照旧成立。 */
+/* ★ v3.2.45 修**高危假阳性**：包内证据搜索此前只按文件名排序取第一个命中 ⇒ 在 B 稿里从
+ *   `9-期刊投稿要求核实清单.md` 抽到了 `**作者**：<被引论文的六位作者>` 当成**本稿作者块**
+ *   —— 那是别人论文的作者名单（BadScientist, ACL 2026），照这个填门户就是把**别人的名字**写进作者栏。
+ *   两条修法：① **排除工作件/要求清单/证据表/参考文献**这类"不是本稿元数据"的文件；
+ *   ② 把"像作者块"的文件（投稿信/声明/标题页/作者页）**排在前面**再取第一个命中。
+ *   取不到就**如实判缺失** —— 宁缺勿借。 */
+const PKG_NOT_EVIDENCE = /清单|要求|核实|模板|template|checklist|requirements?|refs?\b|reference|evidence|证据|摘要集|abstracts|注记|notes|速查|决策依据|成本|checklist/i;
+const PKG_AUTHORFILE = /cover|letter|declar|声明|title|作者|author|submission|投稿/i;
 function findInPackage(dir, patterns) {
   if (!dir) return null;
   const d = path.resolve(dir);
   if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) return null;
-  const files = fs.readdirSync(d).sort().filter((f) => /\.(md|txt)$/i.test(f) && !f.startsWith('_'));
+  const all = fs.readdirSync(d).sort().filter((f) => /\.(md|txt)$/i.test(f) && !f.startsWith('_'));
+  const files = all.filter((f) => !PKG_NOT_EVIDENCE.test(f))
+    .sort((a, b) => (PKG_AUTHORFILE.test(b) ? 1 : 0) - (PKG_AUTHORFILE.test(a) ? 1 : 0));
   for (const f of files) {
     const t = rawText(fs.readFileSync(path.join(d, f), 'utf8'));   // ★ 保字节
     const hit = findEvidence(t, patterns);
@@ -3168,7 +3206,7 @@ function cmdSubmissionFields(args, argv) {
   /* ⑥ 作者块 / 通讯作者 */
   const AU_PATS = [/^\s*(?:\*\*)?(?:Authors?|作者|作者姓名)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i];
   const au = findEvidence(draft, AU_PATS);
-  const auPkg = au ? null : findInPackage(pkgDir, AU_PATS);
+  const auPkg = au ? null : findInPackage(pkgDir, AU_PATS);   // v3.2.45：不再从要求清单/证据表里借作者
   push('Authors 作者块', au ? au.value : (auPkg ? auPkg.value : ''),
     au ? draft : (auPkg ? auPkg.text : null),
     au ? ('稿件 L' + au.line) : (auPkg ? ('包内 ' + auPkg.file + ' L' + auPkg.line) : ''), { req: true });
@@ -3180,7 +3218,7 @@ function cmdSubmissionFields(args, argv) {
   const ca = findEvidence(draft, CA_PATS);
   /* ★ v3.2.39 修假阳性：真实稿件的写法比我的正则宽得多 —— `**Haolong Liu**¹ (corresponding author)` 与
      `Corresponding author e-mail: x@y` 都被首版漏掉 ⇒ 报出「缺失」的**假阳性**。这里按真实形态补三条。 */
-  const caPkg = ca ? null : findInPackage(pkgDir, CA_PATS);
+  const caPkg = ca ? null : findInPackage(pkgDir, CA_PATS);   // v3.2.45：同上
   push('Corresponding author 通讯作者', ca ? ca.value : (caPkg ? caPkg.value : ''),
     ca ? draft : (caPkg ? caPkg.text : null),
     ca ? ('稿件 L' + ca.line) : (caPkg ? ('包内 ' + caPkg.file + ' L' + caPkg.line) : ''), { req: true });
