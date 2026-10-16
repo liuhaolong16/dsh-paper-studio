@@ -1,0 +1,77 @@
+{
+  "journal": "中文期刊通用（跨刊共性快检）",
+  "publisher": "—（跨刊共性，非某一刊）",
+  "article_type": "research_article",
+  "verified_at": "2026-10-16",
+  "provenance_level": "first-hand-partial",
+  "verified_from": "references/cn-journals.md §12.2（腾云官方门户一手取证：标准书写顺序 16 段 · 页脚必著录项 · [1] 上标置标点前） + §2.1（GB/T 7714—2025 参考文献规则）；**本契约只收跨刊共性**",
+  "verification_note": "★ 本契约**刻意不含任何逐刊数字**（题名上限/摘要字数/关键词数/全文上限一律不写）：这些项逐刊不同且本机无法自动取得官方原文（腾云门户=验证码、Elsevier 类站点=403），写进来就等于**猜**。它们全部列在 human_only，并指向\"须查该刊投稿须知\"。用途：改投任一中文刊前，先用本契约过一遍**跨刊共通硬项**，再用该刊契约/须知核逐刊项。",
+  "limits": {
+    "count_mode": "cjk"
+  },
+  "structure": {
+    "section_aliases": {
+      "abstract": [
+        "摘要",
+        "中文摘要"
+      ],
+      "keywords": [
+        "关键词",
+        "中文关键词"
+      ],
+      "acknowledgements": [
+        "致谢"
+      ],
+      "references": [
+        "参考文献"
+      ]
+    },
+    "keywords_required": true,
+    "references_style": "numbered（[1] 上标，置于引文所在句/段标点之前；同一文献重复引用用同一序号）",
+    "reference_entry_must_include": [
+      "year"
+    ],
+    "required_terms_present": [
+      "基金项目",
+      "作者简介",
+      "通信作者"
+    ],
+    "writing_order": [
+      "题目",
+      "摘要",
+      "关键词",
+      "中图分类号",
+      "文献标志码",
+      "参考文献"
+    ],
+    "writing_order_min_found": 4,
+    "writing_order_note": "取自 §12.2 门户原文的 16 段书写顺序，但机器**只核能作为\"标记：内容\"行首出现的项**的相对次序；「作者姓名 / 单位全称 / 所在地名 / 邮编 / 英文题名」等通常**不带标签**（直接写姓名或单位），强行核它们会产生假阳性（首版把页脚「作者简介：」误当成前置项「作者」），故不纳入机器核序。"
+  },
+  "human_only": [
+    "**题名上限**（逐刊不同：见某刊 20 字口径，但那是**别刊**的来源 ⇒ 不得推定）",
+    "**中文摘要字数**（逐刊不同：本机实测两刊口径不一致，且同一刊存在 200 vs 300 字两来源冲突）",
+    "**关键词个数区间**（逐刊不同：3–5 / 5–8 均有）",
+    "**全文篇幅上限**（逐刊不同，且综述/论著分别设限）",
+    "**各级标题字数上限**（实测口径属\"两刊实测\"，非通则）",
+    "**中图分类号 / 文献标志码的取值**（须按稿定，机器只查\"在不在\"）",
+    "**页面著录项的具体格式**（收稿日期写法、作者简介的要素顺序、通信作者标注样式）",
+    "**费用、版权协议、投稿系统必填项**（须查该刊须知/编辑部）"
+  ],
+  "machine_checkable": [
+    "书写顺序（行首标记相对次序）",
+    "页脚必著录项在场",
+    "参考文献编号按首次出现升序",
+    "参考文献条目含年份",
+    "关键词行在场",
+    "中文节名别名可识别"
+  ],
+  "checkable_ids": [
+    "references_numbered_in_order",
+    "reference_entries_complete",
+    "keywords_present",
+    "writing_order",
+    "required_terms_present",
+    "checkable_ids_covered"
+  ],
+  "checkable_ids_note": "实测本门对该契约执行过的检查 id（含对账项自身）。"
+}

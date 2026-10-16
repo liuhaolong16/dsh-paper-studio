@@ -29,7 +29,8 @@
     "declarations_templates": "references/declarations-templates.md（声明段模板：CRediT / 利益冲突 / 资助 / 中文刊页脚；含\"三处必须作者提供\"红线）",
     "criteria_abcd_gate": "bin/criteria-abcd.cjs（**A/B/C/D 证据纪律四条的单一文件实现**：零依赖 · 自带 20 条自检 · `--list/--check/--scan-only/--selftest`；来源＝公开承诺 issue #1）",
     "local_paths": "references/local-paths.example.json（机器本地路径表样板：真源用 __LOCAL__/<key> 占位符引用，真值放 git 忽略的 references/local-paths.json）",
-    "submission_formats": "references/submission-formats.json（投稿格式模板表：CTAN 一手核实 elsarticle/IEEEtran/gbt7714/ctex + GitHub rticles；含 not_verified 与 human_only）"
+    "submission_formats": "references/submission-formats.json（投稿格式模板表：CTAN 一手核实 elsarticle/IEEEtran/gbt7714/ctex + GitHub rticles；含 not_verified 与 human_only）",
+    "cn_contract_generic": "references/contracts/cn-generic.json（**中文刊跨刊共性**契约：书写顺序 · 页脚著录项 · GB/T 7714 编号；**刻意不含逐刊数字**，逐刊项全在 human_only）"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",
@@ -45,7 +46,7 @@
       }
     },
     "routing": {
-      "cn+zh": "references/cn-journals.md；机器可读契约：references/contracts/cn-henan-ut.json（中文计数口径 count_mode=cjk + 中文节名别名）；第二份契约（归档口径样板）：references/contracts/cn-hjnu.json",
+      "cn+zh": "references/cn-journals.md；机器可读契约：references/contracts/cn-henan-ut.json（中文计数口径 count_mode=cjk + 中文节名别名）；第二份契约（归档口径样板）：references/contracts/cn-hjnu.json；**改投任一中文刊前先用通用契约过共通项**：references/contracts/cn-generic.json",
       "intl+en": "references/submission-runbook.md",
       "intl+en+plos": "references/plos-one.md（PLOS 系专章：Vancouver 参考文献 + 图件单独 TIFF + 资助不进正文）",
       "cn+en": "references/cn-journals.md（入口与材料）+ references/submission-runbook.md（正文体例）",
@@ -715,7 +716,7 @@
       "used_by": [
         "check"
       ],
-      "note": "（v3.2.8 起）该门支持 **--package <投稿包目录>**：Highlights/CRediT/AI 声明等包级要件若放在独立文件里，只给 --draft 会被误报缺失（本机实证）；给出 --package 后按目录取证据并在输出里写明证据来源。另支持 **--selftest**（12 条夹具，含必失败面）；契约可带 `checkable_ids`，门会**对账**\"声明的可机检项是否真的执行了\"（登记过≠可机检）。 **v3.2.9 起支持中文刊**：`limits.count_mode=cjk` 按\"字\"计数、`structure.section_aliases` 认中文节名（摘要/关键词/参考文献/致谢，正文与参考文献分界也走别名）、新增 `heading_max_chars`/`abstract_target_chars`/`abstract_required_terms`/`keywords_count`/`required_terms_present`。 **v3.2.11 起**：新增 `structure.required_sections`（契约要求的节必须都在场；逐节可选 `evidence: heading|line`，均排除待办行）；契约可标 `needs_official_recheck: true`，门每次运行都打 WARN（来源分级见 references/contract-provenance.md）。 **v3.2.12 起**：`--report <报告.md>` 直接产出**机器生成的检查表**（每行带实测/判定/证据 + 未核实项 + human_only + 来源等级），替代手抄读数（本项目手抄计数曾漂移）。"
+      "note": "（v3.2.8 起）该门支持 **--package <投稿包目录>**：Highlights/CRediT/AI 声明等包级要件若放在独立文件里，只给 --draft 会被误报缺失（本机实证）；给出 --package 后按目录取证据并在输出里写明证据来源。另支持 **--selftest**（12 条夹具，含必失败面）；契约可带 `checkable_ids`，门会**对账**\"声明的可机检项是否真的执行了\"（登记过≠可机检）。 **v3.2.9 起支持中文刊**：`limits.count_mode=cjk` 按\"字\"计数、`structure.section_aliases` 认中文节名（摘要/关键词/参考文献/致谢，正文与参考文献分界也走别名）、新增 `heading_max_chars`/`abstract_target_chars`/`abstract_required_terms`/`keywords_count`/`required_terms_present`。 **v3.2.11 起**：新增 `structure.required_sections`（契约要求的节必须都在场；逐节可选 `evidence: heading|line`，均排除待办行）；契约可标 `needs_official_recheck: true`，门每次运行都打 WARN（来源分级见 references/contract-provenance.md）。 **v3.2.12 起**：`--report <报告.md>` 直接产出**机器生成的检查表**（每行带实测/判定/证据 + 未核实项 + human_only + 来源等级），替代手抄读数（本项目手抄计数曾漂移）。 **v3.2.17 起**新增 `structure.writing_order`（核**行首标记的相对书写次序**，逐刊可声明；标记太少＝核不了顺序 ⇒ 判失败，不静默通过）。"
     },
     {
       "id": "docx-verify",
