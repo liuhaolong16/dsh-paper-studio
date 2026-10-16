@@ -83,7 +83,8 @@ node bin/studio.cjs talk budget --minutes 15 [--qa 3]     :: **讲授预算**：
 node bin/studio.cjs talk script --minutes 12 [--deck <f>]  :: **口播稿预算**：按语速把词数摊到每页（中文 180–220 字/分 · 英文 120–150 词/分；备份页不配词）
 node bin/studio.cjs talk lint <deck.md> --minutes 12      :: **幻灯片 lint**：pacing（>1.25× 即 RISK）· 单页 >100 词 · 要点 >6 条 · 非断言标题 · 图片缺失 · Marp 不能渲染 PDF 图
 node bin/studio.cjs reviewers aggregate <scores.json>       :: **聚合评审**：置信加权均值 · champion/detractor · 拖后腿维度 · 决策风险带（含「borderline 无 champion ⇒ 向下判」）
-node bin/studio.cjs reviewers grade <transcript.md> --target 45 --max 75 :: **问答演练评分**：逐答计时（中文 180 字/分起）/ 未答 / 对冲开头 / 填充词密度 / 是否把答案埋在 yes-no 之后；退出码 0=ready 1=需再练
+
+node bin/license-scan.cjs --scan 「<第三方扫描件目录>」     :: **许可污染扫描**（发布前）：我方文本 × 受限源（**CC-BY-NC / AGPL / 无许可**）做 13 词窗口重合比对，命中即列出双方文件并 FAIL；**宽松源（MIT / Apache-2.0 / BSD / 木兰宽松 v2 / CC-BY）不进受限集合**（可搬，只需声明或署名）。★边界：只能抓逐字与近似逐字，**改写/换词/调序/翻译抓不到** ⇒ 地板线而非免罪符。`--expect a,b` 可断言「该在的受限源必须在集合里」（防许可判定写错导致假 PASS）。node bin/studio.cjs reviewers grade <transcript.md> --target 45 --max 75 :: **问答演练评分**：逐答计时（中文 180 字/分起）/ 未答 / 对冲开头 / 填充词密度 / 是否把答案埋在 yes-no 之后；退出码 0=ready 1=需再练
    （`reviewers` 的规则与流程**吸收自第三方技能包 lifecycle-skills 的 simulate-reviewers / rehearse-qa**（Apache-2.0）；实现为本仓自有 Node 纯函数 + 夹具；来源见 `references/external-adoptions.md`）
    （`talk` 的规则与流程**吸收自第三方技能包 lifecycle-skills 的 make-slides / write-talk-script**（Apache-2.0）；实现为本仓自有 Node 纯函数 + 夹具，来源与许可见 `references/external-adoptions.md`）
 node bin/studio.cjs figures caption --check --file "<稿.md>"   :: 题注体检（硬判据＝"见正文"；缺 n/单位只提示）· `figures recommend` 绘图建议 · `figures arch` 架构图 Mermaid 源码

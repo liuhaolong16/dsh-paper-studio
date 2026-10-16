@@ -1364,7 +1364,8 @@
     "package-audit.cjs": "node bin/package-audit.cjs --selftest",
     "talk.cjs": "node bin/talk.cjs --selftest",
     "reviewers.cjs": "node bin/reviewers.cjs --selftest",
-    "sync-skill-table.cjs": "node bin/sync-skill-table.cjs --selftest"
+    "sync-skill-table.cjs": "node bin/sync-skill-table.cjs --selftest",
+    "license-scan.cjs": "node bin/license-scan.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
