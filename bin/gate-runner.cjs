@@ -436,6 +436,39 @@ function runSelftest() {
     if (known.length) console.log('    （已知未实现，已登记在 pipeline.json.contract_limits.known_gaps：' + known.join(' · ') + '）');
     return true;
   });
+  check('★包卫生·行为对拍：同一脏包，compliance 与契约门 package_hygiene 必须点名**同一批**违规文件', () => {
+    const { spawnSync } = require('node:child_process');
+    const os2 = require('node:os');
+    const tmp = fs.mkdtempSync(path.join(os2.tmpdir(), 'hyg-'));
+    const pkg = path.join(tmp, 'pkg'); fs.mkdirSync(pkg);
+    const w = (n, t2) => fs.writeFileSync(path.join(pkg, n), t2 || 'x');
+    w('manuscript.md', '# T\n\n## Abstract\n\nBody text.\n');
+    w('Cover-Letter.docx');
+    w('_契约检查报告-JoES.md');
+    w('Highlights-stale-20261015.docx');
+    const P = studio.readPipeline();
+    const gd = (P.gates || []).find((x) => x.id === 'journal-contract');
+    let gate = '';
+    try { const r2 = gd ? resolveGateScript(gd, P) : null; if (r2 && r2.script) gate = r2.script; } catch (e) {}
+    if (!gate && P.assets && P.assets.playbook_root) gate = path.join(P.assets.playbook_root, '_journal-contract.cjs');
+    if (!fs.existsSync(gate)) return '门脚本不可得 ⇒ 本锁跳过（不假装通过）';
+    const c = path.join(tmp, 'c.json');
+    fs.writeFileSync(c, JSON.stringify({ journal: 'J', article_type: 'review', verified_at: '2026-01-01', verified_from: 'selftest', structure: { package_hygiene: {} }, limits: { abstract_max_words: 500 } }));
+    const out1 = String(spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'compliance', pkg, '--json'], { encoding: 'utf8' }).stdout);
+    const out2 = String(spawnSync(process.execPath, [gate, '--draft', path.join(pkg, 'manuscript.md'), '--package', pkg, '--contract', c], { encoding: 'utf8' }).stdout);
+    const dirty = ['_契约检查报告-JoES.md', 'Highlights-stale-20261015.docx'];
+    const clean = 'manuscript.md';
+    const bad = [];
+    for (const f of dirty) {
+      const inMine = out1.indexOf(f) >= 0; const inGate = out2.indexOf(f) >= 0;
+      if (!inMine || !inGate) bad.push(f + '(我方=' + inMine + ' 门=' + inGate + ')');
+    }
+    if (out1.indexOf(clean) >= 0 && /offenders/.test(out1)) { /* manuscript 作为**违规**出现才算错 */
+      const m = out1.match(/package_hygiene[\s\S]{0,400}/);
+      if (m && m[0].indexOf('manuscript.md') >= 0) bad.push('把干净文件 manuscript.md 误列进违规');
+    }
+    return bad.length === 0 ? true : ('两边不同判：' + bad.join(' · '));
+  });
   check('★ 静态锁：门参数模板里的占位符必须都在执行器白名单里（否则该输入**永远传不进去**）', () => {
     const P = studio.readPipeline();
     const bad = [];

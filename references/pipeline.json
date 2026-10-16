@@ -1177,5 +1177,36 @@
     "coverage",
     "credit",
     "retract-check"
-  ]
+  ],
+  "package_hygiene": {
+    "note": "★ v3.2.40：投稿包卫生的**共用规则**（studio `compliance` 与契约门 `package_hygiene` 必须同判）。规则的权威实现是契约门的内置 `HYGIENE_FORBID`；这里镜像同一组正则，gate-runner 的「行为对拍锁」用同一脏包跑两边、要求**同一批违规文件名** ⇒ 任何一侧改了规则都会被当场抓到。",
+    "defaults": {
+      "forbid_patterns": [
+        {
+          "re": "(^|/)_[^/]*$",
+          "why": "下划线前缀的内部产物（校验报告/脚本/工作单等）"
+        },
+        {
+          "re": "(^|/)anchors-.*\\.json$",
+          "why": "锚点表等工具中间产物"
+        },
+        {
+          "re": "-OA报告|-report\\.md$|\\.bak(?:-|$)|(^|/)[^/]*\\.log$",
+          "why": "工具报告/备份/日志"
+        },
+        {
+          "re": "(?:^|[-_.])(?:stale|old|backup|copy|tmp|temp|旧版|备份)(?:[-_.]|\\d|$)",
+          "why": "陈旧/旧版/备份/临时标记（上传错文件的高危来源）"
+        },
+        {
+          "re": "^~\\$|Thumbs\\.db$|\\.DS_Store$",
+          "why": "办公软件临时文件/系统垃圾"
+        },
+        {
+          "re": "(^|/)(?:_refs|_rollback[^/]*|sandbox)(/|$)",
+          "why": "工作用目录（不应进投稿包）"
+        }
+      ]
+    }
+  }
 }

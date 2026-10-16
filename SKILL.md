@@ -42,7 +42,7 @@ node bin/studio.cjs hygiene                                :: 残留件门（备
 node bin/studio.cjs claims                                 :: 文档数字一致性门（文档写的 N/N 必须与实跑一致）
 node bin/studio.cjs coverage                               :: 自检覆盖门（bin/*.cjs 含自检者须在真源 selfchecks 登记）
 node bin/studio.cjs verify <成品件> [--anchors …]                :: 工件复核（重算输入哈希 ⇒ FRESH / STALE；与 report 同源，惰性加载 gate-runner）
-node bin/studio.cjs compliance <投稿包目录>                  :: 合规门（投稿前过：硬项=稿件+Cover Letter；软项=图件/参考文献/契约/声明段；取不到即失败）
+node bin/studio.cjs compliance <投稿包目录>                  :: 合规门（投稿前过：硬项=稿件+Cover Letter；软项=图件/参考文献/契约/声明段；取不到即失败）（含**硬检查「包卫生」**：内部产物/陈旧/临时文件不得进包，与契约门 `package_hygiene` 同规则）
 node bin/studio.cjs credit <稿件或声明文件>                    :: CRediT 官方 14 角色核对（非官方写法＝失败；缺 CRediT 段＝未通过；依据 references/credit-roles.json）
 node bin/studio.cjs formats [--detect <你的.tex>]   :: 投稿格式模板表（CTAN/GitHub 一手核实）+ 检测 .tex 用的类文件是否命中官方模板
 node bin/studio.cjs preflight --draft <稿.md> [--package <投稿包>] [--contract <契约.json>] [--out <报告.md>]   :: **投稿前一条命令总检**（汇总门执行器/契约门/合规门；只汇总不判定，"未检查"≠通过）

@@ -4056,6 +4056,16 @@ function complianceDoc(text) {
   return { ok: missing.length === 0, path: COMPLIANCE_DOC, missing, unreadable: false };
 }
 
+/** v3.2.40：投稿包卫生规则（与契约门内置 HYGIENE_FORBID 同组；取自 pipeline 的共用清单）。 */
+function PIPE_HYGIENE() {
+  try {
+    const P = readPipeline();
+    const d = ((P.package_hygiene || {}).defaults || {}).forbid_patterns;
+    if (Array.isArray(d) && d.length) return d;
+  } catch {}
+  return [];   // 取不到规则 ⇒ 不假装「已检查」（调用方会把 0 条视作无违规并如实标注）
+}
+
 function complianceScan(dir) {
   const out = { dir: String(dir || ''), exists: false, items: [], hardMissing: [], missing: [], unreadable: [], ok: false };
   if (!out.dir) { out.unreadable.push('未给投稿包目录'); return out; }
@@ -4065,9 +4075,20 @@ function complianceScan(dir) {
   try { rels = walkFiles(out.dir).map((f) => path.relative(out.dir, f)); } catch (e) { out.unreadable.push('目录读不到：' + String((e && e.message) || e)); return out; }
   const basenames = rels.map((f) => path.basename(f).toLowerCase());
   const NOT_MANU = /cover|letter|response|rebuttal|checklist|readme|licen[cs]e/i;
-  const pick = (re, extra) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i])));
+  /* ★ v3.2.40：**包卫生**。此前 compliance 只看「必备件在不在」、不管「包里混进了什么」⇒
+     同一个脏包，compliance 判 ✔ exit 0（还把 `_报告.md` 与 `-stale-` 文件列进"稿件主文件"证据），
+     而契约门 package_hygiene 判 ✗ 不该进包 2 个 —— **两套实现两个真相**。规则统一取 pipeline 的共用清单。 */
+  const FORBID = PIPE_HYGIENE();
+  const isForbidden = (rel, base) => FORBID.some((p) => { try { const re = new RegExp(p.re, 'i'); return re.test(rel) || re.test(base); } catch { return false; } });
+  const forbidWhy = (rel, base) => { for (const p of FORBID) { try { const re = new RegExp(p.re, 'i'); if (re.test(rel) || re.test(base)) return p.why; } catch {} } return ''; };
+  const offenders = rels.map((f, i) => [f.split(path.sep).join('/'), basenames[i]])
+    .filter(([rel, base]) => isForbidden(rel, base))
+    .map(([rel, base]) => rel + '（' + forbidWhy(rel, base) + '）');
+  out.forbidden = offenders;
+  const pick = (re, extra) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i])) && !isForbidden(f.split(path.sep).join('/'), basenames[i]));
   const add = (key, level, label, hits) => out.items.push({ key, level, label, state: hits.length ? 'hit' : 'missing', files: hits.slice(0, 5) });
   add('manuscript', 'hard', '稿件主文件（.md/.docx，不含投稿信/回复信）', pick(/\.(md|docx)$/i, NOT_MANU));
+  out.items.push({ key: 'package_hygiene', level: 'hard', label: '包卫生（内部产物/陈旧/临时文件不得进包）', state: offenders.length ? 'offenders' : 'clean', files: offenders.slice(0, 8) });
   add('cover_letter', 'hard', 'Cover Letter / 投稿信（单独文件）', pick(/cover[-_ ]?letter|投稿信/i));
   add('figures', 'soft', '图件文件（独立图件或 figures/ 目录）', pick(/\.(tif|tiff|png|eps|svg)$/i));
   add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i));
@@ -4105,7 +4126,7 @@ function complianceScan(dir) {
     if (txt === null) out.unreadable.push('稿件读不到，声明段无法核：' + manu);
   }
   for (const it of out.items) { if (it.state === 'missing') out.missing.push(it.label); if (it.state === 'unreadable') out.unreadable.push(it.label); }
-  out.hardMissing = out.items.filter((i) => i.level === 'hard' && i.state === 'missing').map((i) => i.label);
+  out.hardMissing = out.items.filter((i) => i.level === 'hard' && (i.state === 'missing' || i.state === 'offenders')).map((i) => i.label);
   out.ok = out.hardMissing.length === 0 && out.unreadable.length === 0;
   return out;
 }
@@ -4118,7 +4139,10 @@ function cmdCompliance(dirArg) {
   console.log('合规门 · 投稿包：' + (r.dir || '（未给目录）'));
   if (r.unreadable.length) { console.log('  ⚠ 取不到（按失败处理，不静默通过）：'); for (const u of r.unreadable) console.log('    - ' + u); }
   for (const it of r.items) {
-    const mark = it.state === 'hit' ? '✔' : it.state === 'missing' ? '✘' : '?';
+    /* ★ 卫生行的语义与「必备件」相反：**clean 才是好**、offenders 才是坏（首版会把它显示成 ✔，误导）。 */
+    const mark = it.key === 'package_hygiene'
+      ? (it.state === 'clean' ? '✔' : '✘')
+      : (it.state === 'hit' ? '✔' : it.state === 'missing' ? '✘' : '?');
     const lvl = it.level === 'hard' ? '硬' : '软';
     console.log('  ' + mark + ' [' + lvl + '] ' + it.label + (it.files.length ? '  ← ' + it.files.join(', ') : ''));
   }
