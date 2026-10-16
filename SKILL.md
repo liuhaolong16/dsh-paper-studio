@@ -73,6 +73,7 @@ node bin/studio.cjs revise budget --file "<稿.md>"       :: 缩写/扩写：与
 node bin/studio.cjs figures caption --check --file "<稿.md>"   :: 题注体检（硬判据＝"见正文"；缺 n/单位只提示）· `figures recommend` 绘图建议 · `figures arch` 架构图 Mermaid 源码
 node bin/studio.cjs schemacheck --manifest tools.json    :: **工具 parameters 严格性校验**（防严格通道 400 / "换模型才报错"）
 node bin/studio.cjs doctor                                 :: **环境与能力自检**（运行时/本机路径表/12 道门/素材逐条可用性；缺什么就直说并给补救；**未检查 ≠ 通过**；缺资产时退出码非 0）
+> **门脚本随插件走**：12 道门在 `gates/` 有**内置副本**（解析顺序 **外部优先 → 内置回落**）⇒ 没配本机路径表也能用全套门；两份是否漂移由自检的**字节对拍锁**盯住。仅短语库等 `__LOCAL__` 素材仍需本机路径表（`doctor` 会逐条报）。
 node bin/studio.cjs audit                                :: **出厂审查**（完整性 + 重复性 + 数字一致性，6 项可复跑）
 node bin/studio.cjs cost [--latest|--file <会话日志>] [--out 交付总结.md] [--prices <价格表>] [--usd-cny <汇率>]
                                                          :: **交付后成本总结**：token 用量**读会话日志**（多帧 zstd 逐个解）· 金额**只按价格表算**，表里没有的模型标「未定价」**绝不当 0**

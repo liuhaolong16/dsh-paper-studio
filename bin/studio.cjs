@@ -1382,7 +1382,7 @@ function runSelftest() {
     return (r.gatesTotal > 0 && r.gatesOk === r.gatesTotal && r.ok === true)
       ? true : ('门 ' + r.gatesOk + '/' + r.gatesTotal + ' 素材 ' + r.assetsOk + '/' + r.assetsTotal + ' ok=' + r.ok + ' degraded=' + JSON.stringify(r.degraded));
   });
-  check('v3.2.48·doctor·fail-first：门解析不到（__LOCAL__ 未解析）⇒ 报缺口 + **退出码非 0**', () => {
+  check('v3.2.49·doctor：外部不可用时**回落插件内置副本** ⇒ 仍门齐（12/12）+ exit 0（＝缺口已补）', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-'))
     const pj = path.join(tmp, 'p.json');
@@ -1400,10 +1400,42 @@ function runSelftest() {
     const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
     let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
     if (!j) return 'JSON 解析失败：' + o.slice(0, 120);
-    if (j.gatesOk !== 0 || j.ok !== false) return ('应报 0/N 缺口，实得 ' + j.gatesOk + '/' + j.gatesTotal + ' ok=' + j.ok);
-    if (r.status === 0) return '缺资产却退出 0（必须非零）';
-    if (!(j.degraded || []).length) return 'degraded 为空（应列出不可用的门）';
+    if (j.gatesOk !== j.gatesTotal || j.ok !== true) return ('应回落到内置副本并保持门齐，实得 ' + j.gatesOk + '/' + j.gatesTotal + ' ok=' + j.ok);
+    if (r.status !== 0) return '回落成功却退出非 0：' + r.status;
+    const bundled = (j.gateRows || []).filter((g) => g.source === 'bundled').length;
+    if (bundled !== j.gatesTotal) return ('应全部门走内置副本，实得 ' + bundled + '/' + j.gatesTotal);
     return true;
+  });
+  check('v3.2.49·doctor·fail-first：门在"外部与内置都没有"时 ⇒ 报缺口 + **退出码非 0**', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'doc2-'))
+    const pj = path.join(tmp, 'p.json');
+    const real = JSON.parse(fs.readFileSync(path.join(ROOT, 'references', 'pipeline.json'), 'utf8'));
+    real.gates = [{ id: 'ghost', rel: 'playbook_root', entry: '_gate-does-not-exist.cjs' }];
+    fs.writeFileSync(pj, JSON.stringify(real));
+    const r = spawnSync(process.execPath, [__filename, 'doctor', '--pipeline', pj, '--json'], { encoding: 'utf8' });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    if (!j) return 'JSON 解析失败：' + o.slice(0, 120);
+    if (j.gatesOk !== 0 || j.ok !== false) return ('应报 0/1 缺口，实得 ' + j.gatesOk + '/' + j.gatesTotal + ' ok=' + j.ok);
+    if (r.status === 0) return '真正缺门却退出 0（必须非零）';
+    return true;
+  });
+  check('v3.2.49·内外字节对拍：`gates/` 内置副本必须与本机外部门**逐字节一致**（否则两份会各自漂移）', () => {
+    const crypto = require('node:crypto');
+    const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+    const pipeline = readPipeline();
+    const pb = String((pipeline.assets || {}).playbook_root || '');
+    if (!pb || pb.indexOf('__LOCAL__') === 0 || !fs.existsSync(pb)) return true;   // 本机无外部 → 无从对拍（内置副本仍可用）
+    let n = 0; const diff = [];
+    for (const g of (pipeline.gates || [])) {
+      const ext = path.join(pb, g.entry); const bun = path.join(ROOT, 'gates', g.entry);
+      if (!fs.existsSync(ext) || !fs.existsSync(bun)) continue;
+      n++;
+      if (sha(ext) !== sha(bun)) diff.push(g.entry);
+    }
+    if (!n) return '外部与内置没有可对拍的公共文件（至少应有一道）';
+    return diff.length === 0 ? true : ('内外副本不一致（会各自漂移）：' + diff.join(', '));
   });
   check('★报告默认落点不得写进投稿包目录（**逐个会写报告的命令都测**：cover / anchors / preflight）', () => {
     const { spawnSync } = require('node:child_process');
@@ -2704,10 +2736,18 @@ function detectTexFormat(text) {
  *  为什么：判据已经很多（门执行器 / 期刊契约门 / 合规门 / 图件规格…），但用户得自己记住跑哪几件，
  *  而且**跑漏一件不会有任何提示**。本命令只做**汇总**，逐项判定权仍归各门自身（不抢判定权）。
  *  ★ 纪律：某一步**没跑成**（脚本缺失 / 本机路径未解析 / 缺输入）一律记为"未检查/不可用"，**不得当通过**。 */
+/* ★ v3.2.49 可移植性修复：门脚本**内置进插件**（`gates/`），解析顺序改为 **外部优先 → 内置回落**。
+ *  为什么：此前 12 道门**全部 `rel=playbook_root`** ⇒ 门在插件之外 ⇒ 单装插件的人 12 道门一个都没有
+ *  （`doctor` 已能照亮，但"照亮"不等于"有了"）。现在外部配了就仍用外部（本机行为不变），
+ *  没配就用插件内置副本 ⇒ **装上就有全部 12 道门**。两份是否漂移由自检里的**字节对拍锁**盯住。 */
 function resolveGateScript(gate, pipeline) {
   const rel = gate.rel === 'playbook_root' ? String((pipeline.assets || {}).playbook_root || '') : ROOT;
-  if (!rel || String(rel).indexOf('__LOCAL__') === 0) return { script: '', why: '本机路径未解析（' + LOCAL_HINT + '）' };
-  return { script: path.join(rel, gate.entry), why: '' };
+  const bundled = path.join(ROOT, 'gates', gate.entry);
+  const extOk = !!rel && String(rel).indexOf('__LOCAL__') !== 0;
+  const external = extOk ? path.join(rel, gate.entry) : '';
+  if (external && fs.existsSync(external)) return { script: external, why: '', source: 'external' };
+  if (fs.existsSync(bundled)) return { script: bundled, why: '', source: 'bundled' };
+  return { script: '', why: (extOk ? '外部与内置副本均不存在' : '本机路径未解析（' + LOCAL_HINT + '）且内置副本不存在'), source: 'none' };
 }
 /** 引用锚点表工作单（v3.2.21）
  *  为什么：第 14 道门（claim-anchor）要求"正文引用"在**锚点表**里有条目，否则判 fabricated-reference（P0 阻断）。
@@ -3576,7 +3616,7 @@ function doctorScan(pipeline, opt) {
     let r = { script: '', why: '' };
     try { r = resolveGateScript(g, pipeline); } catch (e) { r = { script: '', why: String((e && e.message) || e) }; }
     const ok = !!r.script && exists(r.script);
-    return { id: g.id, rel: g.rel || 'ROOT', entry: g.entry, path: r.script || '', ok, why: r.why || '' };
+    return { id: g.id, rel: g.rel || 'ROOT', entry: g.entry, path: r.script || '', ok, why: r.why || '', source: r.source || '' };
   });
   /* 素材：只把"看起来是路径"的值当路径（说明性长文本跳过） */
   const isPathLike = (s) => typeof s === 'string' && s.length <= 120 && /^[A-Za-z0-9_./\\:-]+$/.test(s) && /\.[A-Za-z0-9]{1,5}$/.test(s);
@@ -3631,9 +3671,9 @@ function cmdDoctor(args, argv) {
   L.push('');
   L.push('## 二、门（' + r.gatesOk + '/' + r.gatesTotal + ' 可用）');
   L.push('');
-  L.push('| 门 | rel | 入口 | 状态 |');
-  L.push('|---|---|---|---|');
-  for (const g of r.gateRows) L.push('| `' + g.id + '` | ' + g.rel + ' | `' + g.entry + '` | ' + (g.ok ? '✓' : '**✗ 不可用**' + (g.why ? '：' + g.why : '（文件不存在：' + g.path + '）')) + ' |');
+  L.push('| 门 | rel | 入口 | 来源 | 状态 |');
+  L.push('|---|---|---|---|---|');
+  for (const g of r.gateRows) L.push('| `' + g.id + '` | ' + g.rel + ' | `' + g.entry + '` | ' + (g.source === 'external' ? '外部（本机路径表）' : (g.source === 'bundled' ? '**插件内置副本**' : '—')) + ' | ' + (g.ok ? '✓' : '**✗ 不可用**' + (g.why ? '：' + g.why : '（文件不存在：' + g.path + '）')) + ' |');
   L.push('');
   L.push('## 三、素材（' + r.assetsOk + '/' + r.assetsTotal + ' 存在）');
   L.push('');
@@ -3646,7 +3686,7 @@ function cmdDoctor(args, argv) {
   } else {
     L.push('- **有缺口**（**未检查 ≠ 通过**）：门可用 ' + r.gatesOk + '/' + r.gatesTotal + '，素材 ' + r.assetsOk + '/' + r.assetsTotal + '。');
     if (r.degraded.length) L.push('- 不可用的门：' + r.degraded.map((x) => '`' + x + '`').join(' · ') + ' ⇒ 依赖它们的检查会记「未检查」。');
-    L.push('- 补救：把 `references/local-paths.example.json` 复制成 `' + r.localPaths.home + '`（或设 `DSH_PAPER_LOCAL_PATHS`）并填真实路径；外部资产（门脚本/短语库等）见 SKILL.md 的"外部依赖"一节。');
+    L.push('- 补救：门脚本可用**插件内置副本**（本表"来源"列显示实际用了哪份）；要改用本机外部版本，就把 `references/local-paths.example.json` 复制成 `' + r.localPaths.home + '`（或设 `DSH_PAPER_LOCAL_PATHS`）并填真实路径。其余 `__LOCAL__` 素材（短语库等）仍需本机路径表。');
     L.push('- **插件内实现的能力不受此影响**：`submission-fields`（含 `--proposal`）· `anchors`（`--resolve/--oa/--quote-hints`）· `compliance`（含包卫生）· `cover`/`response` 的要素核对 · `reports --scan`（按报告自带指纹核）。');
   }
   /* ★ 默认**不落文件**（工具产物不该污染插件根/工作目录）；要落就显式 `--out`。 */
@@ -3654,7 +3694,8 @@ function cmdDoctor(args, argv) {
   if (outPath) { try { fs.writeFileSync(outPath, JSON.stringify(r, null, 2) + '\n', 'utf8'); } catch (e) { console.error('写不出 --out：' + String((e && e.message) || e)); } }
   console.log(L.join('\n'));
   console.log('');
-  console.log('doctor：' + (r.ok ? '环境齐备' : '**有缺口**') + '（门 ' + r.gatesOk + '/' + r.gatesTotal + ' · 素材 ' + r.assetsOk + '/' + r.assetsTotal + '）' + (outPath ? '；机器可读：' + outPath : '（未落文件；要机器可读加 `--json` 或 `--out <路径>`）'));
+  const srcCount = r.gateRows.filter((g) => g.source === 'bundled').length;
+  console.log('doctor：' + (r.ok ? '环境齐备' : '**有缺口**') + '（门 ' + r.gatesOk + '/' + r.gatesTotal + ' · 素材 ' + r.assetsOk + '/' + r.assetsTotal + (srcCount ? ' · 其中 ' + srcCount + ' 道门用**插件内置副本**' : '') + '）' + (outPath ? '；机器可读：' + outPath : '（未落文件；要机器可读加 `--json` 或 `--out <路径>`）'));
   return r.ok ? 0 : 1;
 }
 function cmdReports(args, argv) {
