@@ -779,6 +779,22 @@ const STAGE_RULES = [
  * 现在按真源逐项校验：缺必填 / 空值 / 占位符 / 类型不符 / 闭集外取值 / 逐项 schema 不符 ⇒ 失败；
  * 未在契约里声明的字段 ⇒ 只提示（不判失败，但提示补进真源，防止契约悄悄落后于实际用法）。
  */
+/** 把 --contract 的值解析成路径：先当路径试，再当**契约 id** 到 references/contracts/<id>.json 找；
+ *  都失败则报错并**列出可用 id**（2026-10-17 Task D 对拍补：此前传自带 id 会被当路径 ⇒ 误报「契约不存在」）。 */
+function resolveContract(v) {
+  if (!v) return v;
+  const asPath = path.resolve(String(v));
+  if (fs.existsSync(asPath)) return asPath;
+  const dir = path.join(ROOT, 'references', 'contracts');
+  const byId = path.join(dir, String(v).replace(/\.json$/, '') + '.json');
+  if (fs.existsSync(byId)) return byId;
+  let ids = [];
+  try { ids = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => f.replace(/\.json$/, '')); } catch (e) { /* ignore */ }
+  console.error('前提层失败：契约既不是存在的文件、也不是已知契约 id —— ' + v + '（**不许静默跳过契约门**）');
+  if (ids.length) console.error('  可用契约 id：' + ids.join(' · '));
+  return asPath;   // 交回原值，让调用方按原有逻辑报「不存在」
+}
+
 function findContracts(id, pipeline) {
   const list = ((pipeline || readPipeline()).handoff || {}).contracts || [];
   if (!id) return [];
@@ -3245,7 +3261,18 @@ function runSelftest() {
       const notRecorded = r.items.filter((x) => !x.original || !x.replacement);
       return notRecorded.length === 0 ? true : ('清单里有条目缺 original/replacement：' + notRecorded.length);
     });
-    check('v3.2.63·anonymize·★必失败面：名单里的人**换了写法**留在正文 ⇒ 必须报残留（不许静默算干净）', () => {
+    check('v3.7.0·anonymize·★必失败面：PDF 元数据身份（pdfauthor）与主目录路径必须被抹掉（Task D 补齐）', () => {
+    const src = '\\documentclass{article}\n\\hypersetup{pdfauthor={Zhang San}}\nSee /home/zhangsan/data and C:\\Users\\zhangsan\\proj for raw files.\n';
+    const r = anonymizeText(src, {});
+    const kinds = r.items.map((x) => x.kind);
+    if (kinds.indexOf('pdf-metadata') < 0) return '未抹 PDF 元数据：' + JSON.stringify(r.items);
+    if (kinds.indexOf('home-path') < 0) return '未抹主目录路径：' + JSON.stringify(r.items);
+    if (/zhangsan/.test(r.text)) return '抹除后仍残留 zhangsan：' + r.text;
+    if (!r.unchecked.some((x) => /盲审级别/.test(x))) return '未记「盲审级别未声明」：' + JSON.stringify(r.unchecked);
+    return true;
+  });
+
+  check('v3.2.63·anonymize·★必失败面：名单里的人**换了写法**留在正文 ⇒ 必须报残留（不许静默算干净）', () => {
       const src = 'Authors: Zhang San\n\nAcknowledgments: thanks to Zhang  San for help.\n';
       const r = anonymizeText(src, { roster: ['Zhang San', 'Zhang  San'] });
       return (r.residual.length > 0 || r.out.indexOf('Zhang') < 0) ? true : '换了写法的人名被静默漏掉了';
@@ -4690,7 +4717,7 @@ function cmdSubmissionFields(args, argv) {
     push(label, hit ? hit.value : '', draft, hit ? ('稿件 L' + hit.line) : '');
   }
   /* ⑧ 契约限额对照（只报，不替门判定；没有对应读数的键如实说明） */
-  const contractArg = val('contract');
+  const contractArg = resolveContract(val('contract'));
   const limits = [];
   if (contractArg) {
     const cAbs = path.resolve(contractArg);
@@ -5565,6 +5592,30 @@ function anonymizeText(text, opts) {
   /* ⑥ 致谢整节（致谢里常出现具名致谢与项目号） */
   out = out.replace(/^(#{1,6}\s*(?:Acknowledg(?:e?ments?|ements)|致谢|基金项目|资助声明)\s*)\n([\s\S]*?)(?=^#{1,6}\s|\Z)/gim,
     (m, head, body) => { if (!body.trim()) return m; items.push({ kind: 'acknowledgements-section', line: 0, original: body.trim().slice(0, 120), replacement: '[致谢内容已隐藏]' }); return head + '\n[致谢内容已隐藏]\n\n'; });
+  /* ⑦b ★ 2026-10-17 Task D 对拍补齐（对手 scan_anonymization.py 报 ERROR、我方此前漏）：
+     · pdf-metadata：正文抹了身份，\hypersetup{pdfauthor=...} 仍会把名字写进 PDF 属性；
+     · home-path：/home/<user>、/Users/<user>、C:\Users\<user> 会泄漏机器用户名。 */
+  const pdfMetaRe = /pdf(?:author|keywords)\s*=\s*\{[^{}]*[A-Za-z\u4e00-\u9fa5][^{}]*\}/gi;
+  const homePathRe = /(?:\/home\/[A-Za-z0-9_.-]+|\/Users\/[A-Za-z0-9_.-]+|[A-Z]:\\Users\\[A-Za-z0-9_.-]+)/g;
+  out = out.replace(pdfMetaRe, (m) => {
+    items.push({ kind: 'pdf-metadata', line: 0, original: m.slice(0, 80), replacement: '[PDF 元数据已隐藏]' });
+    return m.replace(/\{[^{}]*\}/, '{[PDF 元数据已隐藏]}');
+  });
+  out = out.replace(homePathRe, (m) => {
+    items.push({ kind: 'home-path', line: 0, original: m, replacement: '[路径已隐藏]' });
+    return '[路径已隐藏]';
+  });
+  if (/\\documentclass/.test(text) && !o.blind) {
+    unchecked.push('未提供盲审级别（--blind full|single|none）⇒ 自引与致谢的处置口径未定（对手工具在同类情形报 anonymization/blind-unknown 警告）');
+  }
+  /* ⑥b LaTeX 致谢/资助节（\section*{Acknowledgments|Funding|资助} … 到下一个 \section 或 \end{document}）
+     —— 2026-10-17 Task D 对拍补：我方 ⑥ 只认 Markdown 标题，LaTeX 夹具因此漏抹（对手同类报 ERROR）。 */
+  out = out.replace(/\\section\*?\{[^}]*(?:Acknowledg|Acknowledge|Funding|致谢|基金|资助)[^}]*\}([\s\S]*?)(?=\\section|\\end\{document\})/g,
+    (m, body) => {
+      if (!body.trim()) return m;
+      items.push({ kind: 'acknowledgements-section-latex', line: 0, original: body.trim().slice(0, 90), replacement: '[致谢/资助节已隐藏]' });
+      return m.replace(body, '\n[致谢/资助节已隐藏]\n');
+    });
   /* ⑦ 只提醒、不擅改语义的项 */
   const selfCiteRe = /(our (?:previous|earlier|prior) (?:work|stud(y|ies)|papers?|research|reports?)|in our (?:earlier|previous)|我们(?:之前|先前|过去)的(?:研究|工作|论文|报告|结果)|本课题组|我课题组)/gi;
   const repoRe = /https?:\/\/(?:github|gitlab|gitee)\.com\/[A-Za-z0-9_.\-]+/g;
@@ -6026,7 +6077,7 @@ function cmdReportCheck(args, argv) {
   const txt = fs.readFileSync(rAbs, 'utf8');
   const claims = provenanceClaims(txt);
   if (!claims.length) { console.error('前提层失败：报告里没有运行指纹（PROVENANCE）⇒ **核不了它属于哪一次运行**，不得当通过'); return 2; }
-  const now = { draft: val('draft'), contract: val('contract'), package: val('package'), anchors: val('anchors'), cover: val('cover'), letter: val('letter'), comments: val('comments') };
+  const now = { draft: val('draft'), contract: resolveContract(val('contract')), package: val('package'), anchors: val('anchors'), cover: val('cover'), letter: val('letter'), comments: val('comments') };
   const rows = [];
   for (const prov of claims) {
     for (const r of (prov.inputs || [])) {
@@ -6068,7 +6119,7 @@ function cmdCover(args, argv) {
   const items = COVER_ITEMS.map((it) => ({ id: it.id, label: it.label, ok: it.re.test(plain) }));
   /* ② 期刊名交叉核（确定性：来自契约） */
   let journalCheck = { state: 'skipped', why: '未给 --contract ⇒ **未交叉核对**（未核 ≠ 通过）', journal: '' };
-  const contractArg = val('contract');
+  const contractArg = resolveContract(val('contract'));
   if (contractArg) {
     const kAbs = path.resolve(contractArg);
     if (!fs.existsSync(kAbs)) { console.error('前提层失败：契约不存在 —— ' + kAbs); return 2; }
@@ -6379,7 +6430,7 @@ function cmdPreflight(args, argv) {
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
   const draft = val('draft');
   const pkgDir = val('package');
-  const contractArg = val('contract');
+  const contractArg = resolveContract(val('contract'));
   const outArg = val('out');
   if (!draft) { console.error('前提层失败：preflight 需要 --draft <稿.md>（可选 --package <投稿包> --contract <契约.json> --out <报告.md>）'); return 2; }
   const draftAbs = path.resolve(draft);
