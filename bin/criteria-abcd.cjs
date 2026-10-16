@@ -45,6 +45,8 @@ const CRITERIA = [
   ['D', '结论带位置', '每条结论必须带位置（文件/行/节或等价物）；对外文本发布前扫路径分隔符 / 内网主机名 / 邮箱 / 凭据样式串 / 会话标识，命中即拦下并报行号。'],
 ];
 
+/* v3.2.14：会话标识模式收紧——通用形式必须**带赋值**（`session_id: <token>`），
+   否则散文里提到这个概念（如英文的 session + 连字符 + identifier）会被误报；框架 cookie 名仍原样保留。 */
 const PATH_TYPES = ['dns', 'transport-timeout', 'not-found-or-not-authoritative', 'n/a'];
 
 /* ── D 的对外文本扫描：五类命中模式（每类给出人能懂的中文说明） ──
@@ -58,7 +60,7 @@ const OUTWARD_PATTERNS = [
   ['internal-hostname', new RegExp(_P('XGIoPzpsb2NhbGhvc3R8MTI3XC4wXC4wXC4xfDBcLjBcLjBcLjB8MTBcLlxkezEsM31cLlxkezEsM31cLlxkezEsM318MTkyXC4xNjhcLlxkezEsM31cLlxkezEsM318MTcyXC4oPzoxWzYtOV18MlxkfDNbMDFdKVwuXGR7MSwzfVwuXGR7MSwzfXxbQS1aYS16MC05Ll8tXStcLmxvY2FsKVxi')), '内网主机名/回环地址'],
   ['email', new RegExp(_P('W0EtWmEtejAtOS5fJSstXStAW0EtWmEtejAtOS4tXStcLltBLVphLXpdezIsfQ==')), '邮箱地址'],
   ['credential-like', new RegExp(_P('XGIoPzphcGlbXy1dP2tleXxhY2Nlc3NbXy1dP3Rva2VufHJlZnJlc2hbXy1dP3Rva2VufGNsaWVudFtfLV0/c2VjcmV0fHBhc3N3b3JkfHBhc3N3ZHxiZWFyZXJccytbQS1aYS16MC05Ll8tXXsxMix9fC0tLS0tQkVHSU4gW0EtWiBdKlBSSVZBVEUgS0VZLS0tLS0pXGI='), "i"), '凭据样式串'],
-  ['sid', new RegExp(_P('XGIoPzpzZXNzaW9uW18tXT9pZHxqc2Vzc2lvbmlkfHBocHNlc3NpZHxjb25uZWN0XC5zaWR8c2lkXHMqPVxzKltBLVphLXowLTlfLV17MTIsfSk='), "i"), '会话标识'],
+  ['sid', new RegExp(_P('XGIoPzpqc2Vzc2lvbmlkfHBocHNlc3NpZHxjb25uZWN0XC5zaWR8c2Vzc2lvbltfLV0/aWRccypbOj1dXHMqW0EtWmEtejAtOV9cLV17OCx9fHNpZFxzKls6PV1ccypbQS1aYS16MC05X1wtXXsxMix9KVxi'), "i"), '会话标识'],
 ];
 
 const args = process.argv.slice(2);
