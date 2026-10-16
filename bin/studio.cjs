@@ -4447,14 +4447,17 @@ function complianceScan(dir) {
      当成**稿件**去核声明段，于是 `✔ Data Availability / ✘ CRediT / ✘ Funding` 全是**从错文件读来的**；
      参考文献那一项还把 `mkrefs.cjs`、`refcheck*.py` 这些**脚本**算了进去。
      统一纪律：**工作件/模板/要求清单/证据表/参考文献**都不是"本稿文件"，不得当证据（宁缺勿借）。 */
-  const pick = (re, extra) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i]))
-    && !PKG_NOT_EVIDENCE.test(basenames[i]) && !isForbidden(f.split(path.sep).join('/'), basenames[i]));
+  /* ★ v3.2.47：`pick(re, extra, opt)` 增加 `opt.keepNotEvidence` —— **该项本身就是在找这类文件**时不能套用排除表。
+     自伤实测：排除表里有 `refs?\b`，于是"参考文献清单文件"这一项把 `refs.md` 自己也排除了 ⇒ 永远报缺。 */
+  const pick = (re, extra, opt) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i]))
+    && ((opt && opt.keepNotEvidence) || !PKG_NOT_EVIDENCE.test(basenames[i]))
+    && !isForbidden(f.split(path.sep).join('/'), basenames[i]));
   const add = (key, level, label, hits) => out.items.push({ key, level, label, state: hits.length ? 'hit' : 'missing', files: hits.slice(0, 5) });
   add('manuscript', 'hard', '稿件主文件（.md/.docx，不含投稿信/回复信）', pick(/\.(md|docx)$/i, NOT_MANU));
   out.items.push({ key: 'package_hygiene', level: 'hard', label: '包卫生（内部产物/陈旧/临时文件不得进包）', state: offenders.length ? 'offenders' : 'clean', files: offenders.slice(0, 8) });
   add('cover_letter', 'hard', 'Cover Letter / 投稿信（单独文件）', pick(/cover[-_ ]?letter|投稿信/i));
   add('figures', 'soft', '图件文件（独立图件或 figures/ 目录）', pick(/\.(tif|tiff|png|eps|svg)$/i));
-  add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i, /\.(cjs|mjs|js|ts|py|sh|ps1|json5?)$/i));   // v3.2.46：脚本不算参考文献
+  add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i, /\.(cjs|mjs|js|ts|py|sh|ps1|json5?)$/i, { keepNotEvidence: true }));   // v3.2.47：脚本不算参考文献，但 refs.md 本身要算
   // ★ v3.2.4：契约项缺失时**直接告诉作者包内已备好哪一份**（此前只报 ✘，作者不知道去哪拿）。
   //   纪律不变：这一项仍判 missing（投稿包里确实没有），只是把"可执行下一步"写进 label。
   const CONTRACTS = (() => { try { return fs.readdirSync(path.join(ROOT, 'references', 'contracts')).filter((f) => /\.json$/.test(f)); } catch { return []; } })();
