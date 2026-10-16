@@ -1369,7 +1369,8 @@
     "license-audit.cjs": "node bin/license-audit.cjs --selftest",
     "sync-skill-modules.cjs": "node bin/sync-skill-modules.cjs --selftest",
     "figures-kit.cjs": "node bin/figures-kit.cjs --selftest",
-    "oa-fetch.cjs": "node bin/oa-fetch.cjs --selftest"
+    "oa-fetch.cjs": "node bin/oa-fetch.cjs --selftest",
+    "bakeoff.cjs": "node bin/bakeoff.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1670,7 +1671,8 @@
       ],
       "assets": [
         "plugin/hub/*（跨会话中枢）",
-        "references/lessons-from-first-draft.md"
+        "references/lessons-from-first-draft.md",
+        "bin/bakeoff.cjs（真对拍判分：中性机检 / 自家门单列 / 人读项标判者）· run/bakeoff/"
       ],
       "boundaries": [
         "**凭证值不入任何记忆 / 文件 / 日志**（model 只记处理方式）",
