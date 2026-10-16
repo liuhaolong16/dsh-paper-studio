@@ -77,6 +77,8 @@ node bin/studio.cjs revise rebuttal --comments "<意见.md>" [--responses "<回�
 node bin/studio.cjs revise aitone --file "<稿.md>"       :: 去 AI 味词表（20 个英中记号，逐条行号 + 替换建议；**密度只作 advisory**）
 node bin/studio.cjs revise readthrough --file "<稿.md>"  :: **Reviewer 视角通读**：机械证据 + 10 问，逐条标「机械证据 / 需人读」
 node bin/studio.cjs revise budget --file "<稿.md>"       :: 缩写/扩写：与真源篇幅预算逐节比对（超额给删减候选；不足给该节「必答」问题）
+node bin/studio.cjs review --reviews "<意见.md>" --draft "<稿.md>" --budget 10000 --unit chars :: **审稿意见分诊（并入严重度×成本）**：切条（**按审稿人分组**）· 分类 · 启发式**严重度**（对录用的威胁）与**成本**（回复窗口内的代价）· **共识升级**（同一关切被 2+ 审稿人提出 ⇒ 升一级；已达 high 上限会显形）· **must/should/brief 三带** · **按回复预算分配**（每条约保底 50 字符 / 10 词，不够会点明要砍条目）；**分类没完成 ⇒ 退 1**（不许直接写 rebuttal）
+   （严重度×成本/共识升级/三带/预算分配**吸收自第三方技能包 lifecycle-skills 的 triage-reviews**（Apache-2.0）；与我方既有 review 合并为**一个所有者**，不另起命令）
 node bin/studio.cjs talk budget --minutes 15 [--qa 3]     :: **讲授预算**：内容页目标（≈1 张/分钟）与硬上限 1.25×，problem-first 分节配时（**槽位时长必须由你给出，绝不臆测**）
 node bin/studio.cjs talk script --minutes 12 [--deck <f>]  :: **口播稿预算**：按语速把词数摊到每页（中文 180–220 字/分 · 英文 120–150 词/分；备份页不配词）
 node bin/studio.cjs talk lint <deck.md> --minutes 12      :: **幻灯片 lint**：pacing（>1.25× 即 RISK）· 单页 >100 词 · 要点 >6 条 · 非断言标题 · 图片缺失 · Marp 不能渲染 PDF 图

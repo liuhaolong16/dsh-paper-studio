@@ -2371,6 +2371,69 @@ function runSelftest() {
     return (r.status !== 2 && /- 引用锚点表：\*\*未给\*\*/.test(txt)) || ('exit=' + r.status);
   });
 
+
+  check('v3.2.88·严重度/成本判据：方法级缺陷判 high、字数超限判 medium、纯排版判 low、补实验判高成本', () => {
+    const a = severityOf('缺少与基线的对照实验，结论无法复现', classifyReview('缺少与基线的对照实验').id);
+    const b = severityOf('论文字数超了 2000 词，请压缩', classifyReview('论文字数超了 2000 词，请压缩').id);
+    const c = severityOf('有若干拼写与标点问题', classifyReview('有若干拼写与标点问题').id);
+    const d = effortOf('请补充一组消融实验', classifyReview('请补充一组消融实验').id);
+    if (a.level !== 'high') return '方法级缺陷应 high：' + a.level;
+    if (b.level !== 'medium') return '字数超限应 medium：' + b.level + ' ' + b.why;
+    if (c.level !== 'low') return '纯排版应 low：' + c.level;
+    if (d.level !== 'high') return '补实验成本应 high：' + d.level;
+    return true;
+  });
+
+  check('v3.2.88·★共识升级：同一条关切被 2 个不同审稿人提出 ⇒ 严重度升一级', () => {
+    /* 样本要用**未到顶**的等级（medium）才测得出"升级"；同时用一条 high 的同源意见测"到顶要显形" */
+    const t = ['Reviewer 1', '1. 请澄清第 3 节的定义', '2. 缺少与基线的对照实验，结论无法复现',
+      '', 'Reviewer 2', '1. 请澄清第 3 节的定义', '2. 缺少与基线的对照实验，结论无法复现'].join('\n');
+    const r = triageReport(t, {});
+    if (!r.reviewer_boundaries_found) return '未识别审稿人边界';
+    if (r.reviewers.length !== 2) return '审稿人应为 2：' + JSON.stringify(r.reviewers);
+    if (r.escalations.length !== 2) return '应有两处同源记录（各一对）：' + JSON.stringify(r.escalations);
+    const up = r.escalations.filter((x) => /严重度升级/.test(x));
+    const ceil = r.escalations.filter((x) => /已达 high 上限/.test(x));
+    if (up.length !== 1) return 'medium 同源应升级一次：' + JSON.stringify(r.escalations);
+    if (ceil.length !== 1) return 'high 同源应显形"到顶"：' + JSON.stringify(r.escalations);
+    const med = r.items.filter((x) => /澄清/.test(x.quote));
+    if (!med.every((x) => x.severity === 'high')) return '升级后 medium 应变成 high：' + JSON.stringify(med.map((x) => x.severity));
+    if (r.items.some((x) => x.consensus < 2)) return '共识计数未累加：' + JSON.stringify(r.items.map((x) => x.consensus));
+    return true;
+  });
+
+  check('v3.2.88·★必失败面：分类未完成必须退 1 并列出未完成项（不许直接写 rebuttal）', () => {
+    const r = triageReport('1. 这是一条完全不含任何类别关键词的意见，谁也认不出来\n', {});
+    if (!r.unclassified.length) return '未识别出"未分类"';
+    if (r.exit_code !== 1) return '应退 1：' + r.exit_code;
+    if (!/不许直接写 rebuttal/.test(r.note)) return '说明里没点明禁令';
+    return true;
+  });
+
+  check('v3.2.88·预算分配：三带权重（must 3:should 2:brief 1），每条必须过保底，否则报"不够"', () => {
+    const t = ['Reviewer 1', '1. 缺少与基线的对照实验，结论无法复现', '2. 请澄清第 3 节的定义', '3. 拼写问题若干'].join('\n');
+    const ok = triageReport(t, { budget: 3000, unit: 'chars' });
+    if (!ok.budget_plan) return '无预算计划';
+    if (Math.abs(ok.budget_plan.total_allocated - 3000) > 3) return '分配总额应≈预算：' + ok.budget_plan.total_allocated;
+    if (!ok.budget_plan.fits) return '3000 字符对 3 条应够';
+    const must = ok.budget_plan.allocations.find((x) => x.band === 'must');
+    const brief = ok.budget_plan.allocations.find((x) => x.band === 'brief');
+    if (!must || !brief) return '三带不全：' + JSON.stringify(ok.budget_plan.allocations);
+    if (!(must.alloc > brief.alloc)) return 'must 应比 brief 分到更多：' + must.alloc + ' vs ' + brief.alloc;
+    const tight = triageReport(t, { budget: 90, unit: 'chars' });
+    if (tight.budget_plan.fits) return '90 字符对 3 条（保底 50）应判"不够"';
+    if (!/砍条目|合并/.test(tight.budget_plan.shortage)) return '不够时的说明不含处置建议';
+    return true;
+  });
+
+  check('v3.2.88·正控：分类齐全 + 边界清楚 ⇒ 退 0 且三带齐全', () => {
+    const t = ['Reviewer 1', '1. 缺少与基线的对照实验，结论无法复现', '2. 请澄清第 3 节的定义', '', 'Reviewer 2', '1. 论文字数超了 1000 词，请压缩', '2. 有若干拼写与标点问题'].join('\n');
+    const r = triageReport(t, { budget: 4000, unit: 'chars' });
+    if (r.exit_code !== 0) return '应退 0：' + r.exit_code + ' 未分类=' + JSON.stringify(r.unclassified);
+    if (r.band_counts.must < 1 || r.band_counts.should < 2 || r.band_counts.brief < 1) return '三带分布异常（应 must≥1 · should≥2 · brief≥1）：' + JSON.stringify(r.band_counts);
+    return r.items.every((x) => x.severity && x.effort && x.band) ? true : '有条目缺字段';
+  });
+
   check('接口面：分派支持的命令必须都在 SUBCOMMANDS 登记（不许加了命令忘登记）', () => {
     const r = subcommandGaps(fs.readFileSync(__filename, 'utf8'), SUBCOMMANDS);
     return (r.missing.length === 0 && r.phantom.length === 0) || ('未登记: ' + r.missing.join(',') + ' ｜ 幽灵登记: ' + r.phantom.join(','));
@@ -5639,6 +5702,7 @@ function docMeta(file) {
    纪律：① 每条都必须带**意见原文**（可追溯，不许摘要代替原文）；② 分类是**启发式**，拿不准就写「需人工判断」，
    **绝不默认归到"可辩"这类省事的类**；③ 在稿件里定位不到 ⇒ 记「未定位」，不许静默留空；④ 一条都识别不出来 ⇒ **退 2** 并说明。 */
 const REVIEW_CLASSES = [
+  { id: 'wording', label: '文字/排版细节', re: /(typo|typos|spelling|punctuation|grammar|wording|拼写|标点|错别字|笔误|语法|文字细节)/i },
   { id: 'editorial', label: '编辑/格式要求', re: /(editor|editorial|format|formatting|word count|reference style|cover letter|格式|编辑|字数|排版|体例)/i },
   { id: 'must-fix', label: '必改（方法/数据/结论缺陷）', re: /(insufficient|flawed|invalid|not (?:sound|convincing|supported)|lacks?|missing (?:control|baseline|statistic)|should (?:add|include|report|clarify) (?:the )?(?:experiment|analysis|data|detail)|major (?:concern|revision)|must|证据不足|不充分|缺少|必须补充|方法(?:有)?问题|结论(?:缺乏|不)支持|重大(?:问题|修改))/i },
   { id: 'misreading', label: '可能的误解（作者可指出原文已写）', re: /(the authors (?:do not|fail to) (?:mention|cite|clarify)|it is (?:unclear|not clear) (?:why|how)|seems? to (?:ignore|overlook)|appears? that the authors|作者(?:未|没有)(?:提及|引用|说明)|不清楚|似乎忽略|误解)/i },
@@ -5698,6 +5762,146 @@ function locateQuote(q, draftText) {
   }
   return { where: '未定位（逐字找不到，关键词也匹配不上任何节 ⇒ 请人工归位）', hit: '', by: 'none' };
 }
+
+/* ── v3.2.88 并入（吸收自 lifecycle-skills 的 triage-reviews，Apache-2.0；纯函数 + 夹具，未复制其代码）──
+   上游规则：严重度＝**对录用的威胁**（不是语气）；同一条被 2+ 审稿人提出 ⇒ **升一级**；
+   成本＝**在本轮回复窗口内回应的代价**（不是改稿代价）；分类没完成 ⇒ **不许直接写 rebuttal**（退非零并列出未完成项）；
+   must/should/brief 三带 + 按回复预算（字符/词）分配。 */
+const SEV_ORDER = ['low', 'medium', 'high'];
+const EFF_WEIGHT = { low: 1, medium: 2, high: 3 };
+const SEV_WEIGHT = { low: 1, medium: 2, high: 3 };
+
+/** 严重度：按"对录用的威胁"+ 类别判定，逐条给出理由 */
+function severityOf(quote, cls) {
+  const q = String(quote || '');
+  if (/(缺(?:少|失)[^。；;\n]{0,8}(对照|基线|消融|统计|检验)|no (?:control|baseline|ablation|statistical)|无法复现|不可复现|not reproducible|(?:数据|代码)(?:未|没有)公开|data (?:not )?available|结论[^。；;\n]{0,6}(?:不|缺乏)(?:被)?支持|overclaim|overstated|incorrect|invalid|错误|不成立)/i.test(q)) {
+    return { level: 'high', why: '命中"方法/数据/结论级缺陷"信号 ⇒ 直接威胁录用' };
+  }
+  if (cls === 'must-fix') return { level: 'high', why: '类别=必改（方法/数据/结论缺陷）' };
+  if (/(字数|word count|页数|page limit|格式|format|体例|reference style|references? (?:are )?(?:missing|incomplete))/i.test(q)) {
+    return { level: 'medium', why: '编辑/格式类但**会挡住投稿**（字数/页数/体例）' };
+  }
+  if (cls === 'wording' || /(typo|typos|拼写|标点|grammar|笔误|排版细节|错别字)/i.test(q)) return { level: 'low', why: '纯文字/排版细节，不威胁录用' };
+  if (cls === 'clarify') return { level: 'medium', why: '类别=需澄清（合理审稿人会追问，不澄清会扣分）' };
+  if (cls === 'misreading') return { level: 'medium', why: '类别=可能的误解（正文有依据可反驳，但需逐条指出位置）' };
+  if (cls === 'editorial') return { level: 'medium', why: '类别=编辑/格式要求' };
+  return { level: 'low', why: '未命中任何威胁信号 ⇒ 先按低处理（**分类未完成时不得据此写 rebuttal**）' };
+}
+
+/** 成本：在**回复窗口内**回应的代价（不是改稿代价） */
+function effortOf(quote, cls) {
+  const q = String(quote || '');
+  if (/(add (?:an? )?(?:experiment|ablation|analysis|dataset|baseline)|additional experiment|new experiment|re-?run|rerun|补(?:充|做|采|加)[^。；;\n]{0,12}(?:实验|消融|对照|基线|数据|分析)|重新(?:跑|做)|新增实验|加一组)/i.test(q)) {
+    return { level: 'high', why: '要求补实验/补数据 ⇒ 窗口内多半做不完（标 structural）' };
+  }
+  if (cls === 'misreading') return { level: 'low', why: '指到原文位置即可（成本最低、收益最高的回应类型）' };
+  if (cls === 'editorial' || cls === 'clarify') return { level: 'low', why: '改一处写法或补一句说明' };
+  return { level: 'medium', why: '需要改写/补分析，但窗口内可完成' };
+}
+
+/** 按审稿人边界切分（Reviewer N / Referee N / 审稿人 N；识别不到就**明确记"未识别"**，升级规则不启用） */
+function splitByReviewer(text) {
+  const lines = String(text || '').split('\n');
+  const groups = []; let cur = null;
+  for (const line of lines) {
+    const m = /^\s*(?:#{1,6}\s*)?(Reviewer\s*\d+|Referee\s*\d+|审稿人\s*\d+|Review\s*\d+)\s*[:：]?/i.exec(line);
+    if (m) { cur = { reviewer: m[1].replace(/\s+/g, ' '), lines: [] }; groups.push(cur); }
+    else if (cur) cur.lines.push(line);
+  }
+  if (!groups.length) return { reviewers: ['(未识别审稿人边界)'], byReviewer: null };
+  return { reviewers: groups.map((g) => g.reviewer), byReviewer: groups };
+}
+
+function contentTokens(q) {
+  return [...new Set((String(q).match(/[A-Za-z][A-Za-z\-]{4,}|[\u4e00-\u9fa5]{2,}/g) || [])
+    .map((s) => s.toLowerCase())
+    .filter((s) => !/^(?:the|and|with|that|this|from|which|should|please|authors|paper|manuscript|study|also|however|because|results?|method|data|more|than|have|been)$/.test(s)))];
+}
+function overlap(a, b) {
+  const A = new Set(a), B = new Set(b);
+  if (!A.size || !B.size) return 0;
+  let inter = 0; for (const x of A) if (B.has(x)) inter += 1;
+  return inter / Math.min(A.size, B.size);
+}
+
+/** 主函数：把一审意见文本变成可复核的分诊读数（纯函数；CLI 只渲染它） */
+function triageReport(text, opts) {
+  const o = opts || {};
+  const { reviewers, byReviewer } = splitByReviewer(text);
+  /* ★ v3.2.88b 修 bug：**按审稿人分组后各自切条**。
+     此前是在全文切条、再按"首次命中"归属 ⇒ 同一句关切出现在两位审稿人下时会**都算给第一位**，
+     共识升级（2+ 审稿人提出 ⇒ 升一级）因此永不触发（夹具抓到的真逻辑错）。 */
+  let items;
+  if (byReviewer) {
+    items = [];
+    for (const g of byReviewer) {
+      for (const it of splitReviewItems(g.lines.join('\n'))) items.push({ quote: it.quote, reviewer: g.reviewer });
+    }
+    /* 分组里一条都没切出来（例如意见没编号）⇒ 退回全文切条并标未识别，绝不静默丢条 */
+    if (!items.length) items = splitReviewItems(text).map((it) => ({ quote: it.quote, reviewer: '(组内未切出一条)' }));
+  } else {
+    items = splitReviewItems(text).map((it) => ({ quote: it.quote, reviewer: '(未识别)' }));
+  }
+  let rows = items.map((it, i) => {
+    const cls = classifyReview(it.quote);
+    const sev = severityOf(it.quote, cls.id);
+    const eff = effortOf(it.quote, cls.id);
+    return { no: i + 1, reviewer: it.reviewer, quote: it.quote, class: cls.id, class_label: cls.label,
+      severity: sev.level, severity_why: sev.why, effort: eff.level, effort_why: eff.why,
+      consensus: 1, tokens: contentTokens(it.quote) };
+  });
+  /* 共识升级：同一条被 **2+ 个不同审稿人** 提出 ⇒ 严重度升一级（吸收自上游） */
+  const escalations = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    for (let j = i + 1; j < rows.length; j += 1) {
+      if (rows[i].reviewer !== '(未识别)' && rows[i].reviewer === rows[j].reviewer) continue;
+      if (overlap(rows[i].tokens, rows[j].tokens) < 0.6) continue;
+      const bump = (r) => { const k = SEV_ORDER.indexOf(r.severity); if (k < 2) { r.severity = SEV_ORDER[k + 1]; return true; } return false; };
+      const a = bump(rows[i]); const b = bump(rows[j]);
+      rows[i].consensus += 1; rows[j].consensus += 1;
+      const pair = '第 ' + rows[i].no + '/' + rows[j].no + ' 条同源（' + rows[i].reviewer + ' × ' + rows[j].reviewer + '）';
+      if (a || b) escalations.push(pair + ' ⇒ 严重度升级');
+      else escalations.push(pair + ' ⇒ 共识已累积到 ' + rows[i].consensus + '，但严重度**已达 high 上限**（不再上升；这仍是要优先回应的信号）');
+    }
+  }
+  /* 三带：must / should / brief */
+  for (const r of rows) {
+    const s = SEV_WEIGHT[r.severity] * 2 - EFF_WEIGHT[r.effort] + (r.consensus > 1 ? 1 : 0);
+    r.priority = s;
+    r.band = (r.severity === 'high' && r.effort !== 'high') ? 'must'
+      : (r.severity === 'high' ? 'should' : (r.severity === 'medium' ? 'should' : 'brief'));
+    if (r.class === 'unclassified') r.band = 'brief';
+  }
+  const bands = { must: rows.filter((r) => r.band === 'must'), should: rows.filter((r) => r.band === 'should'), brief: rows.filter((r) => r.band === 'brief') };
+  /* 预算分配：按带权重（must 3 : should 2 : brief 1），每条约保底 50 字符 / 10 词，总额必须 ≈ 预算 */
+  const budget = Number(o.budget) > 0 ? Number(o.budget) : 0;
+  const unit = (o.unit === 'words') ? 'words' : 'chars';
+  const perUnit = unit === 'words' ? 10 : 50;
+  let plan = null;
+  if (budget > 0) {
+    const w = { must: 3, should: 2, brief: 1 };
+    const totalW = rows.reduce((a, r) => a + w[r.band], 0) || 1;
+    const floorNeed = rows.length * perUnit;
+    const raw = rows.map((r) => ({ no: r.no, band: r.band, alloc: Math.round((budget * w[r.band]) / totalW) }));
+    const short = [];
+    for (const x of raw) if (x.alloc < perUnit) short.push(x.no);
+    plan = { unit, budget, per_item_floor: perUnit, floor_need: floorNeed, allocations: raw,
+      fits: short.length === 0 && budget >= floorNeed,
+      shortage: short.length ? ('第 ' + short.join('/') + ' 条分到的额度低于保底 ' + perUnit + unit + ' ⇒ 必须砍条目或把多条合并成一条回应') : '',
+      total_allocated: raw.reduce((a, x) => a + x.alloc, 0) };
+  }
+  const unfinished = rows.filter((r) => r.class === 'unclassified').map((r) => r.no);
+  return {
+    reviewers, reviewer_boundaries_found: !!byReviewer, items: rows, bands,
+    band_counts: { must: bands.must.length, should: bands.should.length, brief: bands.brief.length },
+    escalations, budget_plan: plan, unclassified: unfinished,
+    exit_code: unfinished.length ? 1 : 0,
+    note: '★ 严重度＝**对录用的威胁**（不是审稿人语气）；成本＝**回复窗口内的代价**（不是改稿代价）；同源关切由 2+ 审稿人提出**升一级**。'
+      + (byReviewer ? '' : ' **未识别到审稿人边界 ⇒ 升级规则未启用（这不是通过）**；把意见按 "Reviewer 1/2/3" 分段可启用。')
+      + (unfinished.length ? ' **有 ' + unfinished.length + ' 条未分类 ⇒ 退 1：分类没完成不许直接写 rebuttal。**' : ''),
+  };
+}
+
 function cmdReview(args, argv) {
   const A = (argv || []).filter((x, i) => !(i === 0 && x === 'review'));
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -5705,36 +5909,62 @@ function cmdReview(args, argv) {
   const rFile = val('reviews') || val('comments');
   if (!rFile || !fs.existsSync(path.resolve(rFile))) { console.error('前提层失败：review 需要 --reviews <审稿意见文件>（txt/md）'); return 2; }
   const text = fs.readFileSync(path.resolve(rFile), 'utf8');
-  const items = splitReviewItems(text);
-  if (!items.length) { console.error('未通过：一条审稿意见都没识别到（本工具按"编号/项目符号/Reviewer N/审稿人 N"切条目）。请给带编号的意见，或用 --split <分隔正则>。**未检查 ≠ 通过**'); return 2; }
+  /* ★ v3.2.88d：**切条只有一个所有者**（triageReport）——
+     此前 cmdReview 自己用 splitReviewItems 切一遍、triageReport 又按审稿人切一遍 ⇒ 两套索引，实测对不上
+     （"Reviewer 2" 那行会被并进上一条意见里，共识升级的归属也会错）。 */
+  const tri = triageReport(text, { budget: val('budget'), unit: val('unit') || 'chars' });
+  if (!tri.items.length) {
+    console.error('未通过：一条审稿意见都没识别到（本工具按"编号/项目符号/Reviewer N/审稿人 N"切条目）。请给带编号的意见，或用 --split <分隔正则>。**未检查 ≠ 通过**');
+    return 2;
+  }
   const draftFile = val('draft');
   const draftText = (draftFile && fs.existsSync(path.resolve(draftFile))) ? fs.readFileSync(path.resolve(draftFile), 'utf8') : '';
-  const rows = items.map((it, i) => {
-    const cls = classifyReview(it.quote);
-    const loc = locateQuote(it.quote, draftText);
-    return { no: i + 1, quote: it.quote, class: cls.id, class_label: cls.label, location: loc.where, located_by: loc.hit };
+  const rows = tri.items.map((t, i2) => {
+    const loc = locateQuote(t.quote, draftText);
+    return { no: i2 + 1, reviewer: t.reviewer, quote: t.quote, class: t.class, class_label: t.class_label,
+      severity: t.severity, severity_why: t.severity_why, effort: t.effort, effort_why: t.effort_why,
+      band: t.band, consensus: t.consensus, priority: t.priority,
+      location: loc.where, located_by: loc.hit };
   });
   const byClass = {}; for (const r of rows) byClass[r.class] = (byClass[r.class] || 0) + 1;
   const unlocated = rows.filter((r) => /未定位/.test(r.location)).length;
   const report = { tool: 'paper-studio', version: toolVersion(), at: new Date().toISOString(), reviews: path.resolve(rFile),
     draft: draftFile ? path.resolve(draftFile) : '', items: rows, by_class: byClass, unlocated,
-    note: '★ 分类是**启发式**（关键词+结构），拿不准的一律写「需人工判断」；**请你们逐条复核分类与定位**。定位用的是意见里的原句在稿件中做子串匹配，找不到就记「未定位」。' };
+    triage: { band_counts: tri.band_counts, escalations: tri.escalations, budget_plan: tri.budget_plan,
+      reviewer_boundaries_found: tri.reviewer_boundaries_found, unclassified: tri.unclassified, exit_code: tri.exit_code },
+    note: '★ 分类/严重度/成本都是**启发式**（关键词+结构），拿不准的一律写「需人工判断」；**请你们逐条复核**。定位用的是意见里的原句在稿件中做子串匹配，找不到就记「未定位」。'
+      + tri.note };
   const outPath = val('out');
   if (outPath) {
     const md = ['# 审稿意见分诊（' + new Date().toISOString().slice(0, 10) + '）', '', '> ' + report.note, '',
-      '| # | 分类 | 定位 | 意见原文（逐字） | 我们的回复（待填） |', '|---|---|---|---|---|',
-      ...rows.map((r) => '| ' + r.no + ' | ' + r.class_label + ' | ' + r.location.replace(/\|/g, '/') + ' | ' + r.quote.replace(/\|/g, '/').slice(0, 200) + ' | |'),
-      '', '## 分类计数', '', ...Object.keys(byClass).map((k) => '- ' + k + '：' + byClass[k]), ''].join('\n');
+      '| # | 带 | 分类 | 严重度 | 成本 | 共识 | 定位 | 意见原文（逐字） | 我们的回复（待填） |', '|---|---|---|---|---|---|---|---|---|',
+      ...rows.map((r) => '| ' + r.no + ' | ' + (r.band || '') + ' | ' + r.class_label + ' | ' + (r.severity || '') + ' | ' + (r.effort || '') + ' | ' + (r.consensus || 1) + ' | ' + r.location.replace(/\|/g, '/') + ' | ' + r.quote.replace(/\|/g, '/').slice(0, 200) + ' | |'),
+      '', '## 分类计数', '', ...Object.keys(byClass).map((k) => '- ' + k + '：' + byClass[k]),
+      '', '## 三带（must / should / brief）', '',
+      '- must（必答，且窗口内做得到）：' + (tri.bands.must.map((x) => '#' + x.no).join(' ') || '（无）'),
+      '- should（应答）：' + (tri.bands.should.map((x) => '#' + x.no).join(' ') || '（无）'),
+      '- brief（一句带过）：' + (tri.bands.brief.map((x) => '#' + x.no).join(' ') || '（无）')]
+      .concat(tri.escalations.length ? ['', '## 共识升级', ''].concat(tri.escalations.map((x) => '- ' + x)) : [])
+      .concat(tri.budget_plan ? ['', '## 回复预算分配（' + tri.budget_plan.unit + '）', '',
+        '| # | 带 | 额度 |', '|---|---|---|',
+        ...tri.budget_plan.allocations.map((x) => '| ' + x.no + ' | ' + x.band + ' | ' + x.alloc + ' |'),
+        '', tri.budget_plan.fits ? '总分配 ' + tri.budget_plan.total_allocated + ' / 预算 ' + tri.budget_plan.budget + '（**每条都过保底**）'
+          : '**预算不够**：' + tri.budget_plan.shortage] : [])
+      .join('\n');
     fs.writeFileSync(path.resolve(outPath), md + '\n' + provenanceLine([['reviews', path.resolve(rFile)]].concat(draftFile ? [['draft', path.resolve(draftFile)]] : [])) + '\n', 'utf8');
   }
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
-    console.log('审稿意见分诊：' + items.length + ' 条（来自 ' + path.basename(rFile) + (draftFile ? ' · 已对稿定位' : ' · 未给 --draft') + '）');
+    console.log('审稿意见分诊：' + rows.length + ' 条（来自 ' + path.basename(rFile) + (draftFile ? ' · 已对稿定位' : ' · 未给 --draft') + '）');
     for (const r of rows) console.log('  ' + String(r.no).padStart(2) + '. [' + r.class_label + '] ' + r.location + '\n      ' + r.quote.slice(0, 110));
     console.log('  分类计数：' + JSON.stringify(byClass) + ' · 未定位 ' + unlocated + ' 条');
-    console.log('  ★分类是启发式，**请逐条复核**；每条都保留了意见原文（可追溯）。' + (outPath ? ' 回复骨架已写入：' + path.resolve(outPath) : ''));
+    console.log('  三带：must ' + tri.band_counts.must + ' · should ' + tri.band_counts.should + ' · brief ' + tri.band_counts.brief
+      + (tri.reviewer_boundaries_found ? ' · 共识升级 ' + tri.escalations.length + ' 处' : ' · **未识别审稿人边界 ⇒ 升级规则未启用**'));
+    if (tri.budget_plan) console.log('  预算分配（' + tri.budget_plan.unit + ' ' + tri.budget_plan.budget + '）：' + (tri.budget_plan.fits ? '每条都过保底（保底 ' + tri.budget_plan.per_item_floor + '）' : '**不够**：' + tri.budget_plan.shortage));
+    console.log('  ★分类/严重度/成本是启发式，**请逐条复核**；每条都保留了意见原文（可追溯）。' + (outPath ? ' 回复骨架已写入：' + path.resolve(outPath) : ''));
+    if (tri.unclassified.length) console.log('  ✘ 分类未完成 ' + tri.unclassified.length + ' 条（#' + tri.unclassified.join(' #') + '）⇒ **退 1：分类没完成不许直接写 rebuttal**（先逐条定性）');
   }
-  return 0;
+  return tri.exit_code;
 }
 function cmdReports(args, argv) {
   const A = argv || [];
@@ -7289,7 +7519,7 @@ if (cmd === 'form') {
   }
 }
 
-module.exports = { readPipeline, routeTask, resolveGate, resolveGateScript, resolvePython, intake, runSelftest, printRoute, readTemplates, readLessons, listMethod, scaffold, draftPlan, detectLang, detectGenre, titleAndAbstract, validateHandoff, findContract, crosscheck, crosscheckMaterial, crosscheckDocx, readDocxStructure, readSections, sectionForGate, primarySectionOf, judgeTypeOf, SUBCOMMANDS, STAGE_RULES, PIPELINE_PATH, ROOT };
+module.exports = { readPipeline, routeTask, triageReport, severityOf, effortOf, splitByReviewer, resolveGate, resolveGateScript, resolvePython, intake, runSelftest, printRoute, readTemplates, readLessons, listMethod, scaffold, draftPlan, detectLang, detectGenre, titleAndAbstract, validateHandoff, findContract, crosscheck, crosscheckMaterial, crosscheckDocx, readDocxStructure, readSections, sectionForGate, primarySectionOf, judgeTypeOf, SUBCOMMANDS, STAGE_RULES, PIPELINE_PATH, ROOT };
 
 // ⚠ 入口守卫必须在 module.exports **之后**（与 gate-runner 同一条纪律）：
 //   它一执行就跑 main()，而 main 里的 report 分支会惰性 require('./gate-runner.cjs')，
