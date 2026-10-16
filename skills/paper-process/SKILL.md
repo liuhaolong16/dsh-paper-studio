@@ -34,6 +34,7 @@ description: |
 - `plugin/hub/*（跨会话中枢）`
 - `references/lessons-from-first-draft.md`
 - `bin/bakeoff.cjs（真对拍判分：中性机检 / 自家门单列 / 人读项标判者）· run/bakeoff/`
+- `bin/fit-pages.cjs（页数预算机检：逐节页数估算 + 削减方案；证据受保护，只可压缩措辞）`
 
 ## 边界（这些事本模块不做）
 

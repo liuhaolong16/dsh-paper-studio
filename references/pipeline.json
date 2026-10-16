@@ -1374,7 +1374,8 @@
     "refs-verify.cjs": "node bin/refs-verify.cjs --selftest",
     "triage.cjs": "node bin/triage.cjs --selftest",
     "tense-check.cjs": "node bin/tense-check.cjs --selftest",
-    "pdf-meta.cjs": "node bin/pdf-meta.cjs --selftest"
+    "pdf-meta.cjs": "node bin/pdf-meta.cjs --selftest",
+    "fit-pages.cjs": "node bin/fit-pages.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1680,7 +1681,8 @@
       "assets": [
         "plugin/hub/*（跨会话中枢）",
         "references/lessons-from-first-draft.md",
-        "bin/bakeoff.cjs（真对拍判分：中性机检 / 自家门单列 / 人读项标判者）· run/bakeoff/"
+        "bin/bakeoff.cjs（真对拍判分：中性机检 / 自家门单列 / 人读项标判者）· run/bakeoff/",
+        "bin/fit-pages.cjs（页数预算机检：逐节页数估算 + 削减方案；证据受保护，只可压缩措辞）"
       ],
       "boundaries": [
         "**凭证值不入任何记忆 / 文件 / 日志**（model 只记处理方式）",
