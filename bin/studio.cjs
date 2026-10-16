@@ -1419,6 +1419,29 @@ function runSelftest() {
   /* ★★ v3.2.39：**跨实现对拍** —— 同一个指标如果有两套实现（我的 submission-fields vs 契约门），
      两边读数必须一致。加上这条锁的直接原因：我新写的计数器把 `---` 分隔线算成一条亮点，
      报出「6 条 / 上限 5」的**假超限**，而契约门一直算的是 5 —— **同一目录里两套实现，我没对拍**。 */
+  /* ★★ v3.2.41：**第三处行为对拍** —— `anchors` 命令报的 HIGH/LOW 必须等于「把同一份锚点表直接交给门」的结果。
+     加上这条的直接原因：`anchors` 此前**从不透传锚点表** ⇒ 门按无锚点判 ⇒ 报 HIGH 23，而带表直跑是 HIGH 0 —— 错报持续了多轮。 */
+  check('★锚点·行为对拍：studio anchors（带 --anchors）与门直接跑，HIGH/LOW 必须同值', () => {
+    const { spawnSync } = require('node:child_process');
+    const os2 = require('node:os');
+    const tmp = fs.mkdtempSync(path.join(os2.tmpdir(), 'anc-'));
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody cites [1] and [2] here.\n');
+    const at = path.join(tmp, 'anchors.json');
+    fs.writeFileSync(at, JSON.stringify({ anchors: [ { marker: '1', identifier: { doi: '10.1000/x' }, locator: { kind: 'page-quote', value: 'p1', quote: 'a quoted sentence long enough to count as verbatim' }, verdict: 'SUPPORTED', status: 'published', evidence_layer: 'author_statement' }, { marker: '2', identifier: { doi: '10.1000/y' }, locator: { kind: 'page-quote', value: 'p2', quote: 'another quoted sentence long enough to count verbatim' }, verdict: 'SUPPORTED', status: 'published', evidence_layer: 'author_statement' } ] }));
+    const P = readPipeline();
+    const g = (P.gates || []).find((x) => x.id === 'claim-anchor');
+    let gate = '';
+    try { const r = g ? resolveGateScript(g, P) : null; if (r && r.script) gate = r.script; } catch (e) {}
+    if (!gate || !fs.existsSync(gate)) return '门脚本不可得 ⇒ 本锁跳过（不假装通过）';
+    const parse = (s2) => { const b = s2.indexOf('{'); const e2 = s2.lastIndexOf('}'); try { return (b >= 0 && e2 > b) ? JSON.parse(s2.slice(b, e2 + 1)) : null; } catch { return null; } };
+    const mine = parse(String(spawnSync(process.execPath, [__filename, 'anchors', '--draft', d, '--anchors', at, '--json'], { encoding: 'utf8' }).stdout));
+    const theirs = parse(String(spawnSync(process.execPath, [gate, '--draft', d, '--anchors', at, '--json'], { encoding: 'utf8' }).stdout));
+    if (!mine || !theirs) return '有一侧没输出 JSON ⇒ 无法对拍（mine=' + !!mine + ' gate=' + !!theirs + '）';
+    const mh = ((mine.gate || {}).high), ml = ((mine.gate || {}).low);
+    const th = (theirs.HIGH || []).length, tl = (theirs.LOW || []).length;
+    return (mh === th && ml === tl) ? true : ('不同判：我方 HIGH=' + mh + '/LOW=' + ml + ' 门=' + th + '/' + tl);
+  });
   check('★跨实现对拍：submission-fields 与契约门对同一稿的 Highlights 条数、摘要词数必须同值', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'xc-'));
@@ -3485,12 +3508,28 @@ function cmdAnchors(args, argv) {
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
   const has = (k) => A.indexOf('--' + k) >= 0;
   const draft = val('draft');
-  if (!draft) { console.error('前提层失败：anchors 需要 --draft <稿.md> [--out <工作单.md>] [--json <骨架.json>]'); return 2; }
+  if (!draft) { console.error('前提层失败：anchors 需要 --draft <稿.md> [--anchors <锚点表.json>] [--out <工作单.md>] [--json <骨架.json>]'); return 2; }
   const draftAbs = path.resolve(draft);
   if (!fs.existsSync(draftAbs)) { console.error('前提层失败：稿件不存在 —— ' + draftAbs); return 2; }
   const text = fs.readFileSync(draftAbs, 'utf8');
   const hits = extractCitations(text);
   const keys = Array.from(hits.keys());
+  /* ★ v3.2.41：**锚点表要透传给门**。此前本命令只传 `--draft` ⇒ 门无从知道锚点表已存在，
+     只能按「无锚点」判 ⇒ 每条引用都成 HIGH（A 稿真身：报 HIGH 23，而带上 `anchors-已解析.json`
+     门其实判 HIGH 0 · LOW 16）⇒ **把最坏情况当成"门的结论"报出去**，这一错报持续了多轮。
+     现在：显式 `--anchors` 优先；否则按约定找同目录 `anchors-已解析.json`；都没有才按无锚点判，**并在结论里明说**。 */
+  const explicitAnchors = val('anchors') ? path.resolve(val('anchors')) : '';
+  /* 约定：`submission/` 只放**待上传件**，报告与锚点表放**运行根目录**（这条由包卫生规则强制）
+     ⇒ 自动探测要同时看稿所在目录与**它的上一级**，否则「表就在旁边却探测不到」= 报错的无锚点态。 */
+  const cand = [path.join(path.dirname(draftAbs), 'anchors-已解析.json'),
+    path.join(path.dirname(path.dirname(draftAbs)), 'anchors-已解析.json')];
+  const defaultAnchors = cand.find((p) => fs.existsSync(p)) || '';
+  let anchorsForGate = '';
+  if (explicitAnchors && fs.existsSync(explicitAnchors)) anchorsForGate = explicitAnchors;
+  else if (!explicitAnchors && defaultAnchors) anchorsForGate = defaultAnchors;
+  const anchorsNote = anchorsForGate
+    ? ('`' + path.basename(anchorsForGate) + '`' + (explicitAnchors ? '（--anchors 指定）' : '（同目录/上一级约定自动采用）'))
+    : (explicitAnchors ? ('**未找到** —— ' + explicitAnchors) : '**未提供**（同目录也没有 anchors-已解析.json）');
 
   /* 门的结论（门才是判定者；取不到就明说） */
   let gate = null, gateWhy = '';
@@ -3503,7 +3542,8 @@ function cmdAnchors(args, argv) {
       if (!script || !fs.existsSync(script)) gateWhy = why || ('门脚本不可用：' + script);
       else {
         const { spawnSync } = require('child_process');
-        const r = spawnSync(process.execPath, [script, '--draft', draftAbs, '--json'], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+        const gateArgs = [script, '--draft', draftAbs].concat(anchorsForGate ? ['--anchors', anchorsForGate] : []).concat(['--json']);
+        const r = spawnSync(process.execPath, gateArgs, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
         const o = String(r.stdout || '').trim();
         const i = o.indexOf('{');
         if (i >= 0) { try { gate = JSON.parse(o.slice(i)); } catch { gateWhy = '门输出无法解析为 JSON'; } }
@@ -3529,7 +3569,9 @@ function cmdAnchors(args, argv) {
   L.push('');
   L.push('- 稿件：`' + draftAbs + '`');
   L.push('- 扫描到的引用键：**' + keys.length + '** 个' + (keys.length ? '（' + keys.join(', ') + '）' : ''));
-  L.push('- 门的结论：' + (gate ? ('HIGH **' + (gate.HIGH || []).length + '** · LOW ' + (gate.LOW || []).length + ' · 判定 `' + (gate.verdict || '') + '`')
+  L.push('- 门用的锚点表：' + anchorsNote);
+  L.push('- 门的结论：' + (gate ? ('HIGH **' + (gate.HIGH || []).length + '** · LOW ' + (gate.LOW || []).length + ' · 判定 `' + (gate.verdict || '') + '`'
+    + (anchorsForGate ? '' : '　⚠ **这是「无锚点」态**（未解析态），不是最终结论 —— 填好锚点表后用 `--anchors` 复跑'))
     : '**未取到**（' + gateWhy + '）⇒ 本工作单只含扫描结果，**不得当作"门已通过"**'));
   L.push('');
   if (!keys.length) {
@@ -3575,7 +3617,9 @@ function cmdAnchors(args, argv) {
   } else {
     console.log('引用锚点表工作单 · ' + path.basename(draftAbs));
     console.log('  扫描到引用键 ' + keys.length + ' 个' + (keys.length ? '：' + keys.join(', ') : ''));
-    console.log('  门的结论：' + (gate ? ('HIGH ' + (gate.HIGH || []).length + ' · LOW ' + (gate.LOW || []).length + ' · ' + gate.verdict) : '未取到（' + gateWhy + '）'));
+    console.log('  门用锚点表：' + anchorsNote);
+    console.log('  门的结论：' + (gate ? ('HIGH ' + (gate.HIGH || []).length + ' · LOW ' + (gate.LOW || []).length + ' · ' + gate.verdict
+      + (anchorsForGate ? '' : '（⚠ 无锚点态，非最终结论）')) : '未取到（' + gateWhy + '）'));
     console.log('  工作单：' + outPath + (jsonPath ? '\n  骨架：  ' + path.resolve(jsonPath) + '（逐条填完后用 preflight --anchors 复跑）' : ''));
   }
   return 0;

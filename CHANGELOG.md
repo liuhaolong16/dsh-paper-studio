@@ -3,6 +3,27 @@
 
 # 变更记录
 
+## v3.2.41 —— 2026-10-16
+
+**第三处"同一件事两套实现"：`anchors` 从不透传锚点表 ⇒ 报的是"无锚点态"的 HIGH 数，而我一直把那个数当"A 稿的门结论"报给你。已修 + 加行为对拍锁。**
+
+### ★ 更正（先说这个）
+多轮以来我把 A 稿的头号待办报成 **「claim-anchor 门 23 条 HIGH」**。**那个数字是错的** —— 它是 **"没有锚点表"这一态**下的读数：
+- `studio anchors` 调门时**只传 `--draft`**（L3506），从不传锚点表 ⇒ 门无从知道锚点表已存在 ⇒ **每条引用都判 HIGH**；
+- 而把该稿**已有的 `anchors-已解析.json`** 交给门，门判的是 **HIGH 0 · LOW 16**（`已人读(页号原句) 0`）。
+⇒ A 稿的真实状态是 **HIGH 0 · LOW 16 · P2（非阻断）**，剩下的是 **LOW 级**工作（补 `page-quote` 页号原句等），**不存在 23 条 P0 阻断项**。
+
+### 修法
+1. **透传**：`anchors` 现在接受 `--anchors <表>`；未显式给时按约定自动探测**稿所在目录与其上一级**的 `anchors-已解析.json`（本项目约定：`submission/` 只放待上传件，报告与锚点表放运行根目录 —— 这条由包卫生规则强制）；报告与 stdout 都写明**用的是哪一份**。
+2. **无锚点态必须标注**：没有表时结论后面追加「⚠ 这是「无锚点」态（未解析态），不是最终结论 —— 填好锚点表后用 `--anchors` 复跑」。**最坏情况不得冒充"门的结论"。**
+3. **第三处行为对拍锁**（`studio selftest`）：`anchors`（带 `--anchors`）报的 HIGH/LOW **必须等于把同一份表直接交给门**的结果。
+
+### 顺带澄清一对"看似分歧、实为两套命名空间"的清单
+`pipeline.json.gates`（12 个**投稿门**：artifact-sync / author-material / claim-anchor / compliance-scan / confidentiality / contract / declaration-set / docx-verify / journal-contract / phrase / review-protocol / worknote-leak）与 playbook 自己的 `_gate-registry.cjs`（18 个**脚本 id**，含 `_baseline-control` / `_tempfile-ledger` / `_digest-revtest` 这类开发自测工具）**不是同一套清单**，两者无包含关系属正常 —— 记录为"已查、非缺陷"，免得下次又被当成缺口。
+
+- 自检：studio **152 → 153/153**（+锚点行为对拍锁）；其余口径不变（契约门 55/55 · 门执行器 45/45 · plugin 38/38 · audit 9/9 + 真跑全绿 · 对拍 PASS · 探针 0 缺陷）。
+- 真数据：A 稿 `anchors` 现报 **HIGH 0 · LOW 16 · P2**，与门直跑**同值**。
+
 ## v3.2.40 —— 2026-10-16
 
 **把"新增第二套实现先对拍"变成通用锁的第一步：扫出第二对同指标实现（投稿包卫生），实测发现两边**不同判**，修好并加**行为对拍锁**。**
