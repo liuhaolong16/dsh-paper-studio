@@ -162,6 +162,38 @@ function runOneGate(gate, inputs, pipeline, opts) {
     note: '',
     source: (res && res.source) || '',   // external / bundled / none（来源列，便于报告与排障）
   };
+
+  /* ★ v3.2.83 **来源列加摘要与身份**（同伴指出的缺口）：此前只有 external/bundled/none 三值，
+     「用了外部件但那份已过期」与「回落到内置」在报告里**同形**。现在同时落：
+       · source_digest   —— 实际执行的那个文件的 sha256
+       · bundled_digest  —— 内置副本的 sha256（无内置则 null）
+       · declared_external / identity_ok —— 对照件是否为**声明的那个路径**（身份，不只是内容）
+       · source_note     —— 人读一句话，外部件与内置件摘要不同即显形为「已漂移或过期」
+     一律 try 包裹：计算摘要失败不得阻断门（失败时 source_note 写明原因，绝不静默）。 */
+  try {
+    const bundledAbs = path.join(__dirname, '..', 'gates', path.basename(gate.entry));
+    const declaredExternal = (baseExplicit && String(baseExplicit).indexOf('__LOCAL__') !== 0)
+      ? path.join(baseExplicit, gate.entry) : '';
+    rec.source_path = script || '';
+    rec.source_digest = (script && fs.existsSync(script)) ? sha256OfFile(script) : null;
+    rec.bundled_path = fs.existsSync(bundledAbs) ? bundledAbs : null;
+    rec.bundled_digest = rec.bundled_path ? sha256OfFile(rec.bundled_path) : null;
+    rec.declared_external = declaredExternal || null;
+    rec.identity_ok = rec.source === 'external'
+      ? !!declaredExternal && path.resolve(declaredExternal) === path.resolve(script)
+      : true;
+    if (rec.source === 'external' && rec.bundled_digest) {
+      rec.source_note = (rec.source_digest === rec.bundled_digest)
+        ? 'external(与内置同摘要)'
+        : 'external(与内置摘要不同 ⇒ 外部件已漂移或过期，需要人类定夺)';
+    } else if (rec.source === 'bundled') {
+      rec.source_note = 'bundled(未用外部件：外部缺失或未解析)';
+    } else {
+      rec.source_note = rec.source || 'none';
+    }
+  } catch (e) {
+    rec.source_note = '摘要计算失败：' + String((e && e.message) || e).slice(0, 60);
+  }
   if (!script || !fs.existsSync(script)) {
     rec.verdict = 'precondition_fail';
     rec.note = '门脚本不存在（外置与内置副本都没有 ⇒ 这是真缺口）' + hintIfLocal(script);
@@ -447,6 +479,37 @@ function runSelftest() {
     const r2 = runOneGate(id, {}, p2);
     return (r2.source === 'bundled' && r2.verdict !== 'precondition_fail')
       ? true : `source=${r2.source} verdict=${r2.verdict} note=${String(r2.note).slice(0, 80)}`;
+  });
+
+  check('v3.2.83·来源列带摘要：外部件与内置件摘要不同必须显形（防「用了外部但过期」与「回落」同形）', () => {
+    const os = require('os');
+    const src = path.join(__dirname, '..', 'gates', '_journal-contract.cjs');
+    const P3 = studio.readPipeline();
+    const g3 = (P3.gates || []).find((x) => x.entry === '_journal-contract.cjs');
+    if (!g3) return '真 pipeline 里没有契约门，无法判定';
+    /* 反例：外部目录里放一份**改过字节**的副本 ⇒ 必须显形为「与内置不同」 */
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gr-drift-'));
+    fs.copyFileSync(src, path.join(dir, '_journal-contract.cjs'));
+    fs.appendFileSync(path.join(dir, '_journal-contract.cjs'), '\n// drift\n');
+    const p3 = JSON.parse(JSON.stringify(P3));
+    p3.assets = p3.assets || {};
+    p3.assets[g3.rel] = dir;
+    const r = runOneGate(g3, {}, p3, { capture: false });
+    /* 正控：外部目录里放一份**与内置同字节**的副本 ⇒ 必须说「同摘要」 */
+    const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'gr-same-'));
+    fs.copyFileSync(src, path.join(dir2, '_journal-contract.cjs'));
+    const p4 = JSON.parse(JSON.stringify(P3));
+    p4.assets = p4.assets || {};
+    p4.assets[g3.rel] = dir2;
+    const r2 = runOneGate(g3, {}, p4, { capture: false });
+    try { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(dir2, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+    if (r.source !== 'external') return '反例未走 external：source=' + r.source;
+    if (!r.source_digest || !r.bundled_digest) return '摘要字段缺失：' + JSON.stringify({ d: r.source_digest, b: r.bundled_digest });
+    if (r.source_digest === r.bundled_digest) return '漂移未被识别（两摘要相同）';
+    if (!/不同/.test(String(r.source_note))) return 'source_note 未显形漂移：' + r.source_note;
+    if (!r.identity_ok) return 'identity_ok 应为 true（外部路径即声明路径）：' + r.declared_external + ' vs ' + r.source_path;
+    if (!/同摘要/.test(String(r2.source_note))) return '正控失败（同摘要未识别）：' + r2.source_note;
+    return true;
   });
   check('必失败夹具：门脚本不存在 ⇒ precondition_fail', () => {
     const p = fakePipeline([g('gone', '__no_such_gate__.cjs')]);

@@ -81,12 +81,38 @@ function cslLock(root) {
   return { ok: bad.length === 0 && total > 0, checked, total, bad };
 }
 
-function gateParity(root, external) {
+/** 从真源推导**声明的**外部对照件路径（`__LOCAL__` 未解析时返回空 ⇒ 判 SKIP 而不是假装绑定了身份）。 */
+function declaredExternal(root) {
+  try {
+    const P = JSON.parse(fs.readFileSync(path.join(root, 'references', 'pipeline.json'), 'utf8'));
+    const g = (P.gates || []).find((x) => x.entry === '_journal-contract.cjs');
+    if (!g) return '';
+    const base = (P.assets || {})[g.rel] || '';
+    if (!base || /^__LOCAL__/.test(String(base))) return '';
+    return path.join(base, g.entry);
+  } catch (e) { return ''; }
+}
+
+function gateParity(root, external, expected) {
+  /* ★ v3.2.83 **身份绑定**（同伴指出的缺口）：此前只比内容摘要 ⇒ 把同一份内容放到第二个目录再比
+     仍然会绿，等于「对象被替换」测不出来。现在要求：对照件必须是**声明的那个文件**（路径身份），
+     且在身份成立的前提下再比逐字节摘要 ⇒ 身份 + 内容两层独立。声明缺位时记 SKIP（不是 PASS）。 */
   const builtin = path.join(root, 'gates', '_journal-contract.cjs');
   if (!fs.existsSync(builtin)) return { status: 'FAIL', reason: '内置门缺失' };
   if (!fs.existsSync(external)) return { status: 'SKIP', reason: '外部对照门不存在（换机/别人机器上属正常）' };
+  const exp = expected || process.env.PS_EXTERNAL_GATE_EXPECTED || '';
+  if (!exp) {
+    return { status: 'SKIP', reason: '未声明对照件身份（真源里该路径仍是 __LOCAL__ 占位符）⇒ 只核对内容会漏掉对象替换', resolved: external };
+  }
+  let samePath = false;
+  try { samePath = path.resolve(external) === path.resolve(exp); } catch (e) { samePath = false; }
+  if (!samePath) {
+    return { status: 'FAIL', reason: '身份不符：对照件不是声明的那个文件（内容即便相同也不算）', resolved: external, expected: exp };
+  }
   const a = sha256(builtin), b = sha256(external);
-  return a === b ? { status: 'PASS', sha: a.slice(0, 24) } : { status: 'FAIL', reason: '内外门不一致', builtin: a.slice(0, 24), external: b.slice(0, 24) };
+  return a === b
+    ? { status: 'PASS', sha: a.slice(0, 24), identity: 'bound' }
+    : { status: 'FAIL', reason: '内外门不一致', builtin: a.slice(0, 24), external: b.slice(0, 24) };
 }
 
 function adapterCheck(root) {
@@ -122,7 +148,7 @@ function runAudit(opts) {
     forbidden: forbiddenHits(man.files),
     secrets: secretScan(root, man.files.filter((f) => !f.startsWith('MISSING:'))),
     csl: cslLock(root),
-    gate: gateParity(root, o.externalGate || EXTERNAL_GATE),
+    gate: gateParity(root, o.externalGate || EXTERNAL_GATE, o.expectedGate || declaredExternal(root)),
     adapters: adapterCheck(root),
     manifest: null,
     derivation: 'package.json files 白名单（★不含 npm 自身的忽略规则 ⇒ 本清单是发布 tarball 的**超集**）',
@@ -185,6 +211,47 @@ function selftest() {
     return r.ok ? true : ('缺：' + r.items.filter((x) => !x.ok).map((x) => x.name).join(' / '));
   });
 
+
+  ck('v3.2.83·★对拍锁身份绑定：同一份内容放到第二个目录，必须判 FAIL（内容相同也不算）', () => {
+    const os = require('os');
+    const src = path.join(ROOT, 'gates', '_journal-contract.cjs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-id-'));
+    const copy = path.join(dir, '_journal-contract.cjs');
+    fs.copyFileSync(src, copy);
+    const r = gateParity(ROOT, copy, src);   // 内容相同、路径不同
+    fs.rmSync(dir, { recursive: true, force: true });
+    if (r.status !== 'FAIL') return '应 FAIL，实得 ' + r.status;
+    return /身份不符/.test(String(r.reason)) ? true : '原因未点明身份：' + r.reason;
+  });
+
+  ck('v3.2.83·对拍锁：身份成立但内容不同 ⇒ FAIL（漂移）；身份成立且内容相同 ⇒ PASS（正控）', () => {
+    const os = require('os');
+    const src = path.join(ROOT, 'gates', '_journal-contract.cjs');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-dr-'));
+    const mod = path.join(dir, '_journal-contract.cjs');
+    fs.copyFileSync(src, mod);
+    fs.appendFileSync(mod, '\n// drift\n');
+    const bad = gateParity(ROOT, mod, mod);          // 身份=自己，内容与内置不同
+    const good = gateParity(ROOT, src, src);         // 正控
+    fs.rmSync(dir, { recursive: true, force: true });
+    if (bad.status !== 'FAIL') return '漂移应 FAIL，实得 ' + bad.status;
+    if (good.status !== 'PASS') return '正控应 PASS，实得 ' + good.status + ' ' + JSON.stringify(good.reason);
+    return good.identity === 'bound' ? true : 'PASS 未标身份绑定';
+  });
+
+  ck('v3.2.83·对拍锁：未声明身份时必须记 SKIP（不是 PASS）', () => {
+    const src = path.join(ROOT, 'gates', '_journal-contract.cjs');
+    const r = gateParity(ROOT, src, '');
+    if (r.status === 'PASS') return '缺身份声明竟判 PASS（会漏掉对象替换）';
+    return r.status === 'SKIP' ? true : ('应 SKIP，实得 ' + r.status);
+  });
+
+  ck('v3.2.83·声明路径推导：真源里该路径为 __LOCAL__ 占位符时必须返回空（不许假装绑定）', () => {
+    const d = declaredExternal(ROOT);
+    if (d && /__LOCAL__/.test(d)) return '把占位符当成了真实路径：' + d;
+    return true;
+  });
+
   ck('端到端：runAudit 必须 ok=true（主包与插件版本一致、无违禁项、样式锁成立）', () => {
     const r = runAudit({});
     if (!r.ok) return '失败项：' + r.fails.join(' ｜ ');
@@ -231,4 +298,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { runAudit, deriveManifest, forbiddenHits, cslLock, gateParity, adapterCheck, sha256 };
+module.exports = { runAudit, deriveManifest, forbiddenHits, cslLock, gateParity, declaredExternal, adapterCheck, sha256 };

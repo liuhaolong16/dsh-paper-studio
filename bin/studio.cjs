@@ -3872,6 +3872,25 @@ function runSelftest() {
     try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* ignore */ }
     return ok ? true : 'CRLF 与 LF 哈希不同 ⇒ 锁会跨平台两判';
   });
+
+  check('v3.2.83·doctor 来源列：外部门必须带摘要，且与内置副本同摘要时标「未漂移」（含漂移反例）', () => {
+    const g = { id: 'contract', rel: 'playbook_root', entry: '_journal-contract.cjs' };
+    const external = path.join(ROOT, 'gates', '_journal-contract.cjs');
+    const row = gateRowOf(g, { script: external, source: 'external', ok: true, why: '' });
+    if (!/^[0-9a-f]{12}$/.test(String(row.digest))) return '摘要不是 12 位十六进制：' + row.digest;
+    if (row.digest !== row.bundled_digest) return '同文件应同摘要：' + row.digest + ' vs ' + row.bundled_digest;
+    if (row.digest_match_bundled !== true) return '未标记「与内置同摘要」';
+    if (row.identity_declared !== null) return '未声明路径时 identity_declared 应为 null';
+    const tmp = path.join(require('os').tmpdir(), 'gr-row-' + Date.now() + '.cjs');
+    fs.writeFileSync(tmp, fs.readFileSync(external, 'utf8') + '\n// drift\n', 'utf8');
+    const row2 = gateRowOf(g, { script: tmp, source: 'external', ok: true, why: '' });
+    const row3 = gateRowOf(Object.assign({}, g, { declaredExternal: tmp }), { script: tmp, source: 'external', ok: true, why: '' });
+    try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ }
+    if (row2.digest === row2.bundled_digest) return '漂移未反映到摘要列';
+    if (row2.digest_match_bundled !== false) return '漂移件被标成同摘要';
+    if (row3.identity_declared !== true) return '声明路径与解析路径相同时应判身份成立';
+    return true;
+  });
   check('v3.2.80·★必失败面：样式内容真被改一个字节时，归一哈希也必须变化', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'csl-nl2-'));
     const a = path.join(tmp, 'a.csl'); const b = path.join(tmp, 'b.csl');
@@ -4879,6 +4898,35 @@ function cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has) {
  *  单装插件、没配那套外部资产的人，12 道门一个都没有 —— 此前只能靠一条条命令各自的报错去猜"到底少了什么、少了会怎样"。
  *  纪律：**未检查 ≠ 通过**；缺什么就直说缺什么并给可执行的补救；`doctor` 只报告环境，不做任何业务判定。
  * ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+function gateRowOf(g, r) {
+  /* ★ v3.2.83：来源列同时给**摘要与身份**（同伴指出的缺口：只有 external/bundled 时，
+     「用了外部件但那份已过期」与「回落到内置」在报告里同形）。
+     · digest / bundled_digest 各取 sha256 前 12 位（读不到给空串，不抛）
+     · digest_match_bundled：外部件与内置副本是否同摘要（true ⇒ 未漂移）
+     · identity_declared：外部件路径是否等于**声明路径**（内容相同但换了位置也算身份不符；未声明给 null） */
+  const digestOf = (p) => {
+    try { return (p && fs.existsSync(p)) ? sha256File(p).slice(0, 12) : ''; } catch (e) { return ''; }
+  };
+  const entry = (g && g.entry) || '';
+  const bundledPath = entry ? path.join(ROOT, 'gates', path.basename(entry)) : '';
+  const row = {
+    id: (g && g.id) || '',
+    rel: (g && g.rel) || 'ROOT',
+    entry,
+    path: (r && r.script) || '',
+    ok: !!(r && r.ok),
+    why: (r && r.why) || '',
+    source: (r && r.source) || '',
+  };
+  row.digest = digestOf(row.path);
+  row.bundled_digest = digestOf(bundledPath);
+  row.bundled_path = (bundledPath && fs.existsSync(bundledPath)) ? bundledPath : '';
+  row.digest_match_bundled = !!(row.digest && row.bundled_digest && row.digest === row.bundled_digest);
+  const declared = (g && g.declaredExternal) || '';
+  row.identity_declared = declared ? (path.resolve(declared) === path.resolve(row.path)) : null;
+  return row;
+}
+
 function doctorScan(pipeline, opt) {
   const o = opt || {};
   const exists = o.exists || ((p) => { try { return fs.existsSync(p); } catch { return false; } });
@@ -4889,7 +4937,7 @@ function doctorScan(pipeline, opt) {
     let r = { script: '', why: '' };
     try { r = resolveGateScript(g, pipeline); } catch (e) { r = { script: '', why: String((e && e.message) || e) }; }
     const ok = !!r.script && exists(r.script);
-    return { id: g.id, rel: g.rel || 'ROOT', entry: g.entry, path: r.script || '', ok, why: r.why || '', source: r.source || '' };
+    return gateRowOf(g, Object.assign({}, r, { ok }));
   });
   /* 素材：只把"看起来是路径"的值当路径（说明性长文本跳过） */
   const isPathLike = (s) => typeof s === 'string' && s.length <= 120 && /^[A-Za-z0-9_./\\:-]+$/.test(s) && /\.[A-Za-z0-9]{1,5}$/.test(s);
@@ -4946,7 +4994,18 @@ function cmdDoctor(args, argv) {
   L.push('');
   L.push('| 门 | rel | 入口 | 来源 | 状态 |');
   L.push('|---|---|---|---|---|');
-  for (const g of r.gateRows) L.push('| `' + g.id + '` | ' + g.rel + ' | `' + g.entry + '` | ' + (g.source === 'external' ? '外部（本机路径表）' : (g.source === 'bundled' ? '**插件内置副本**' : '—')) + ' | ' + (g.ok ? '✓' : '**✗ 不可用**' + (g.why ? '：' + g.why : '（文件不存在：' + g.path + '）')) + ' |');
+  for (const g of r.gateRows) {
+    let srcCell = g.source === 'external' ? '外部（本机路径表）' : (g.source === 'bundled' ? '**插件内置副本**' : '—');
+    if (g.digest) {
+      srcCell += '<br>摘要 `' + g.digest + '`';
+      if (g.source === 'external' && g.bundled_digest) {
+        srcCell += g.digest_match_bundled ? '（与内置同摘要）' : '**（与内置摘要不同 ⇒ 外部件已漂移或过期）**';
+      }
+    } else if (g.path) {
+      srcCell += '<br>摘要（读不到文件）';
+    }
+    L.push('| `' + g.id + '` | ' + g.rel + ' | `' + g.entry + '` | ' + srcCell + ' | ' + (g.ok ? '✓' : '**✗ 不可用**' + (g.why ? '：' + g.why : '（文件不存在：' + g.path + '）')) + ' |');
+  }
   L.push('');
   L.push('## 三、素材（' + r.assetsOk + '/' + r.assetsTotal + ' 存在）');
   L.push('');
