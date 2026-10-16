@@ -22,7 +22,12 @@ import { __test__ } from '../dist/plugin.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const { modeMenu, classifyIntent, STUDIO_ACTIONS, readState, writeState, DEV_ROOTS, DEVELOPER_PHRASE, resolveRoot } = __test__
-const SERVER = { name: 'paper-studio', version: '3.1.0' }
+/* ★ v3.2.24：版本**从 package.json 派生**（此前硬编码 '3.1.0'，包已到 3.2.x ⇒ 客户端看到的 serverInfo 一直是旧版本）。
+   单一真源原则：能派生的就别抄一份。 */
+const PKG_VERSION = (() => {
+  try { return JSON.parse(readFileSync(join(HERE, '..', '..', 'package.json'), 'utf8')).version } catch { return '0.0.0' }
+})()
+const SERVER = { name: 'paper-studio', version: PKG_VERSION }
 const PROTOCOL_FALLBACK = '2024-11-05'
 
 // ───────────────────────────── 工具实现 ─────────────────────────────

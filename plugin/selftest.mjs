@@ -386,6 +386,25 @@ asyncChecks.push(['★★ 正控（真机事故）· 交付文件不得带 UTF-8
 // ── 声明 vs 实现（这类错已咬过两次：presentationMeta 的 undefined、intent 漏声明）──
 asyncChecks.push(['★★ 正控 · **每个工具的实际返回值必须符合它自己声明的 output.schema**（additionalProperties:false 下多一个键就整次调用失败）', async () => {
   // 迷你校验器：只覆盖本插件用到的那部分 JSON Schema 子集
+  check('漂移锁：paper_studio 的 action 枚举必须覆盖 CLI 全部子命令（漏一个 ⇒ 该能力对别的宿主不可达）', () => {
+    /* 由 **真 MCP 探针** 发现：formats/preflight/anchors/report/schemacheck 五个子命令在原枚举下根本调不到。
+       这条锁把"工具面 vs CLI"的一致性变成可机检，避免再悄悄漂移。modes/intent 是工具面**原生动作**（不转发 CLI），故豁免。 */
+    const cli = readFileSync(new URL('../bin/studio.cjs', import.meta.url), 'utf8')
+    const sm = /const SUBCOMMANDS = \[([\s\S]*?)\]/.exec(cli)
+    const subs = sm ? Array.from(sm[1].matchAll(/['"]([a-z0-9-]+)['"]/g)).map((x) => x[1]) : []
+    const dist = readFileSync(new URL('./dist/plugin.js', import.meta.url), 'utf8')
+    const am = /STUDIO_ACTIONS = \[([\s\S]*?)\]/.exec(dist)
+    const acts = am ? Array.from(am[1].matchAll(/['"]([a-z0-9-]+)['"]/g)).map((x) => x[1]) : []
+    const missing = subs.filter((s) => !acts.includes(s))
+    return (subs.length > 20 && missing.length === 0) || ('CLI 子命令 ' + subs.length + ' 个，枚举缺：' + missing.join(','));
+  });
+  check('漂移锁：MCP serverInfo 的版本必须等于 package.json（不许硬编码漂移）', () => {
+    const mcp = readFileSync(new URL('./bin/mcp-server.mjs', import.meta.url), 'utf8')
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    const hard = /SERVER\s*=\s*\{[^}]*version:\s*['"](\d[^'"]*)['"]/.exec(mcp)
+    const derived = /PKG_VERSION/.test(mcp) && /package\.json/.test(mcp)
+    return (!hard && derived && typeof pkg.version === 'string') || ('硬编码版本=' + (hard && hard[1]) + ' 派生=' + derived);
+  });
   const checkVal = (v, s, path) => {
     if (!s || typeof s !== 'object') return []
     const bad = []

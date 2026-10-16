@@ -3,6 +3,19 @@
 
 # 变更记录
 
+## v3.2.24 —— 2026-10-16
+
+**★ 用"真 MCP 客户端探针"验跨宿主入口（此前从未端到端测过）⇒ 抓到三类真缺陷。MCP 是别的宿主（Codex / Claude Code / Cursor / Cline）用这套能力的**唯一**通道。**
+
+- **① 五个子命令经 MCP 根本调不到**：`paper_studio` 工具的 `action` 枚举（来自 `dist/plugin.js` 的 `STUDIO_ACTIONS`）**漏了 `formats` / `preflight` / `anchors` / `report` / `schemacheck`** ⇒
+  这些能力**对其他宿主是死的**（真调用实测返回"未知 action「anchors」；合法值…"）。已补齐，枚举 **31 → 36** 项，覆盖 CLI 全部 **34** 个子命令。
+- **② `serverInfo.version` 硬编码漂移**：一直是 **`3.1.0`**，而包已到 3.2.x（客户端看到的版本是假的）。已改为**从 `package.json` 派生**（能派生的就别抄一份），握手实测现在返回 **3.2.23**。
+- **③ 加两条"漂移锁"夹具**（否则这类漂移还会悄悄回来）：工具面枚举**必须覆盖** CLI 全部子命令（`modes`/`intent` 是工具面原生动作，豁免）；**MCP 版本必须来自 package.json**（不许出现硬编码字面量）。
+  插件自检 **36 → 38/38**。
+- **探针本身也纠了一处假阳性**：版本改成派生后，探针的静态正则读不到字面量就判"漂移" —— 改为用**握手响应的真实值**断言（并显式接受"已派生、无字面量"这一形态）。**探针复跑 0 缺陷**。
+- 真·握手结果（本机）：`initialize` → `protocolVersion 2024-11-05` · `serverInfo {name: paper-studio, version: 3.2.23}` · `tools/list` → **3** 个工具（`paper_studio`/`paper_dev`/`paper_progress`）且都带 `inputSchema` ·
+  `tools/call route` 有返回 · **`tools/call action=anchors` 真到达 CLI**（返回 CLI 自己的前提层报错）· 未知工具返回 `-32602 未知工具：no_such_tool`。
+
 ## v3.2.23 —— 2026-10-16
 
 **给"读原文补页号原句"这件人读工作排出起点：查引用文献的免费全文可达性。**
