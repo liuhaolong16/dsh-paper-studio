@@ -1354,9 +1354,24 @@ function runSelftest() {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-warn-only-'));
     const d = path.join(tmp, 'm.md'); const k = path.join(tmp, 'k.json');
     /* 图题被声明但正文从不引用 ⇒ figure_table_xref 给 WARN ⇒ 契约门 rc=1（纯提醒，无 FAIL） */
-    fs.writeFileSync(d, '# T\n\n## Abstract\n\nA few words here for the abstract.\n\n**Figure 1.** Never cited in the body.\n');
-    fs.writeFileSync(k, JSON.stringify({ journal: 'J', publisher: 'P', verified_at: '2026-01-01', verified_from: 'u' }));
-    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', k], { encoding: 'utf8' });
+    /* 本场景必须**没有任何 FAIL**才有资格测"纯提醒"的结论口径 ⇒ 四段声明必须在场
+       （此前这条夹具的草稿缺声明，declaration-set 真 FAIL，是靠 v3.2.29 的错映射"通过"的）。 */
+    fs.writeFileSync(d, ['# T', '', '## Abstract', '', 'A few words here for the abstract.', '',
+      '**Figure 1.** Never cited in the body.', '',
+      '## CRediT authorship contribution statement', '', 'A. B.: conceptualization, writing.', '',
+      '## Declaration of competing interest', '', 'The author declares no competing interests.', '',
+      '## Funding', '', 'This research received no external funding.', '',
+      '## Declaration of generative AI and AI-assisted technologies in the writing process', '',
+      'No generative AI was used.', ''].join('\n'));
+    /* ★ 用**契约的图表数量区间**造一条**真 WARN**（实测 1 图 < 建议 8–10 ⇒ 记 WARN 且退出码仍 0）；
+       此前这条夹具是拿一个会真 FAIL 的契约，靠 v3.2.29 的"rc=1 ⇒ 提醒"错误映射"通过"的 —— 那正是遮丑。 */
+    fs.writeFileSync(k, JSON.stringify({ journal: 'J', publisher: 'P', verified_at: '2026-01-01', verified_from: 'u',
+      limits: { figures_tables_range: [8, 10] } }));
+    /* 本夹具只测"纯提醒"的结论口径；必须给 claim-anchor 一份（空的）锚点表，
+       否则该门按"无锚点"判 HIGH ⇒ 门执行器 rc=2 ⇒ 测的就不是提醒而是阻断了。 */
+    const anc = path.join(tmp, 'anchors.json');
+    fs.writeFileSync(anc, JSON.stringify({ anchors: [] }));
+    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', k, '--anchors', anc], { encoding: 'utf8' });
     const out = String(r.stdout) + String(r.stderr);
     const okConcl = /结论：\*\*可投（有 \d+ 项提醒/.test(out);
     const notBlock = !/不可投/.test(out);

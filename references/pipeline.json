@@ -203,15 +203,16 @@
           "class": "error",
           "submit_blocking": true,
           "aris": "ERROR"
-        },
+        }
+      },
+      "reserved": {
         "warn": {
           "class": "warn",
           "submit_blocking": false,
           "aris": "WARN",
-          "note": "**v3.2.29 起启用**：`rc=1` 的门判为 warn（如期刊契约门的 WARN「由作者定夺」——图表数量建议区间等）。语义＝**已判定、有提醒、不阻断**；它**不等于通过**（`summarize` 会给退出码 1，让\"有提醒\"无法被读成\"全绿\"）。"
+          "note": "**v3.2.30 更正**：warn **不作为 verdict** —— 门的退出码语义是\"0 通过 / 1 存在 FAIL / 2 参数错\"（见各门 exit_codes），WARN 一律 exit 0。**提醒改由门输出的 `WARN_COUNT=<n>` 机器可读通道承载**：执行器读它得到 \"warns\" 计数，汇总时用它把退出码从 0 抬到 1（\"有提醒\"，不阻断），但**绝不把 FAIL 降级成提醒**。"
         }
       },
-      "reserved": {},
       "assurance": {
         "levels": [
           "draft",
@@ -635,6 +636,8 @@
       "args": [
         "--draft",
         "{draft}",
+        "--anchors",
+        "{anchors}",
         "--json"
       ],
       "optional_args": [
@@ -710,14 +713,18 @@
         "--draft",
         "{draft}",
         "--contract",
-        "{contract}"
+        "{contract}",
+        "--package",
+        "{package}"
       ],
       "required_placeholders": [
         "{draft}",
         "{contract}"
       ],
       "exit_codes": {
-        "0": "通过"
+        "0": "通过",
+        "1": "存在 FAIL",
+        "2": "参数或文件错误"
       },
       "used_by": [
         "check"
@@ -878,7 +885,9 @@
       "scope": "deliverable",
       "args": [
         "--draft",
-        "{draft}"
+        "{draft}",
+        "--package",
+        "{package}"
       ],
       "required_placeholders": [
         "{draft}"

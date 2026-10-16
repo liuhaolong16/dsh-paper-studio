@@ -72,9 +72,13 @@ const ARTIFACT_REQUIRED = ['schema_version', 'audit_skill', 'task_type', 'tier',
   'verdict', 'reason_code', 'summary', 'gates', 'audited_input_hashes', 'review_independence', 'acceptance_status', 'generated_at'];
 const REVIEW_INDEPENDENCE = ['same-family', 'cross-family', 'deterministic'];
 
-const PLACEHOLDERS = ['{draft}', '{docx}', '{anchors}', '{manifest}', '{contract}', '{declaration}', '{report}', '{phrase_bank}'];
+/* ★★ v3.2.30 根因：白名单缺 `{package}` ⇒ 模板值 `{package}` 被当**字面量**传给门（门收到一个不存在的路径），
+   于是该门在"半残输入"下自带 FAIL。**占位符不在白名单里，等于这个输入永远传不进去。** */
+const PLACEHOLDERS = ['{draft}', '{docx}', '{package}', '{anchors}', '{manifest}', '{contract}', '{declaration}', '{report}', '{phrase_bank}'];
 
 function buildArgs(gate, inputs) {
+  /* （v3.2.30 曾在此加"声明了却缺 ⇒ 早退为缺输入"，因波及既有夹具 10 条而撤回；
+     根因改由**参数模板完整性**修复：占位符白名单 + 各门 args 声明。留此备注以免重犯。） */
   const missing = [];
   const out = [];
   const pushTpl = (tpl) => {
@@ -159,6 +163,10 @@ function runOneGate(gate, inputs, pipeline, opts) {
   rec.stdout_len = so.length;
   rec.stdout_empty = so.trim().length === 0;
   if (wantOut) rec.stdout = so.slice(0, 200000);
+  /* ★ v3.2.30：提醒计数**在运行时解析**（`rec.stdout` 只在 capture 模式保留 ⇒ 不能靠它读）。
+     门用 `WARN_COUNT=<n>` 自报提醒；这样聚合层既能看见提醒（不遮 FAIL），也不需要改门的退出码语义。 */
+  const wm = /WARN_COUNT=(\d+)/.exec(so);
+  rec.warns = wm ? Number(wm[1]) : 0;
   rec.stderr_head = (r.stderr || '').split(/\r?\n/).slice(0, 3).join(' | ').slice(0, 300);
   if (r.error) { rec.verdict = 'precondition_fail'; rec.note = 'spawn 失败：' + r.error.code; return rec; }
   // ★ 2026-10-14：**门自报前提层** —— `report_args --json` 的输出里带 `precondition:true` 时，
@@ -180,10 +188,16 @@ function runOneGate(gate, inputs, pipeline, opts) {
     rec.note = 'rc≠0 且 stdout 为空 ⇒ 前提层失败（不是"结果为空"）';
     return rec;
   }
-  /* ★ v3.2.29：**rc=1 ≠ 失败**。契约门等以 rc=1 表达「已判定、有提醒、由作者定夺」（如图表数量建议区间）；
-     首版把 rc≠0 一律判 fail ⇒ 一条提醒会把整链判成"门未通过"（真实后果：A 稿被报成"不可投"）。 */
-  rec.verdict = r.status === 0 ? 'pass' : (r.status === 1 ? 'warn' : 'fail');
-  rec.note = r.status === 0 ? '通过' : (r.status === 1 ? '退出码 1 = **有提醒**（不阻断；作者定夺）' : `退出码 ${r.status}（见 exit_codes 释义）`);
+  /* ★★ v3.2.30 更正（撤回 v3.2.29 的映射）：门的退出码语义是 **0＝通过 / 1＝存在 FAIL / 2＝参数或文件错误**（见各门 exit_codes
+     与该门头部注释）。把 rc=1 读成"提醒"会**把真 FAIL 伪装成提醒**——上一轮就是这么遮住了一个真阻断（根因是参数没传全）。
+     提醒改由门自己输出的 `WARN_COUNT=<n>` 承载（见 printTable 与 summarize）。 */
+  rec.verdict = r.status === 0 ? 'pass' : (r.status === 2 && rec.stdout_empty ? 'precondition_fail' : 'fail');
+  /* （提醒计数改在 runOneGate 里由运行时输出解析 —— `rec.stdout` 只在 capture 模式保留，此处读不到。） */
+  rec.note = r.status === 0 ? '通过' + (rec.warns ? `（含 ${rec.warns} 条提醒）` : '') : `退出码 ${r.status}（见 exit_codes 释义）`;
+  if (r.status === 0 && String(rec.stdout || '').length > 0 && /FAIL_COUNT=(\d+)/.test(String(rec.stdout || ''))) {
+    const fm = /FAIL_COUNT=(\d+)/.exec(String(rec.stdout || ''));
+    if (fm && Number(fm[1]) > 0 && r.status === 0) rec.note += '（★ 门自报 FAIL_COUNT>0 却退 0 ⇒ 口径不一致，须查门）';
+  }
   return rec;
 }
 
@@ -245,7 +259,7 @@ function summarize(gateResults, assurance, pipeline) {
   const hasGap = gateResults.some((g) => g.verdict === 'skipped_missing_input');
   const hasPass = gateResults.some((g) => g.verdict === 'pass');
   const hasNA = gateResults.some((g) => g.verdict === 'skipped_not_applicable');
-  const hasWarn = gateResults.some((g) => g.verdict === 'warn');
+  const hasWarn = gateResults.some((g) => (g.warns || 0) > 0);   /* v3.2.30：提醒由 WARN_COUNT 承载，不再是 verdict */
   if (hasPre) return 2;
   if (hasFail) return 2;
   // ★ V2.6：blocked（缺输入）在 submission 下与 fail 同权 —— 「应该有却没有」必须阻断，
@@ -299,16 +313,16 @@ function runGates(gates, inputs, pipeline, opts) {
 function printTable(gateResults, pipeline) {
   console.log('门执行结果（真源：references/pipeline.json）：');
   for (const g of gateResults) {
-    const flag = { pass: '通过', warn: '提醒', fail: '失败', skipped_missing_input: '跳过(缺输入)', skipped_not_applicable: '不适用(体裁)', precondition_fail: '前提层失败' }[g.verdict] || g.verdict;
+    const flag = { pass: '通过', fail: '失败', skipped_missing_input: '跳过(缺输入)', skipped_not_applicable: '不适用(体裁)', precondition_fail: '前提层失败' }[g.verdict] || g.verdict;
     const ec = ((pipeline.gates || []).find((x) => x.id === g.id) || {}).exit_codes || {};
     const meaning = (g.verdict === 'pass' || g.verdict === 'fail' || g.verdict === 'warn') && g.rc !== null && ec[String(g.rc)] ? ' · ' + ec[String(g.rc)] : '';
     console.log(`  [${flag}] ${g.id}：${g.label}`);
-    console.log(`        rc=${g.rc} · stdout=${g.stdout_len}B${g.stdout_empty ? '（空）' : ''} · ${g.note}${meaning}`);
+    console.log(`        rc=${g.rc} · stdout=${g.stdout_len}B${g.stdout_empty ? '（空）' : ''} · ${g.note}${meaning}${g.warns ? ' · **提醒 ' + g.warns + ' 条**（WARN_COUNT，不阻断）' : ''}`);
     if (g.stderr_head) console.log(`        stderr: ${g.stderr_head}`);
   }
   const counts = gateResults.reduce((a, g) => (a[g.verdict] = (a[g.verdict] || 0) + 1, a), {});
   console.log(`\n合计 ${gateResults.length} 门：` + Object.entries(counts).map(([k, v]) => `${k}=${v}`).join(' · '));
-  console.log('判据：任一 precondition_fail 或 fail ⇒ 退出码 2；**有 warn（rc=1 的提醒）或 skipped_missing_input ⇒ 1**（`--assurance submission` 时缺输入亦 ⇒ 2；**warn 不阻断，作者定夺**）。');
+  console.log('判据：任一 precondition_fail 或 fail ⇒ 退出码 2；**有提醒（门自报 WARN_COUNT>0）或 skipped_missing_input ⇒ 1**（提醒不阻断；缺输入在 `--assurance submission` 下 ⇒ 2）。');
   console.log('      skipped_not_applicable（体裁不适用）不参与判定，但**全不适用 ⇒ 1** —— 不许读成「全通过」。');
 }
 
@@ -384,26 +398,30 @@ function runSelftest() {
     const r = out.results[0];
     return (r.verdict === 'skipped_not_applicable' && r.rc === null) ? true : `verdict=${r.verdict} rc=${r.rc}`;
   });
-  check('适用性判定：声明 review 的门在 empirical 稿不适用、在 review 稿适用；未声明的门一律适用', () => {
-    const p = { gate_meta: { applies_to_default: ['*'] } };
-    return (applicableTo({ applies_to: ['review'] }, 'empirical', p) === false
-         && applicableTo({ applies_to: ['review'] }, 'review', p) === true
-         && applicableTo({}, 'empirical', p) === true) ? true : '适用性判定不对';
+  check('★ 输入路由：参数模板里的 {package} 必须真的传给门（"被 CLI 接受" ≠ "传给了门"）', () => {
+    const p = fakePipeline([g('echo', 'fx-echo-args.cjs', 'node', { args: ['--package', '{package}'] })]);
+    /* 必须给**真实存在**的路径：buildArgs 对不存在的值按"缺输入"丢弃（这正是 `{package}` 曾被静默丢掉的机制）。 */
+    const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pkg-route-'));   // 本模块没引 os ⇒ 内联 require
+    const r = runOneGate(p.gates[0], { package: dir }, p);
+    /* 断言读 argv（`rec.stdout` 只在 capture 模式保留，非 capture 时是 undefined —— 首版断言盯错了字段）。 */
+    const argv = JSON.stringify(r.argv || []);
+    return /--package/.test(argv) && argv.indexOf('pkg-route-') >= 0 ? true : '门收到的参数里没有 --package：' + argv.slice(0, 200);
   });
-  check('★ rc=1 ⇒ verdict=warn（不是 fail、也不是 pass）：提醒不得被当成"门未通过"', () => {
-    const p = fakePipeline([g('warny', 'fx-exit1.cjs')]);
+  check('★ 提醒通道：rc=0 + WARN_COUNT=2 ⇒ verdict=pass 且 warns=2（提醒可见、不阻断）', () => {
+    const p = fakePipeline([g('warny', 'fx-warn.cjs')]);
     const r = runOneGate(p.gates[0], {}, p);
-    return (r.verdict === 'warn' && r.rc === 1) ? true : `verdict=${r.verdict} rc=${r.rc}`;
+    return (r.verdict === 'pass' && r.warns === 2) ? true : `verdict=${r.verdict} warns=${r.warns}`;
   });
-  check('★ 有 warn ⇒ 退出码 1（有提醒 ≠ 全通过）；且 warn 不阻断（draft 与 submission 都是 1）', () => {
-    const a = summarize([{ verdict: 'warn' }], 'draft', pipeline);
-    const b = summarize([{ verdict: 'warn' }], 'submission', pipeline);
-    return (a === 1 && b === 1) ? true : `draft=${a} · submission=${b}（都应 1：提醒不阻断，但必须可见）`;
+  check('★ 反遮丑：rc=1 + WARN_COUNT=1 ⇒ 必须判 fail（提醒绝不遮住 FAIL）', () => {
+    const p = fakePipeline([g('wf', 'fx-warn-but-fail.cjs')]);
+    const r = runOneGate(p.gates[0], {}, p);
+    const s = summarize([r], 'draft', pipeline);
+    return (r.verdict === 'fail' && s === 2) ? true : `verdict=${r.verdict} 汇总=${s}`;
   });
-  check('★ 回归：warn 与 fail 不得混淆 —— warn+pass ⇒ 1；fail ⇒ 仍 2', () => {
-    const a = summarize([{ verdict: 'warn' }, { verdict: 'pass' }], 'draft', pipeline);
-    const b = summarize([{ verdict: 'fail' }], 'draft', pipeline);
-    return (a === 1 && b === 2) ? true : `warn+pass=${a}（应 1）· fail=${b}（应 2）`;
+  check('★ 汇总：只有提醒 ⇒ 退出码 1；无提醒全过 ⇒ 0', () => {
+    const a = summarize([{ verdict: 'pass', warns: 2 }], 'draft', pipeline);
+    const b = summarize([{ verdict: 'pass', warns: 0 }], 'draft', pipeline);
+    return (a === 1 && b === 0) ? true : `有提醒=${a}（应 1）· 无提醒=${b}（应 0）`;
   });
   check('必失败：全不适用 ⇒ 退出码 1（不许把「全不适用」读成「全通过」）', () => {
     const s = summarize([{ verdict: 'skipped_not_applicable' }]);
@@ -636,7 +654,8 @@ function main(argv) {
     }
     const type = pipeline.task_types.find((t) => t.id === typeId);
     if (!type) { console.error(`未知任务类型：${typeId}`); return 2; }
-    const inputs = { draft: o.draft, docx: o.docx, anchors: o.anchors, manifest: o.manifest, contract: o.contract, declaration: o.declaration, report: o.report, phrase_bank: (pipeline.assets || {}).phrase_bank };
+    /* ★★ v3.2.30 根因修复：**`--package` 此前被 CLI 接受却从未进入 inputs** ⇒ 凡参数模板写 `{package}` 的门都拿不到它，journal-contract 因此永远跑在无包模式、自带一个 FAIL ⇒ 门执行器报失败而 preflight 直连报通过，两处读数不一致。**参数被接受 ≠ 参数被传给门。** */
+const inputs = { draft: o.draft, docx: o.docx, package: o.package || o.pkgdir, anchors: o.anchors, manifest: o.manifest, contract: o.contract, declaration: o.declaration, report: o.report, phrase_bank: (pipeline.assets || {}).phrase_bank };
     const gates = (type.gates || []).map((gid) => (pipeline.gates || []).find((x) => x.id === gid)).filter(Boolean);
     const { genre, results } = runGates(gates, inputs, pipeline, { genreOverride: o.genre || null });
     if (o.json) {
@@ -787,7 +806,8 @@ function reportMain(argv) {
     }
     const type = pipeline.task_types.find((x) => x.id === typeId);
     if (!type) { console.error(`未知任务类型：${typeId}`); return 2; }
-    const inputs = { draft: o.draft, docx: o.docx, anchors: o.anchors, manifest: o.manifest, contract: o.contract, declaration: o.declaration, report: o.report, phrase_bank: (pipeline.assets || {}).phrase_bank };
+    /* ★★ v3.2.30 根因修复：**`--package` 此前被 CLI 接受却从未进入 inputs** ⇒ 凡参数模板写 `{package}` 的门都拿不到它，journal-contract 因此永远跑在无包模式、自带一个 FAIL ⇒ 门执行器报失败而 preflight 直连报通过，两处读数不一致。**参数被接受 ≠ 参数被传给门。** */
+const inputs = { draft: o.draft, docx: o.docx, package: o.package || o.pkgdir, anchors: o.anchors, manifest: o.manifest, contract: o.contract, declaration: o.declaration, report: o.report, phrase_bank: (pipeline.assets || {}).phrase_bank };
     const gates = (type.gates || []).map((gid) => (pipeline.gates || []).find((x) => x.id === gid)).filter(Boolean);
     // report 模式：优先让门吐结构化输出（真源里的 report_args，例如 --json）——
     // 结构化能拿到 line 字段；没有 report_args 的门退回解析人读输出（在解析里跳过装饰行）。

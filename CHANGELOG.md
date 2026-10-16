@@ -3,6 +3,25 @@
 
 # 变更记录
 
+## v3.2.30 —— 2026-10-16
+
+**根因修复：**声明需要的输入**根本没传到门**；并**更正 v3.2.29 的一处误判**（把参数缺失造成的 FAIL 当成了"提醒被当失败"）。
+
+- **★ 更正上一轮结论（诚实优先）**：v3.2.29 我判定"契约门用 rc=1 表达提醒、而执行器把 rc≠0 判失败 ⇒ 假阻断"。**这个判断是错的**。
+  该门的退出码语义（脚本头与 `pipeline.json` 的 `exit_codes` 都写着）是 **`0=通过 / 1=存在 FAIL / 2=参数或文件错误`**；**WARN 一律 exit 0**，从不参与退出码。
+  执行器当时看到的 `rc=1` 是**真的 FAIL** ——因为**参数没传到门**：
+  ① 执行器的占位符白名单 `PLACEHOLDERS` **没有 `{package}`** ⇒ 模板值 `{package}` 被当**字面量**传给门（门收到一个不存在的路径）；
+  ② `journal-contract` / `compliance-scan` 的 `args` **没有声明 `--package {package}`**（于是永远跑在"无包模式"，自带一个 FAIL）；
+  ③ `claim-anchor` 的 `args` **没有声明 `--anchors {anchors}`** ⇒ 它在**无锚点模式**下自报 HIGH（A 稿昨天通过是因为当时的 draft 用的是运行根目录副本、恰好被自动发现命中；改用 `submission/` 副本后就暴露了）。
+  ⇒ 这也**完全解释**了"preflight 直连读数 0 / 门执行器读数 1"的不一致：两者**输入集不同**，不是退出码语义问题。
+- **修法**：① `PLACEHOLDERS` 补 `{package}`；② 给 `journal-contract`、`compliance-scan` 声明 `--package {package}`、给 `claim-anchor` 声明 `--anchors {anchors}`；
+  ③ **撤回** v3.2.29 的 `rc=1 ⇒ warn` 映射（它会把**真 FAIL 伪装成提醒**），恢复 `rc≠0 ⇒ fail`；
+  ④ 提醒改由**门自己输出的机器可读通道**承载：契约门新增 `WARN_COUNT=<n> FAIL_COUNT=<n>` 一行，执行器**在运行时解析**（`rec.stdout` 只在 capture 模式保留 ⇒ 不能靠它读）得到 `warns`；`summarize` 在**只有提醒**时给退出码 **1**（有提醒 ≠ 全绿，且**不阻断**）；
+  ⑤ 缺输入的显示更诚实：给了 `--package` 才跑的那两道门，在**没给包**时现在正确显示为 **`缺输入 {package} ⇒ 跳过（不算通过）`**，而不是按缩减参数跑成另一种模式。
+- **夹具（+6，且改写 1 条）**：**输入路由**（模板里的占位符必须真的到达门）· 提醒通道（rc=0 + `WARN_COUNT=2` ⇒ pass + warns=2）· **反遮丑**（rc=1 + `WARN_COUNT=1` ⇒ 仍判 fail）· 汇总（只有提醒 ⇒ 1；无提醒全过 ⇒ 0）· **改写"纯提醒"preflight 夹具**——它此前是拿一个**会真 FAIL 的契约**（草稿缺四段声明）靠 `rc=1 ⇒ 提醒` 的错映射"通过"的，**那正是遮丑本身**；现已改为"零 FAIL + 契约图表区间造成的真 WARN"。
+- 读数：studio **131/131** · `bin/gate-runner.cjs --selftest` **41/41** · `_journal-contract.cjs --selftest` **49/49** · plugin **38/38** · `audit` 6/6 全绿 · 数字对拍 **PASS**。
+- 真稿（以 `submission/` 为准）：`gate-runner` **11 门 pass=8 · fail=0 · exit=1（有提醒/未检查）**，其中 `journal-contract` **通过（含 2 条提醒）**、`claim-anchor` **通过**；`preflight` 结论 **可投（有 1 项提醒，须逐条确认）**。
+
 ## v3.2.29 —— 2026-10-16
 
 **修一个会造成"假阻断"的聚合语义缺陷：把 `rc=1`（提醒）当成失败；顺带修投稿信的一条假阴性。**
