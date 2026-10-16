@@ -3,6 +3,21 @@
 
 # 变更记录
 
+## v3.7.0 —— 2026-10-17
+
+**真对拍 Task D（出投稿件）：同输入交叉工具对拍 + 真实包跑通；据此补 4 项匿名化检查、修 `--contract` 易用性缺陷。**
+
+- **对手能力（实测）**：`lifecycle-skills` 有 **6 个投稿技能**、**4 个可跑脚本** —— `run_preflight.py`(118) · `scan_anonymization.py`(**976**) · `check_camera_ready.py`(431) · `check_anonymization.py`。
+  `academic-research-skills` 有 submission 契约与 PDF/格式脚本；`dsh-sci` 只有阶段清单；`ai4paper`/`dsh-lit-search` **0 命中**。
+- **同输入对拍**（我方 `leaky-submission.tex`，故意 8 类双盲泄漏）：
+  · 他们 `scan_anonymization.py` ⇒ **5 ERROR + 3 WARN + 1 INFO**（pdf-metadata / author-block / identifying-link / home-path / acknowledgments / blind-unknown / self-citation×2 / manual）。
+  · 我方 `anonymize`（**改后**）⇒ 抹除 **4** 处（affiliation · funding-id · **pdf-metadata** · **home-path**）+ 2 条**未检查**（作者名单 · **盲审级别未声明**）+ 3 条只提醒。
+- **★本轮补齐 4 项**（依据：对手报 ERROR、我方原先漏）：① **`pdf-metadata`**（`\hypersetup{pdfauthor}` 会把身份写进 PDF 属性）② **`home-path`**（`/home/<user>`、`/Users/<user>`、`C:\Users\<user>`）③ **盲审级别未声明必须显式记"未检查"** ④ **LaTeX 致谢节**（原先只认 Markdown 标题）。
+- **★修易用性缺陷**：`--contract` 现在**支持契约 id**（与路径二选一），失败时**列出可用 id** —— 此前传我们**自带的 `joes-elsevier`** 会误报"契约不存在"（三处命令统一走 `resolveContract()`）。
+- **仍缺（如实）**：**编译产物 PDF 的元数据实读** · 更细泄漏族（`.bib` 注释 / LaTeX 注释 / 补充材料目录 / `\thanks` 块）· 他们的 camera-ready 检查**依赖仓库外 venue 档案**，我们的克隆里没有 ⇒ **本轮没有它的定稿读数，不假装跑过**。
+- **我方独有**：改动**可复核可还原**的清单 · 契约 id 直用 · "未检查 ≠ 通过"显式记账。
+- 自检 **252/252**；报告 `run/bakeoff/task-d-submission/REPORT.md`。
+
 ## v3.6.0 —— 2026-10-17
 
 **真对拍 Task C（引用核验）：新增 `refs-verify.cjs`（吸收其判定分类法），并实测出**稳健性差异** —— 同一份 .bib，对手因单一来源 429 **整批中止、0 判定**，我方给出完整 8 条判定。**

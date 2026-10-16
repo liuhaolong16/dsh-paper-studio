@@ -111,3 +111,11 @@
 - **不学它的一点（有实测依据）**：**单一来源 429 ⇒ 整批中止、0 判定**（退出码 1）。我方改为 **fail-soft**：失败来源记 CHECK_SKIPPED 并继续。
 - **未吸收（backlog）**：多源回落 · canonical-instance · relevance gate。
 - **顺带修我方自身**：`oa-fetch` 的 404 语义（伪造 DOI 独立成 NOT_FOUND）· 比对前剥掉索引标题的 RETRACTED: 前缀（防假阳性）。
+
+## lifecycle-skills · 投稿件对拍（2026-10-17 · Task D）—— 补 4 项匿名化检查 + 修 --contract
+
+- **对手**：6 个投稿技能 + 4 个可跑脚本（`scan_anonymization.py` 976 行最重）。
+- **吸收（已落代码 `bin/studio.cjs`）**：`pdf-metadata` · `home-path` · 盲审级别未声明记未检查 · LaTeX 致谢节；并让 `--contract` 支持**契约 id**（失败列可用 id）。
+- **不学它的一点**：识别性链接与自我引用**只提醒不擅改**（改语义要人判断），且我方产出**可复核可还原**的改动清单。
+- **未跑成（如实记）**：`check_camera_ready.py` 需 venue 档案，其仓库未随附 ⇒ 本轮无其定稿读数。
+- **仍缺**：编译产物 PDF 元数据实读 · `.bib` 注释/LaTeX 注释/补充材料目录/thanks 块等更细族。
