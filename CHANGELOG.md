@@ -3,6 +3,19 @@
 
 # 变更记录
 
+## v3.2.58 —— 2026-10-16
+
+**上架前最后一关：把 npm 包做成"真自包含"，并用**发布产物本身**验证（不是用工作目录验证）。**
+
+- **发现的真关口**：插件靠 `dist/plugin.js` **往上两级**找能力树根（要求包根同时有 `bin/studio.cjs` 与 `references/pipeline.json`）。此前真正要发布的**根包** `dsh-paper-studio` 的 `files` 只列了 `bin/references/plugin/SKILL.md/...`，**漏了这两天刚做的自包含件** `gates/`（12 道门，298 KB）与 `assets/`（短语库）⇒ 发出去别人装了**门与素材仍然缺**。
+- **另修两处会致命的细节**：
+  1. `runixtures` 在 `files` 里写成了 **Windows 反斜杠** —— npm 的 `files` 只认正斜杠 ⇒ 该目录**从未被打进包**；
+  2. 仓库 `.gitignore` 排除了 `*.docx`、`.npmignore` 排除了 `run/` ⇒ 连显式列目录也会被忽略规则吃掉 ⇒ 现在**逐个显式列出**样例件。
+- **新增**：根包补 `dsh.bundle.patch: ./plugin/cordis.patch.yml`（安装器据此知道补丁入口）。
+- **★验证方式（这才是"别人装了就有能力"的凭证）**：`npm pack` 出**真实产物** → 解到临时目录 → 在**解包后的形态**里、把本机路径表指空（模拟新装机）后跑：**`studio selftest` 168/168 · `gate-runner --selftest` 53/53**；并逐项核对包内含 `bin/studio.cjs` · `references/pipeline.json` · `gates/_journal-contract.cjs` · `assets/phrase-bank.json` · `plugin/dist/plugin.js` · 两个样例 docx（共 84 文件 / 557 KB）。
+- 包名核查：`dsh-paper-studio` 与 `dsh-paper-studio-v3` 在 npm registry 上**均返回 404（可用）**。
+- 自检（工作目录口径不变）：studio 168/168 · 契约门 69/69 · 门执行器 53/53 · plugin 38/38。
+
 ## v3.2.57 —— 2026-10-16
 
 **回滚 v3.2.56 的一次错误"修复"（我把自己本来正确的东西改坏了）—— 并附服务端实证。**
