@@ -1,0 +1,98 @@
+{
+  "journal": "河南工业大学学报（自然科学版）",
+  "publisher": "河南工业大学",
+  "article_type": "research_article",
+  "verified_at": "2026-10-16",
+  "verified_from": "腾云采编官方门户（知网 cbpt 系）投稿须知页 + 投稿流程页，2026-10-16 浏览器实地取证；逐句原文见 references/cn-journals.md §12.2",
+  "verification_note": "来源分两级，不得混同：**该刊官方门户原文**＝题名一般 ≤20 字、中文摘要 300 字左右且须含 [目的][方法][结果][结论]、关键词 5～8 个、页脚必著录（收稿日期 / 基金项目（名称＋编号）/ 作者简介 / 通信作者）、参考文献 [1] 上标置标点前；**两刊实测口径（references/cn-journals.md §2，非该刊单独原文）**＝各级标题 ≤15 字 ⇒ 按\"提醒\"级看待。本机未取到的项一律列入 human_only，不得写成要求。改动前必须重核官方门户并更新 verified_at。",
+  "limits": {
+    "count_mode": "cjk",
+    "title_max_chars": 20,
+    "heading_max_chars": 15,
+    "abstract_target_chars": 300,
+    "abstract_max_chars": 330,
+    "abstract_required_terms": [
+      "目的",
+      "方法",
+      "结果",
+      "结论"
+    ],
+    "keywords_min": 5,
+    "keywords_max": 8
+  },
+  "structure": {
+    "section_aliases": {
+      "abstract": [
+        "摘要",
+        "中文摘要"
+      ],
+      "keywords": [
+        "关键词",
+        "中文关键词"
+      ],
+      "acknowledgements": [
+        "致谢"
+      ],
+      "references": [
+        "参考文献"
+      ]
+    },
+    "keywords_required": true,
+    "references_style": "numbered（[1] 上标，置于引文所在句/段标点之前）",
+    "reference_entry_must_include": [
+      "year"
+    ],
+    "required_terms_present": [
+      "基金项目",
+      "作者简介",
+      "通信作者"
+    ],
+    "writing_order": [
+      "题目",
+      "作者姓名",
+      "单位全称",
+      "所在地名",
+      "邮编",
+      "中文摘要",
+      "中文关键词",
+      "中图分类号",
+      "文献标志码",
+      "英文题名",
+      "作者姓名（拼音）",
+      "单位（英文）",
+      "英文摘要",
+      "英文关键词",
+      "正文",
+      "参考文献"
+    ]
+  },
+  "human_only": [
+    "版面费 / 审稿费：该页可见范围内**未见收费表述** ⇒ 记为\"未见收费表述\"，**不得写成免费**，须向编辑部（电话 0371-67756156 · 工作 QQ 0128723）确认",
+    "投稿系统内的必填项与字段顺序（须登录后核对）",
+    "版权协议的具体条款（页面仅给出流程，不构成条款原文）",
+    "中图分类号 / 文献标志码的具体取值（须按稿定，机器只查\"在不在\"）"
+  ],
+  "machine_checkable": [
+    "中文题名 ≤20 字",
+    "各级标题 ≤15 字（提醒级）",
+    "中文摘要 300 字左右且含四要素",
+    "关键词 5～8 个",
+    "页脚著录项（基金项目 / 作者简介 / 通信作者）在场",
+    "正文引用编号按首次出现升序",
+    "参考文献条目含年份"
+  ],
+  "checkable_ids": [
+    "abstract_chars",
+    "abstract_required_terms",
+    "references_numbered_in_order",
+    "reference_entries_complete",
+    "keywords_present",
+    "title_max_chars",
+    "heading_max_chars",
+    "keywords_count",
+    "required_terms_present",
+    "checkable_ids_covered",
+    "checkable_ids_covered"
+  ],
+  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身（同上两份英文契约的做法）。"
+}
