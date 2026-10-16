@@ -3,6 +3,21 @@
 
 # 变更记录
 
+## v3.6.0 —— 2026-10-17
+
+**真对拍 Task C（引用核验）：新增 `refs-verify.cjs`（吸收其判定分类法），并实测出**稳健性差异** —— 同一份 .bib，对手因单一来源 429 **整批中止、0 判定**，我方给出完整 8 条判定。**
+
+- **对手真面目（必须承认）**：`lifecycle-skills/skills/verify-citations/scripts/check_bibtex.py` 有 **1855 行**，**Crossref + DataCite + arXiv + DBLP + Semantic Scholar 五源**核验，
+  报 `UNRESOLVED / DOI_NOT_FOUND / TITLE_MISMATCH / AUTHOR_MISMATCH / YEAR_MISMATCH / RETRACTED / EXPRESSION_OF_CONCERN / DUPLICATE_* / MALFORMED_* / IMPLAUSIBLE_YEAR / POSSIBLE_ID_TYPO`，
+  还有 **canonical-instance**（预印本 vs 正式版、RFC vs 会议论文，带引用数）与 **relevance gate**（词面重叠 + 共引密度）。**我此前低估了它。**
+- **本轮吸收（我方新工具 `bin/refs-verify.cjs`，自检 7/7）**：离线结构检查（重复键/DOI/标题 · 非法 DOI/arXiv id · 不可信年份 · 缺字段 · 缺标识）+ 在线元数据比对（**YEAR_MISMATCH / TITLE_MISMATCH / RETRACTED**）+ **三态**（`RESOLVED` / `NOT_FOUND` / `CHECK_SKIPPED`）+ **fail-soft**（单一来源失败记 `CHECK_SKIPPED` 并继续，不中止整批）。
+- **两处修复**：① `oa-fetch` 的 **404 语义** —— 伪造 DOI 此前与「网络失败」同形（都记 SKIP），现独立成 `NOT_FOUND`；② 我方比对的**假阳性** —— 索引标题的 `RETRACTED:` 前缀在比对前剥掉（否则真撤稿论文的正常条目会被误报标题不符）。
+- **★实测稳健性差异（可复跑）**：同一份 8 条 `refs.bib` —— 我方 `refs-verify`：解析 **7** · 不存在 **1** · ERROR **6**（含 `DUPLICATE_DOI` · `RETRACTED` · `YEAR_MISMATCH` · `TITLE_MISMATCH` · `UNRESOLVED`）；
+  他们 `check_bibtex.py`：`HTTP 429 from api.semanticscholar.org` → **退出码 1 · 一条判定都没出**。
+- **仍缺（backlog）**：多源回落（DataCite/arXiv/DBLP/S2）· **canonical-instance** · **relevance gate**。
+- **顺带被我自己的工具抓出的夹具三处缺陷**：W 类与 R 类共用 DOI（混进 `DUPLICATE_DOI`）· R 类填了占位标题（假 `TITLE_MISMATCH`）· 自检夹具 DOI 形状非法。
+- 报告：`run/bakeoff/task-c-citations/REPORT.md`。
+
 ## v3.5.0 —— 2026-10-17
 
 **真对拍 Task B（呈现）完成 —— 首次做到「交叉工具对拍」：用对手自己的 linter 判我方，用我方 linter 判对手；据此补 3 项检查、改 2 处严重度口径。**

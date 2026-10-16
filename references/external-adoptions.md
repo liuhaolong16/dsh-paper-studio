@@ -103,3 +103,11 @@
 - **改正（有据）**：`bullet-overload` 与 `generic-title` 由 RISK 降为 WARN（铁律 24：提醒不得当未通过）· `dense`（>60 词）由 INFO 升为 WARN（对齐其 `wordy`）。
 - **保留我方更严**：`pacing` 硬上限 1.25×（其 1.5×）· `missing-image` 独立检查。
 - **未吸收（记入 backlog）**：`make-poster`（海报 + 2/5 分钟 pitch）· `rehearse-qa`（敌意问答彩排）· `fit-page-limit`。
+
+## lifecycle-skills · 引用核验对拍（2026-10-17 · Task C）—— 吸收判定分类法，保留 fail-soft 取舍
+
+- **对手能力（实测）**：`verify-citations/scripts/check_bibtex.py` **1855 行**，五源（Crossref/DataCite/arXiv/DBLP/S2），判定含 UNRESOLVED/DOI_NOT_FOUND/TITLE·AUTHOR·YEAR_MISMATCH/RETRACTED/EXPRESSION_OF_CONCERN/DUPLICATE_*/MALFORMED_*/IMPLAUSIBLE_YEAR/POSSIBLE_ID_TYPO，另有 **canonical-instance** 与 **relevance gate**。
+- **吸收（已落代码 `bin/refs-verify.cjs`）**：离线结构检查 + 在线元数据比对（年份/标题/撤稿）+ 三态 RESOLVED/NOT_FOUND/CHECK_SKIPPED。
+- **不学它的一点（有实测依据）**：**单一来源 429 ⇒ 整批中止、0 判定**（退出码 1）。我方改为 **fail-soft**：失败来源记 CHECK_SKIPPED 并继续。
+- **未吸收（backlog）**：多源回落 · canonical-instance · relevance gate。
+- **顺带修我方自身**：`oa-fetch` 的 404 语义（伪造 DOI 独立成 NOT_FOUND）· 比对前剥掉索引标题的 RETRACTED: 前缀（防假阳性）。

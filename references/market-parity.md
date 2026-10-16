@@ -175,3 +175,4 @@ skill/      ← 平铺 SKILL.md 副本，放进 ~/.agents/skills/ 让 DSH 发现
 
 - **呈现类缺口状态（2026-10-17 Task B 后）**：`talk`（预算 / 口播 / deck lint）**已补**；deck 侧与唯一对手 `lifecycle-skills` **同档**（交叉工具对拍：两份独立 linter 对三份 deck 给出同样风险数），并据其对拍补齐 `no-marp-header`/`tiny-font`/`aspect-ratio` 三项、改正 `bullet-overload`/`generic-title`/`dense` 的严重度口径。
   **仍缺**：`make-poster`（海报 + 2/5 分钟 pitch）· `rehearse-qa`（问答彩排）· `fit-page-limit` · `parse-cfp` · `camera-ready`。
+- **引用核验缺口状态（2026-10-17 Task C 后）**：`refs-verify` 已补（离线结构 + 在线元数据比对 + 撤稿 + fail-soft），判定分类法与对手同表；**仍缺**多源回落（DataCite/arXiv/DBLP/S2）· canonical-instance（预印本 vs 正式版）· relevance gate（离题条目）。

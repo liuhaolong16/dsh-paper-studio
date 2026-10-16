@@ -28,6 +28,7 @@ description: |
 - `assets/csl/*.csl（3 个样式 · CC-BY-SA 3.0 · 见 assets/csl/PROVENANCE.md）`
 - `references/csl-lock.json（样式 sha256 锁）`
 - `bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）`
+- `bin/refs-verify.cjs（引用核验门：离线结构 + 在线元数据比对 + 撤稿 · fail-soft）`
 
 ## 边界（这些事本模块不做）
 

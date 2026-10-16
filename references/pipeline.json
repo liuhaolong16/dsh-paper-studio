@@ -1370,7 +1370,8 @@
     "sync-skill-modules.cjs": "node bin/sync-skill-modules.cjs --selftest",
     "figures-kit.cjs": "node bin/figures-kit.cjs --selftest",
     "oa-fetch.cjs": "node bin/oa-fetch.cjs --selftest",
-    "bakeoff.cjs": "node bin/bakeoff.cjs --selftest"
+    "bakeoff.cjs": "node bin/bakeoff.cjs --selftest",
+    "refs-verify.cjs": "node bin/refs-verify.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1571,7 +1572,8 @@
       "assets": [
         "assets/csl/*.csl（3 个样式 · CC-BY-SA 3.0 · 见 assets/csl/PROVENANCE.md）",
         "references/csl-lock.json（样式 sha256 锁）",
-        "bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）"
+        "bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）",
+        "bin/refs-verify.cjs（引用核验门：离线结构 + 在线元数据比对 + 撤稿 · fail-soft）"
       ],
       "boundaries": [
         "**verify-or-drop**：核不实就删或打标，绝不编造",
