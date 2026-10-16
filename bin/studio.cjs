@@ -496,6 +496,7 @@ const SUBCOMMANDS = [
   'formats',
   'preflight',
   'anchors',
+  'response',
   'route',
   'gates',
   'intake',
@@ -1281,6 +1282,43 @@ function runSelftest() {
     const miss = byDoi.size === 0;
     const bad = (() => { try { oaLookup(['10.1/x'], () => { throw new Error('curl 退出码 7'); }); return false; } catch (e) { return true; } })();
     return (miss && !bad) || ('size=' + byDoi.size + ' threw=' + bad);
+  });
+  check('response·正控：逐条有回应且指明改动位置 ⇒ 通过', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'resp-'));
+    const c = path.join(tmp, 'c.md'); const l = path.join(tmp, 'l.md');
+    fs.writeFileSync(c, '1. The manuscript lacks a comparison with the baseline model, please add it.\n\n2. The dataset section is unclear about preprocessing steps.\n');
+    fs.writeFileSync(l, '## Response to Reviewer 1\n\n**Comment 1:** The manuscript lacks a comparison with the baseline model, please add it.\n\n**Response:** We thank the reviewer. We conducted the missing comparison and added a new subsection with numbers.\nThe results are now in Section 3.4 (new Table 4) and discussed in the last paragraph of p.12.\n\n**Comment 2:** The dataset section is unclear about preprocessing steps.\n\n**Response:** Agreed. We rewrote the data preparation paragraph; the filtering thresholds and the split ratios are now stated explicitly in Section 2.2.\n');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c], { encoding: 'utf8' });
+    return (r.status === 0 && /审稿意见 2 条 ⇒ 合规 2 · 有问题 0/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
+  });
+  check('response·必失败面：漏回一条必须报 missing 并指出编号', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'resp2-'));
+    const c = path.join(tmp, 'c.md'); const l = path.join(tmp, 'l.md');
+    fs.writeFileSync(c, '1. Please add a comparison with the baseline model.\n\n2. The dataset section is unclear about preprocessing steps.\n');
+    fs.writeFileSync(l, '**Comment 1:** Please add a comparison with the baseline model.\n\n**Response:** We added the comparison in Section 3.4 with new numbers and a new Table 4.\n');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c], { encoding: 'utf8' });
+    const out = String(r.stdout);
+    return (r.status === 1 && /#2/.test(out) && /漏回/.test(out)) || ('exit=' + r.status + ' out=' + out.slice(0, 200));
+  });
+  check('response·必失败面：空回应（"已修改"）与缺改动位置都必须 FAIL', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'resp3-'));
+    const c = path.join(tmp, 'c.md'); const l = path.join(tmp, 'l.md');
+    fs.writeFileSync(c, '1. Please clarify the threshold used for the health indicator.\n\n2. Please justify the choice of the evaluation metric.\n');
+    fs.writeFileSync(l, '**Comment 1:** Please clarify the threshold used for the health indicator.\n\n**Response:** 已修改\n\n**Comment 2:** Please justify the choice of the evaluation metric.\n\n**Response:** We agree with the reviewer and we have thought about this carefully for a long time, and we believe the current choice is the most appropriate one for this kind of study.\n');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c], { encoding: 'utf8' });
+    const out = String(r.stdout);
+    return (r.status === 1 && /空回应/.test(out) && /未指明改动位置/.test(out)) || ('exit=' + r.status + ' out=' + out.slice(0, 220));
+  });
+  check('response·必失败面：没给 --comments 必须 exit=2（没有意见清单就核不了覆盖）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'resp4-'));
+    const l = path.join(tmp, 'l.md');
+    fs.writeFileSync(l, '**Response:** something.\n');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l], { encoding: 'utf8' });
+    return (r.status === 2 && /不得当通过/.test(String(r.stderr))) || ('exit=' + r.status);
   });
   check('anchors --resolve·正控：identifiers 取自**稿件题录**（有则采/无则留空并标注），不联网', () => {
     const { spawnSync } = require('node:child_process');
@@ -2354,6 +2392,104 @@ function cmdResolve(args, argv, draftAbs, keys, hits) {
   return 0;
 }
 
+/** 返修回复信逐条核对（v3.2.25）
+ *  为什么：进入返修阶段后，期刊要求**逐条回复**（意见原文 + 回应 + **改动位置**）。最常见的失分是：
+ *  ① 漏回某条 ② 回应是空话（"已修改"）③ **没说改在哪里**（审稿人最烦的一条）。
+ *  本命令只做**可机械判定**的那部分；"回应是否在学术上站得住"仍属人读。 */
+const EMPTY_RESPONSE = /^(?:已?修改|已?更正|已?补(?:充)?|同意|接受|好的?|收到|ok|done|fixed|agreed|updated|noted)[。.!！,，]?$/i;
+const LOCATOR_RE = /(?:\bL\d+\b|\bline\s*\d+|\bp{1,2}\.\s*\d+|第\s*\d+\s*(?:页|段|节|行|章)|Section\s*\d|§\s*\d+|Fig(?:ure)?\.?\s*\d|Table\s*\d|新增|删去|改写为|\b\d+\s*(?:mm|%|units?)\b)/i;
+const normText = (s) => String(s || '').replace(/\r\n?/g, '\n').replace(/[ \t\u3000]+/g, ' ').replace(/\*\*|\*|__|`/g, '').trim();
+function splitComments(raw) {
+  const txt = String(raw || '').replace(/\r\n?/g, '\n');
+  const blocks = txt.split(/\n\s*\n+/).map((b) => normText(b)).filter(Boolean);
+  const out = [];
+  for (const b of blocks) {
+    /* 支持三种编号：`1.` / `Comment 1:` / `[1]` / `意见 1` */
+    const m = /^(?:\[?(\d+)\]?[.):、]?|(?:Comment|Reviewer|Referee|意见|审稿意见)\s*#?\s*(\d+)[:：.]?)\s*([\s\S]*)$/i.exec(b);
+    if (m) out.push({ no: String(m[1] || m[2]), text: normText(m[3]) });
+    else out.push({ no: String(out.length + 1), text: b });
+  }
+  return out.filter((c) => c.text.length >= 20);           // 太短的块（标题等）不算意见
+}
+function cmdResponse(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const letterArg = val('letter');
+  const commentsArg = val('comments');
+  if (!letterArg) { console.error('前提层失败：response 需要 --letter <回复信.md> --comments <审稿意见.md>'); return 2; }
+  if (!commentsArg) { console.error('前提层失败：response 需要 --comments <审稿意见.md>（**没有意见清单就核不了覆盖**，不得当通过）'); return 2; }
+  const lAbs = path.resolve(letterArg); const cAbs = path.resolve(commentsArg);
+  if (!fs.existsSync(lAbs)) { console.error('前提层失败：回复信不存在 —— ' + lAbs); return 2; }
+  if (!fs.existsSync(cAbs)) { console.error('前提层失败：审稿意见不存在 —— ' + cAbs); return 2; }
+  const letter = normText(fs.readFileSync(lAbs, 'utf8'));
+  const comments = splitComments(fs.readFileSync(cAbs, 'utf8'));
+  if (!comments.length) { console.error('前提层失败：审稿意见文件里没解析出任何条目（≥20 字的块才算意见）—— 请检查格式'); return 2; }
+
+  const rows = [];
+  for (let i = 0; i < comments.length; i++) {
+    const c = comments[i];
+    const probe = c.text.slice(0, 80);
+    /* 覆盖判定：整段原文（前 80 字）出现 ⇒ 覆盖；否则用 40 字滑窗找最长匹配（容忍轻微改写） */
+    let hit = letter.indexOf(probe);
+    let matched = hit >= 0 ? probe.length : 0;
+    if (hit < 0) {
+      const w = 40;
+      for (let k = 0; k + w <= Math.min(c.text.length, 200); k += 10) {
+        if (letter.indexOf(c.text.slice(k, k + w)) >= 0) { matched = w; break; }
+      }
+    }
+    const next = i + 1 < comments.length ? letter.indexOf(comments[i + 1].text.slice(0, 60)) : -1;
+    const start = hit >= 0 ? hit : (matched ? letter.indexOf(c.text.slice(0, matched)) : -1);
+    const end = next > start && start >= 0 ? next : letter.length;
+    const block = start >= 0 ? letter.slice(start, end) : '';
+    /* 去掉引用行/引用原文，只留"回应"正文 */
+    const body = block.split('\n').filter((L) => !/^\s*>/.test(L)).join('\n')
+      .replace(normText(probe), '').replace(/^\s*(?:回应|回复|Response|Answer|答)\s*[:：]?/i, '').trim();
+    const hasLocator = LOCATOR_RE.test(body);
+    const empty = EMPTY_RESPONSE.test(body) || body.length < 40;
+    const covered = hit >= 0 || matched >= 40;
+    const verdict = !covered ? 'missing' : (empty ? 'empty-response' : (hasLocator ? 'ok' : 'no-locator'));
+    rows.push({ no: c.no, covered, matched, len: body.length, hasLocator, verdict, text: c.text.slice(0, 60) });
+  }
+  const bad = rows.filter((r) => r.verdict !== 'ok');
+  const L = [];
+  L.push('# 返修回复信逐条核对 · ' + path.basename(lAbs));
+  L.push('');
+  L.push('> 本命令只核**可机械判定**的部分：① 每条意见是否出现在回复信里 ② 每条是否有**实质回应**（不是"已修改"这种空话）');
+  L.push('> ③ 回应是否**指明改动位置**（行号/页/节/图表/新增删改字样）。**回应是否在学术上站得住仍属人读。**');
+  L.push('');
+  L.push('- 审稿意见：**' + comments.length + '** 条（来自 `' + path.basename(cAbs) + '`）');
+  L.push('- 逐条核对：合规 **' + (rows.length - bad.length) + '** · 有问题 **' + bad.length + '**');
+  L.push('');
+  L.push('| # | 状态 | 原文匹配 | 回应字数 | 有改动位置 | 意见开头 |');
+  L.push('| --- | --- | --- | --- | --- | --- |');
+  const ZH = { ok: '✅ 合规', missing: '✗ **漏回**', 'empty-response': '✗ **空回应**（<40 字或只有"已修改"）', 'no-locator': '✗ **未指明改动位置**' };
+  for (const r of rows) L.push('| ' + r.no + ' | ' + (ZH[r.verdict] || r.verdict) + ' | ' + (r.matched ? r.matched + ' 字' : '未匹配') + ' | ' + r.len + ' | ' + (r.hasLocator ? '是' : '否') + ' | ' + r.text.replace(/\|/g, '\\|') + ' |');
+  if (bad.length) {
+    L.push('');
+    L.push('## 待补（逐条）');
+    L.push('');
+    for (const r of bad) L.push('- **#' + r.no + '**（' + (ZH[r.verdict] || r.verdict) + '）：' + r.text);
+  }
+  L.push('');
+  L.push('## 复跑命令');
+  L.push('');
+  L.push('```text');
+  L.push('node bin/studio.cjs response --letter "' + lAbs + '" --comments "' + cAbs + '"');
+  L.push('```');
+  const outPath = val('out') || path.join(path.dirname(lAbs), '_回复信核对-' + new Date().toISOString().slice(0, 10) + '.md');
+  fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
+  if (JSON_OUT && !val('out')) {
+    console.log(JSON.stringify({ letter: lAbs, comments: comments.length, bad: bad.length, rows }, null, 2));
+  } else {
+    console.log('返修回复信逐条核对 · ' + path.basename(lAbs));
+    console.log('  审稿意见 ' + comments.length + ' 条 ⇒ 合规 ' + (rows.length - bad.length) + ' · 有问题 ' + bad.length);
+    for (const r of rows) console.log('    ' + (r.verdict === 'ok' ? '✓' : '✘') + ' #' + r.no + ' ' + (ZH[r.verdict] || r.verdict) + ' · 回应 ' + r.len + ' 字 · 位置 ' + (r.hasLocator ? '有' : '无'));
+    console.log('  报告：' + outPath);
+  }
+  return bad.length ? 1 : 0;
+}
+
 function cmdAnchors(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -3279,6 +3415,7 @@ function main(argv) {
     if (cmd === 'formats') return cmdFormats(args, argv);
     if (cmd === 'preflight') return cmdPreflight(args, argv);
     if (cmd === 'anchors') return cmdAnchors(args, argv);
+    if (cmd === 'response') return cmdResponse(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;
