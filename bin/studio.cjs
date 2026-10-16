@@ -558,6 +558,7 @@ const SUBCOMMANDS = [
   'refs',
   'model',
   'anonymize',
+  'review',
   'submission-fields',
   'route',
   'gates',
@@ -2841,6 +2842,79 @@ function runSelftest() {
       return (r.status === 0 && okOut && okAudit) ? true : ('status=' + r.status + ' out=' + okOut + ' audit=' + okAudit);
     });
   })();
+  /* ★ v3.2.64 夹具：review 分诊 + 文档属性（docx/PDF 元数据） */
+  (() => {
+    check('v3.2.64·review·正控：按编号切条目 + 分类 + 对稿定位（每条都带意见原文）', () => {
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'rev-'));
+      const rev = path.join(tmpD, 'reviews.md');
+      const draft = path.join(tmpD, 'm.md');
+      fs.writeFileSync(draft, '# T\n\nWe report a capacity retention of 92% after 500 cycles in this study.\n\nThe method follows the standard protocol described earlier.\n', 'utf8');
+      fs.writeFileSync(rev, ['1. The authors do not mention the capacity retention after 500 cycles clearly.', '2. Please clarify how the protocol was chosen.', '3. Editor: reduce the word count by 10%.'].join('\n'), 'utf8');
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'review', '--reviews', rev, '--draft', draft, '--json'], { encoding: 'utf8', timeout: 60000 });
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      let j = null; try { j = JSON.parse(String(r.stdout || '')); } catch (e) {}
+      if (!j || !j.items || j.items.length !== 3) return '条目数不对：' + (j ? j.items.length : 'parse fail');
+      const hasQuote = j.items.every((x) => x.quote && x.quote.length > 10);
+      const classes = new Set(j.items.map((x) => x.class));
+      return (r.status === 0 && hasQuote && classes.size >= 2) ? true : ('status=' + r.status + ' classes=' + JSON.stringify([...classes]));
+    });
+    check('v3.2.64·review·必失败面：一条意见都识别不到 ⇒ 必须退 2 并明说未检查（不许当成功）', () => {
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'rev2-'));
+      const rev = path.join(tmpD, 'empty.md'); fs.writeFileSync(rev, '刚刚那篇稿子还行吧\n', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'review', '--reviews', rev], { encoding: 'utf8', timeout: 60000 });
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      const out = String(r.stdout || '') + String(r.stderr || '');
+      return (r.status === 2 && /未检查/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 80));
+    });
+    check('v3.2.64·review·诚实面：稿里找不到意见原句 ⇒ 记「未定位」并计数（不许静默留空）', () => {
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'rev3-'));
+      const rev = path.join(tmpD, 'r.md'); const draft = path.join(tmpD, 'd.md');
+      fs.writeFileSync(draft, '# T\n\nNothing relevant here.\n', 'utf8');
+      fs.writeFileSync(rev, '1. Please clarify the completely unrelated statement about quantum bananas in section X.\n', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'review', '--reviews', rev, '--draft', draft, '--json'], { encoding: 'utf8', timeout: 60000 });
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      let j = null; try { j = JSON.parse(String(r.stdout || '')); } catch (e) {}
+      return (j && j.unlocated >= 1 && /未定位/.test(j.items[0].location)) ? true : JSON.stringify(j && j.items);
+    });
+    check('v3.2.64b·review·英文意见走「关键词→章节候选」：逐字找不到时，必须给出候选节而不是干瘪的未定位', () => {
+      const draft = '# Introduction\n\nWe study state of health estimation.\n\n## Methods\n\nThe capacity fade model uses an incremental capacity analysis for every cycle.\n\n## Results\n\nThe retention reaches ninety percent.\n';
+      const loc = locateQuote('The authors should clarify the incremental capacity analysis used for capacity fade modelling.', draft);
+      return (/候选节/.test(loc.where) && loc.by === 'keyword-section') ? true : JSON.stringify(loc);
+    });
+    check('v3.2.64·review·分类诚实面：没命中任何关键词 ⇒ 必须记「需人工判断」（不许默认归到省事的类）', () => {
+      const r = classifyReview('The paper has some issues that need attention.');
+      return r.id === 'unclassified' ? true : ('误分类为 ' + r.id);
+    });
+    check('v3.2.64·anonymize·文档属性：docx 的 docProps/core.xml 里能读出 creator（纯 Node、零依赖读 zip）', () => {
+      const zlib = require('zlib');
+      const store = (name, content) => {
+        const nb = Buffer.from(name, 'utf8'); const cb = Buffer.from(content, 'utf8');
+        const comp = zlib.deflateRawSync(cb);
+        const lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(8, 8);
+        lh.writeUInt32LE(comp.length, 18); lh.writeUInt32LE(cb.length, 22); lh.writeUInt16LE(nb.length, 26);
+        return { name: nb, data: comp, raw: cb.length, compLen: comp.length, header: lh };
+      };
+      const e = store('docProps/core.xml', '<?xml version="1.0"?><cp:coreProperties xmlns:dc="x"><dc:creator>Qian Qi</dc:creator><dc:title>T</dc:title></cp:coreProperties>');
+      const cd = Buffer.alloc(46); cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE(8, 10); cd.writeUInt32LE(e.compLen, 20);
+      cd.writeUInt32LE(e.raw, 24); cd.writeUInt16LE(e.name.length, 28); cd.writeUInt32LE(0, 42);
+      const local = Buffer.concat([e.header, e.name, e.data]);
+      const central = Buffer.concat([cd, e.name]);
+      const eocd = Buffer.alloc(22); eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(1, 8); eocd.writeUInt16LE(1, 10);
+      eocd.writeUInt32LE(central.length, 12); eocd.writeUInt32LE(local.length, 16);
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'docx-'));
+      const f = path.join(tmpD, 'x.docx'); fs.writeFileSync(f, Buffer.concat([local, central, eocd]));
+      const m = docMeta(f);
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      return (m.fields && m.fields.creator === 'Qian Qi') ? true : JSON.stringify(m);
+    });
+    check('v3.2.64·anonymize·诚实面：PDF 属性读不到时必须写明「未检查」而不是报干净', () => {
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-'));
+      const f = path.join(tmpD, 'x.pdf'); fs.writeFileSync(f, '%PDF-1.7\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n', 'latin1');
+      const m = docMeta(f);
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      return (m.unreadable && /未检查/.test(m.unreadable)) ? true : JSON.stringify(m);
+    });
+  })();
   check('方法论索引：11 维条目齐全（缺文件只报不崩）', () => listMethod().length >= 11 ? true : '维数不足');
 
   check('模板清单：计划里的目标文件名不得重复（防同一件东西两个名字）', () => {
@@ -4372,9 +4446,31 @@ function cmdAnonymize(args, argv) {
   const auditPath = val('audit');
   const base = path.basename(path.resolve(inFile));
   if (outPath) fs.writeFileSync(path.resolve(outPath), r.out, 'utf8');
+  /* ★ v3.2.64：把**文档属性**也纳入匿名化清单（docx 的 docProps/core.xml · PDF 的 /Author 等） */
+  const metaFiles = [];
+  try {
+    if (val('package') && fs.existsSync(path.resolve(val('package')))) {
+      const walkMeta = (d, depth) => { if (depth > 3) return; for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p2 = path.join(d, e.name);
+        if (e.isDirectory()) walkMeta(p2, depth + 1);
+        else if (/\.(?:docx|pdf)$/i.test(e.name)) metaFiles.push(p2); } };
+      walkMeta(path.resolve(val('package')), 0);
+    }
+    if (/\.(?:docx|pdf)$/i.test(path.resolve(inFile))) metaFiles.push(path.resolve(inFile));
+  } catch (e) {}
+  const docMetaFindings = metaFiles.slice(0, 20).map((f) => ({ file: f, meta: docMeta(f) }));
+  const metaLeaks = [];
+  for (const f of docMetaFindings) {
+    const m = f.meta || {};
+    for (const k of Object.keys(m.fields || {})) {
+      if ((k === 'creator' || k === 'lastModifiedBy' || k === 'Author' || k === 'Creator') && String(m.fields[k]).trim()) metaLeaks.push({ file: path.basename(f.file), field: k, value: String(m.fields[k]).slice(0, 40) });
+    }
+    if (m.unreadable) r.unchecked.push('文档属性（' + path.basename(f.file) + '）：' + m.unreadable);
+  }
   const report = { tool: 'paper-studio', version: toolVersion(), at: new Date().toISOString(), input: path.resolve(inFile),
     masked_out: outPath ? path.resolve(outPath) : '(未写文件，仅 stdout)', roster_size: roster.length,
-    items: r.items, warnings: r.warns, unchecked: r.unchecked, residual: r.residual };
+    items: r.items, warnings: r.warns, unchecked: r.unchecked, residual: r.residual,
+    doc_metadata: docMetaFindings, doc_metadata_leaks: metaLeaks };
   if (auditPath) fs.writeFileSync(path.resolve(auditPath), JSON.stringify(report, null, 2) + '\n', 'utf8');
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
@@ -4387,10 +4483,173 @@ function cmdAnonymize(args, argv) {
     if (r.unchecked.length) for (const u of r.unchecked) console.log('  ▲未检查：' + u);
     if (r.warns.length) { console.log('  ▲只提醒（本工具**不擅自改语义**，请您判断）：' + r.warns.length + ' 处'); for (const w of r.warns.slice(0, 6)) console.log('    - L' + w.line + ' ' + w.kind + '：' + w.text); }
     console.log('  ★清单：' + (auditPath ? path.resolve(auditPath) : '（未写 --audit；建议写出以便复核与还原）'));
-    console.log('  边界（如实）：**文档属性里的作者**（docx/PDF 元数据）与**图内水印/照片**不在此命令覆盖范围 ⇒ 需人工核对。');
+    if (docMetaFindings.length) {
+      console.log('  文档属性（v3.2.64 起纳入）：扫了 ' + docMetaFindings.length + ' 个 docx/pdf');
+      for (const f of docMetaFindings) {
+        const m = f.meta || {}; const ks = Object.keys(m.fields || {});
+        console.log('    - ' + path.basename(f.file) + '：' + (ks.length ? ks.map((k) => k + '=' + String(m.fields[k]).slice(0, 24)).join(' · ') : (m.unreadable || '（无属性字段）')));
+      }
+      console.log('    ★这些字段在**文件属性**里 ⇒ 匿名投稿前必须清（--package 传投稿包目录即可一并扫；清理由 Word/PDF 工具完成，本工具只负责找出来）。');
+    }
+    console.log('  边界（如实）：**图内水印 / 照片里的人脸**不在此命令覆盖范围 ⇒ 需人工核对；PDF 若为对象流压缩，属性可能读不到（会记为未检查）。');
   }
   const bad = r.residual.length > 0 || r.unchecked.length > 0;
   return bad ? 1 : 0;
+}
+/* ★ v3.2.64 文档属性取证（**纯 Node，零依赖**）：匿名化最常被忽略的一层就是**文件属性里的作者**。
+   docx 是 zip ⇒ 自己走中央目录取 docProps/core.xml；PDF ⇒ 扫 Info 字典里的 /Author /Title。
+   读不到就**明说读不到**（PDF 若是对象流压缩的，纯文本扫描看不见 ⇒ 记「未检查」，绝不假装干净）。 */
+function readZipEntry(buf, want) {
+  const sig = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0 && i > buf.length - 70000; i--) { if (buf.compare(sig, 0, 4, i, i + 4) === 0) { eocd = i; break; } }
+  if (eocd < 0) return null;
+  const cdOff = buf.readUInt32LE(eocd + 16);
+  let p = cdOff;
+  while (p + 46 <= buf.length && buf.readUInt32LE(p) === 0x02014b50) {
+    const method = buf.readUInt16LE(p + 10);
+    const csize = buf.readUInt32LE(p + 20);
+    const fnLen = buf.readUInt16LE(p + 28);
+    const exLen = buf.readUInt16LE(p + 30);
+    const cmLen = buf.readUInt16LE(p + 32);
+    const lho = buf.readUInt32LE(p + 42);
+    const name = buf.slice(p + 46, p + 46 + fnLen).toString('utf8');
+    if (name === want) {
+      const lfn = buf.readUInt16LE(lho + 26);
+      const lex = buf.readUInt16LE(lho + 28);
+      const start = lho + 30 + lfn + lex;
+      const data = buf.slice(start, start + csize);
+      try { return method === 8 ? require('zlib').inflateRawSync(data).toString('utf8') : data.toString('utf8'); } catch (e) { return null; }
+    }
+    p += 46 + fnLen + exLen + cmLen;
+  }
+  return null;
+}
+function docMeta(file) {
+  const ext = path.extname(file).toLowerCase();
+  const out = { kind: ext.replace('.', ''), fields: {}, unreadable: '' };
+  try {
+    if (ext === '.docx') {
+      const buf = fs.readFileSync(file);
+      const xml = readZipEntry(buf, 'docProps/core.xml') || readZipEntry(buf, 'docProps/app.xml');
+      if (!xml) { out.unreadable = 'docx 里没找到 docProps/core.xml（结构异常？）⇒ 未检查'; return out; }
+      for (const [k, re] of [['creator', /<dc:creator>([^<]*)<\/dc:creator>/i], ['lastModifiedBy', /<cp:lastModifiedBy>([^<]*)<\/cp:lastModifiedBy>/i],
+                             ['title', /<dc:title>([^<]*)<\/dc:title>/i], ['company', /<Company>([^<]*)<\/Company>/i]]) {
+        const m = re.exec(xml); if (m && m[1].trim()) out.fields[k] = m[1].trim();
+      }
+    } else if (ext === '.pdf') {
+      const buf = fs.readFileSync(file);
+      const s = buf.toString('latin1');
+      for (const [k, re] of [['Author', /\/Author\s*\(([^)]{1,200})\)/], ['Title', /\/Title\s*\(([^)]{1,200})\)/], ['Creator', /\/Creator\s*\(([^)]{1,200})\)/],
+                             ['Producer', /\/Producer\s*\(([^)]{1,200})\)/]]) {
+        const m = re.exec(s); if (m && m[1].trim()) out.fields[k] = m[1].trim();
+      }
+      if (!Object.keys(out.fields).length) out.unreadable = 'PDF 是对象流压缩或未写 Info 字典 ⇒ 未检查（不代表没有作者信息，需用 PDF 属性面板人工核对）';
+    } else { out.unreadable = '只支持 docx / pdf 的元数据取证'; }
+  } catch (e) { out.unreadable = '读元数据失败：' + String((e && e.message) || e).slice(0, 80); }
+  return out;
+}
+/* ★ v3.2.64 `review`：把审稿意见/答辩意见/课堂反馈**分诊**成可执行条目 —— 切条目 → 分类 → 定位 → 回复骨架。
+   为什么：返修期的真正瓶颈不是"改不动"，而是**意见多、优先级乱、漏答**（漏答一条就可能被拒）。
+   纪律：① 每条都必须带**意见原文**（可追溯，不许摘要代替原文）；② 分类是**启发式**，拿不准就写「需人工判断」，
+   **绝不默认归到"可辩"这类省事的类**；③ 在稿件里定位不到 ⇒ 记「未定位」，不许静默留空；④ 一条都识别不出来 ⇒ **退 2** 并说明。 */
+const REVIEW_CLASSES = [
+  { id: 'editorial', label: '编辑/格式要求', re: /(editor|editorial|format|formatting|word count|reference style|cover letter|格式|编辑|字数|排版|体例)/i },
+  { id: 'must-fix', label: '必改（方法/数据/结论缺陷）', re: /(insufficient|flawed|invalid|not (?:sound|convincing|supported)|lacks?|missing (?:control|baseline|statistic)|should (?:add|include|report|clarify) (?:the )?(?:experiment|analysis|data|detail)|major (?:concern|revision)|must|证据不足|不充分|缺少|必须补充|方法(?:有)?问题|结论(?:缺乏|不)支持|重大(?:问题|修改))/i },
+  { id: 'misreading', label: '可能的误解（作者可指出原文已写）', re: /(the authors (?:do not|fail to) (?:mention|cite|clarify)|it is (?:unclear|not clear) (?:why|how)|seems? to (?:ignore|overlook)|appears? that the authors|作者(?:未|没有)(?:提及|引用|说明)|不清楚|似乎忽略|误解)/i },
+  { id: 'clarify', label: '需澄清/补写（写作层面）', re: /(clarify|please (?:explain|elaborate|specify|rewrite)|unclear|ambiguous|expand|rephrase|clarif|澄清|请(?:说明|解释|明确)|表述不清|建议改写|补充说明)/i }
+];
+function splitReviewItems(text) {
+  const lines = text.split('\n');
+  const items = [];
+  let cur = null;
+  const startRe = /^\s*(?:[-*•]|\(?\d{1,2}[).、]|Reviewer\s*\d+|Referee\s*\d+|审稿人\s*\d+|意见\s*\d+|Comment\s*\d+)[\s:：.)]*\s*(.*)$/i;
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { if (cur) { cur.body.push(''); } continue; }
+    const m = startRe.exec(line);
+    if (m && m[1].trim().length >= 4) {
+      if (cur) items.push(cur);
+      cur = { head: m[1].trim(), body: [] };
+    } else if (cur) { cur.body.push(line.trim()); }
+  }
+  if (cur) items.push(cur);
+  return items.map((it) => ({ quote: [it.head].concat(it.body).join(' ').replace(/\s+/g, ' ').trim() }));
+}
+function classifyReview(q) {
+  for (const c of REVIEW_CLASSES) if (c.re.test(q)) return { id: c.id, label: c.label };
+  return { id: 'unclassified', label: '需人工判断（没命中任何类别关键词）' };
+}
+function locateQuote(q, draftText) {
+  if (!draftText) return { where: '未给 --draft ⇒ 未定位', hit: '' };
+  const cands = [];
+  for (const m of q.matchAll(/[“"']([^”"']{8,80})[”"']/g)) cands.push(m[1]);
+  for (const m of q.matchAll(/[\u4e00-\u9fa5]{6,20}/g)) cands.push(m[0]);
+  for (const m of q.matchAll(/[A-Za-z][A-Za-z0-9 ,\-]{18,80}/g)) cands.push(m[0].trim());
+  const lines = draftText.split('\n');
+  for (const c of cands) {
+    const i = lines.findIndex((l) => l.indexOf(c) >= 0);
+    if (i >= 0) return { where: '正文 L' + (i + 1) + '：' + lines[i].trim().slice(0, 60), hit: c, by: 'verbatim' };
+  }
+  /* ★ v3.2.64b：英文审稿意见**极少逐字引用原稿**（实测）⇒ 再加一层"关键词 → 章节候选"映射：
+     把稿件按 Markdown 标题切节，统计意见里的长词在各节里出现的次数，给出得分最高的节作为**候选**（明确标注是候选，不是确证）。 */
+  const secs = [];
+  let curSec = { title: '(前言/文首)', start: 1, body: [] };
+  lines.forEach((l, i) => {
+    const h = /^#{1,6}\s*(.+?)\s*$/.exec(l);
+    if (h) { secs.push(curSec); curSec = { title: h[1].trim(), start: i + 1, body: [] }; } else curSec.body.push(l);
+  });
+  secs.push(curSec);
+  const toks = [...new Set((q.match(/[A-Za-z][A-Za-z\-]{5,}|[\u4e00-\u9fa5]{3,}/g) || [])
+    .map((s) => s.toLowerCase()).filter((s) => !/^(?:the|and|with|that|this|from|which|should|please|authors|paper|manuscript|study|however|because|between|results?|method|data)$/.test(s)))];
+  const scored = secs.map((s) => {
+    const low = s.body.join('\n').toLowerCase();
+    let sc = 0; const hits = [];
+    for (const t of toks) { const n = low.split(t).length - 1; if (n > 0) { sc += Math.min(n, 3); hits.push(t); } }
+    return { title: s.title, line: s.start, score: sc, hits: hits.slice(0, 4) };
+  }).sort((a, b) => b.score - a.score);
+  if (scored.length && scored[0].score > 0) {
+    return { where: '候选节：「' + scored[0].title + '」(L' + scored[0].line + ', 关键词命中 ' + scored[0].score + ')' + (scored[1] && scored[1].score ? ' · 次选：「' + scored[1].title + '」' : ''), hit: scored[0].hits.join(','), by: 'keyword-section' };
+  }
+  return { where: '未定位（逐字找不到，关键词也匹配不上任何节 ⇒ 请人工归位）', hit: '', by: 'none' };
+}
+function cmdReview(args, argv) {
+  const A = (argv || []).filter((x, i) => !(i === 0 && x === 'review'));
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const json = A.includes('--json');
+  const rFile = val('reviews') || val('comments');
+  if (!rFile || !fs.existsSync(path.resolve(rFile))) { console.error('前提层失败：review 需要 --reviews <审稿意见文件>（txt/md）'); return 2; }
+  const text = fs.readFileSync(path.resolve(rFile), 'utf8');
+  const items = splitReviewItems(text);
+  if (!items.length) { console.error('未通过：一条审稿意见都没识别到（本工具按"编号/项目符号/Reviewer N/审稿人 N"切条目）。请给带编号的意见，或用 --split <分隔正则>。**未检查 ≠ 通过**'); return 2; }
+  const draftFile = val('draft');
+  const draftText = (draftFile && fs.existsSync(path.resolve(draftFile))) ? fs.readFileSync(path.resolve(draftFile), 'utf8') : '';
+  const rows = items.map((it, i) => {
+    const cls = classifyReview(it.quote);
+    const loc = locateQuote(it.quote, draftText);
+    return { no: i + 1, quote: it.quote, class: cls.id, class_label: cls.label, location: loc.where, located_by: loc.hit };
+  });
+  const byClass = {}; for (const r of rows) byClass[r.class] = (byClass[r.class] || 0) + 1;
+  const unlocated = rows.filter((r) => /未定位/.test(r.location)).length;
+  const report = { tool: 'paper-studio', version: toolVersion(), at: new Date().toISOString(), reviews: path.resolve(rFile),
+    draft: draftFile ? path.resolve(draftFile) : '', items: rows, by_class: byClass, unlocated,
+    note: '★ 分类是**启发式**（关键词+结构），拿不准的一律写「需人工判断」；**请你们逐条复核分类与定位**。定位用的是意见里的原句在稿件中做子串匹配，找不到就记「未定位」。' };
+  const outPath = val('out');
+  if (outPath) {
+    const md = ['# 审稿意见分诊（' + new Date().toISOString().slice(0, 10) + '）', '', '> ' + report.note, '',
+      '| # | 分类 | 定位 | 意见原文（逐字） | 我们的回复（待填） |', '|---|---|---|---|---|',
+      ...rows.map((r) => '| ' + r.no + ' | ' + r.class_label + ' | ' + r.location.replace(/\|/g, '/') + ' | ' + r.quote.replace(/\|/g, '/').slice(0, 200) + ' | |'),
+      '', '## 分类计数', '', ...Object.keys(byClass).map((k) => '- ' + k + '：' + byClass[k]), ''].join('\n');
+    fs.writeFileSync(path.resolve(outPath), md + '\n' + provenanceLine([['reviews', path.resolve(rFile)]].concat(draftFile ? [['draft', path.resolve(draftFile)]] : [])) + '\n', 'utf8');
+  }
+  if (json) console.log(JSON.stringify(report, null, 2));
+  else {
+    console.log('审稿意见分诊：' + items.length + ' 条（来自 ' + path.basename(rFile) + (draftFile ? ' · 已对稿定位' : ' · 未给 --draft') + '）');
+    for (const r of rows) console.log('  ' + String(r.no).padStart(2) + '. [' + r.class_label + '] ' + r.location + '\n      ' + r.quote.slice(0, 110));
+    console.log('  分类计数：' + JSON.stringify(byClass) + ' · 未定位 ' + unlocated + ' 条');
+    console.log('  ★分类是启发式，**请逐条复核**；每条都保留了意见原文（可追溯）。' + (outPath ? ' 回复骨架已写入：' + path.resolve(outPath) : ''));
+  }
+  return 0;
 }
 function cmdReports(args, argv) {
   const A = argv || [];
@@ -5721,6 +5980,7 @@ function main(argv) {
     if (cmd === 'refs') return cmdRefs(args, argv);
     if (cmd === 'model') return cmdModel(args, argv);
     if (cmd === 'anonymize') return cmdAnonymize(args, argv);
+    if (cmd === 'review') return cmdReview(args, argv);
     if (cmd === 'submission-fields') return cmdSubmissionFields(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
