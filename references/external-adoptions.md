@@ -57,3 +57,40 @@
   （切条 / 启发式分类 / 对稿定位 / 矩阵输出）；其**严重度×成本评分与按回复预算分配**列为下一轮**并入 `review`** 的改进项，
   不另起一套并行命令（遵守"同一件事只有一个所有者"）。
 - **未吸收项**：`review_form`（面板与量表模板）· `qa_drill`（槽位→提问节奏与人格配额）· `make-poster` / `fit-page-limit` / `prepare-camera-ready`，排在后续轮。
+
+## 吸收方法（**A 路径** · 2026-10-17 用户确认「对，我就是这个意思」）
+
+**版权保护表达、不保护思想。** 所以吸收只有一条正道：
+
+> **A 路径**：读懂它的**方法 / 判据 / 流程** → 用**我们自己的语言与代码重写** → 用**我们自己的夹具验证** ⇒ 产出**是我们的**，可自由许可（不受 NC 污染）。
+
+**A 路径的四步（每一步都要留痕）**：
+
+| 步 | 动作 | 必须留下的证据 |
+|---|---|---|
+| 1 | **读源**：把源文件下到本地**逐字读完**（不是看标题、不是看描述） | 文件清单 + 行数（例：`scholar-search.py` 296 行） |
+| 2 | **抽方法**：抽出方法/判据/流程，**并把许可读清**（以 LICENSE 原文为准，`package.json` 的 license 字段可能不准） | 许可判定 + 「取了什么（方法层）」一行 |
+| 3 | **自写**：用我们自己的表达与代码实现；**不复制其文本/代码/提示词** | 我方产出文件路径（`bin/*.cjs` 等） |
+| 4 | **自验**：自己的夹具（**含必失败面**）+ 接进自检链 | 自检读数（例：`oa-fetch` 9/9） |
+
+**两条机器兜底**（把"我说没抄"变成"能证明没抄"）：
+- `bin/license-scan.cjs`：我方文本 × 受限源 13 词窗口重合扫描 ⇒ **命中必须为 0**；
+- `bin/license-audit.cjs` 归属面：真用了其内容的进 A 栏（须署名），只吸思想的进 B 栏（无义务）——**漏署与虚标都 FAIL**。
+
+**禁止项**：只读标题/描述就断言"能力重合、不吸收"（须逐项对比后才能判）；把对方文本改词/换序/翻译后当自有（仍是演绎作品，NC 跟着走）；复制无许可源的代码。
+
+### A 路径落地清单（每一行都能复跑）
+
+| 源 | 许可 | 取的方法（方法层） | 我方产出 | 自验读数 |
+|---|---|---|---|---|
+| `lifecycle-skills` | Apache-2.0 | 槽位→预算（≈1 张/内容分钟，硬上限 1.25×）· problem-first 配比 · claim 式标题 · 单页 >100 词即过载 · 置信加权均值与 champion · 严重度×成本分诊 | `bin/talk.cjs` · `bin/reviewers.cjs` | talk **10/10** · reviewers **10/10** |
+| `kalaris-skills` | MIT | 技能按「何时用」切分、可被按需单独加载 | `skills/*/SKILL.md`（7 模块） | `sync-skill-modules` **8/8** |
+| `dsh-sci-fault-diag-paper` | 木兰宽松 v2 | 插件打包体例 · 教训分级 · **图法**（面板字母/共享色条/箭头轴/比例尺/时间窗括号） | `plugin/*` · `bin/figures-kit.cjs` · `references/figure-style-rubric.md` | figures-kit **9/9** |
+| SkillHub `academic-research` | **包内未声明许可 ⇒ 只学方法、不搬代码** | Unpaywall 兜底 OA-PDF 直链 · 24h 磁盘缓存 · 触发短语密集的 description | `bin/oa-fetch.cjs` · `skill_modules[*].triggers` | oa-fetch **9/9** |
+| **ARIS**（本地逆向） | MIT | 验收门认识论 · 保证级别轴 · 复核独立性 · 注入卫生 · 输出版本化 | `references/aris-read-report.md`（16 条逐条映射） | studio **251/251** |
+| **PRISMA 2020**（Page et al., BMJ 2021;372:n71） | CC BY 4.0 | 27 条目结构 ⇒ 综述骨架 R0–R8 + 4 条门判据 | `templates.json` · 综述门 | 契约门 **69/69** |
+| `research-paper-playbook`（同源本机资产） | 自有 | 11 维判据 · 机器门 · 投稿前检查表 | `pipeline.json` · `templates.json` | studio **251/251** |
+| `paperdebugger` | **AGPL-3.0** | 仅架构观察（多智能体 + 编辑器内集成）——**无产出**，只入吸收矩阵 | —（记录） | license-scan 命中 0 |
+| `academic-research-skills` | **CC-BY-NC** | 仅 agent 角色分解的**分类方式**参照——**无产出** | —（记录） | license-scan 命中 0 |
+
+> 判据：凡上表有产出的行，必须能**复跑出读数**；无产出的行（AGPL / NC）只允许出现在吸收矩阵里，**不得出现在包里**。
