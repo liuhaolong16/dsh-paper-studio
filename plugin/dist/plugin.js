@@ -250,7 +250,7 @@ const INTENT_CASES = [
 ]
 
 
-const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 'scaffold', 'genre', 'form', 'sections', 'verify', 'stylecheck', 'polish', 'revise', 'figures', 'profile', 'coach', 'audit', 'doctor', 'state', 'lessons', 'method', 'handoff', 'crosscheck', 'docx', 'cost', 'selftest',
+const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 'scaffold', 'genre', 'form', 'sections', 'verify', 'stylecheck', 'polish', 'revise', 'figures', 'talk', 'profile', 'coach', 'audit', 'doctor', 'state', 'lessons', 'method', 'handoff', 'crosscheck', 'docx', 'cost', 'selftest',
   // ★ v3.2.2：补上 CLI 已有、但工具面漏接的 4 个（合规门对其他宿主原本完全不可达——paper_studio 里 compliance 命中 0 次）
   'compliance', 'hygiene', 'claims', 'coverage', 'credit', 'retract-check', 'refs', 'model', 'anonymize', 'review',
   // ★ v3.2.24：补上 CLI 已有、但工具面漏接的 5 个 —— formats/preflight/anchors/report/schemacheck

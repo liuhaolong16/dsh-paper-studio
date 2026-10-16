@@ -77,6 +77,10 @@ node bin/studio.cjs revise rebuttal --comments "<意见.md>" [--responses "<回�
 node bin/studio.cjs revise aitone --file "<稿.md>"       :: 去 AI 味词表（20 个英中记号，逐条行号 + 替换建议；**密度只作 advisory**）
 node bin/studio.cjs revise readthrough --file "<稿.md>"  :: **Reviewer 视角通读**：机械证据 + 10 问，逐条标「机械证据 / 需人读」
 node bin/studio.cjs revise budget --file "<稿.md>"       :: 缩写/扩写：与真源篇幅预算逐节比对（超额给删减候选；不足给该节「必答」问题）
+node bin/studio.cjs talk budget --minutes 15 [--qa 3]     :: **讲授预算**：内容页目标（≈1 张/分钟）与硬上限 1.25×，problem-first 分节配时（**槽位时长必须由你给出，绝不臆测**）
+node bin/studio.cjs talk script --minutes 12 [--deck <f>]  :: **口播稿预算**：按语速把词数摊到每页（中文 180–220 字/分 · 英文 120–150 词/分；备份页不配词）
+node bin/studio.cjs talk lint <deck.md> --minutes 12      :: **幻灯片 lint**：pacing（>1.25× 即 RISK）· 单页 >100 词 · 要点 >6 条 · 非断言标题 · 图片缺失 · Marp 不能渲染 PDF 图
+   （`talk` 的规则与流程**吸收自第三方技能包 lifecycle-skills 的 make-slides / write-talk-script**（Apache-2.0）；实现为本仓自有 Node 纯函数 + 夹具，来源与许可见 `references/external-adoptions.md`）
 node bin/studio.cjs figures caption --check --file "<稿.md>"   :: 题注体检（硬判据＝"见正文"；缺 n/单位只提示）· `figures recommend` 绘图建议 · `figures arch` 架构图 Mermaid 源码
 node bin/studio.cjs schemacheck --manifest tools.json    :: **工具 parameters 严格性校验**（防严格通道 400 / "换模型才报错"）
 node bin/studio.cjs doctor                                 :: **环境与能力自检**（运行时/本机路径表/12 道门/素材逐条可用性；缺什么就直说并给补救；**未检查 ≠ 通过**；缺资产时退出码非 0）

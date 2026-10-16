@@ -35,3 +35,10 @@
 1. **过松**：注册判据原写 `protocol (is|was|can be|available)`，被正文里的 "protocol-driven" 蒙中（实测命中词就是那个 `is`）⇒ 已收紧为"注册/协议的**明确状态**"（登记在哪 / 明确未注册 / 协议是否准备好）。
 2. **过松**：流程计数的中文侧原含 `记录\s*\d+`，会把"编码记录 17 项"这类**无关计数**当成筛选流程计数 ⇒ 已收紧为必须带筛选语义（初检/检索到/去重后/全文评估/纳入 N 篇）。
    ⇒ 两条都是**跑真稿 + 核对"命中的到底是哪一段"**才发现的 —— 判据只看"命中/未命中"是不够的，**必须看命中证据**。
+
+## lifecycle-skills（Apache-2.0）· 呈现与讲授类 —— 2026-10-17
+
+- **来源**：`https://github.com/ShaishavMaisuria/research-paper-lifecycle-skills`（本地扫描件 `E:\DeepSeek\third_party\scan-20261017\lifecycle-skills`，258 文件）。
+- **许可**：**Apache-2.0**（可复制/修改/再分发，须保留版权与许可声明）。⇒ 本仓**未复制其代码**，只吸收**规则与流程**：槽位→预算（≈1 张/内容分钟，硬上限 1.25×）· problem-first 分节配比 · claim 式标题（禁"Background/方法"这类非断言标题）· 单页 >100 词即"文档不是幻灯片" · 要点 >6 条即过载 · 图片缺失/不可渲染 · 备份页不占预算 · **绝不臆测槽位时长** · 口播稿按语速摊词（中文字/分、英文词/分）。
+- **落地**：`bin/talk.cjs`（`talk budget|script|lint`，纯函数 + 10 条夹具含必失败面）· 文档见 `SKILL.md` · 真源登记 `pipeline.json`（`selfchecks` + `agent_facing`）。
+- **未吸收项与其后**：`rehearse-qa` / `simulate-reviewers` / `triage-reviews` / `make-poster` / `fit-page-limit` / `prepare-camera-ready` 排在后续轮次（见 `absorption-matrix-20261017.md` backlog）。

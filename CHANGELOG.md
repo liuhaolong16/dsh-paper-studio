@@ -3,6 +3,18 @@
 
 # 变更记录
 
+## v3.2.86 —— 2026-10-17
+
+**吸收 P0·呈现讲授类：新增 `talk` 子命令（budget / script / lint）——规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0），实现为本仓自有 Node 纯函数 + 夹具。**
+
+- **`talk budget --minutes <内容分钟> [--qa <n>]`**：槽位→预算。内容页目标 ≈1 张/内容分钟、**硬上限 1.25×**（超了删并页，不许讲快）；problem-first 分节配比（开场/缺口/方法/结果/结论/致谢，全篇形态；≤7 分钟自动切闪电形态）；问答另计。
+  **前提门**：不给 `--minutes` 直接拒（**绝不许从记忆或场所档案臆测槽位时长** —— 这条纪律吸收自上游）。
+- **`talk script --minutes <n> [--deck <f>]`**：口播稿预算，按语速把词数摊到每页（中文 180–220 字/分 · 英文 120–150 词/分 · 每页 50 秒，取自真源 `forms.budget`）；**备份页不配词**。
+- **`talk lint <deck.md> --minutes <n>`**：幻灯片 lint 六类 —— **pacing**（>1.25× 判 RISK、软上限内只记 INFO）· 单页 >100 词 · 要点 >6 条 · **非断言标题**（Background/方法/结果…）· 图片缺失 · **Marp 不能渲染 PDF 图**；支持 Marp 与 Beamer 两种源；备份页不计预算。
+- **实现纪律**：`bin/talk.cjs` 为纯函数（`talkBudget` / `talkScript` / `talkLint` / `parseDeck`）+ **10 条夹具（含 4 条必失败面）**；**真源由 studio 传入**（talk 自己不读 `pipeline.json`，遵守"真源单一读法"）；四处接线（CLI 分发 / 真源 `selfchecks`＋`agent_facing` / 插件 `STUDIO_ACTIONS` / `SKILL.md` 文档），漏接会被插件漂移锁与 `audit skills-coverage` 当场报红。
+- **一个真实的踩坑（已修）**：首版 Marp 解析把**开头的 front matter 当成第一页**，而我的夹具恰好把"含 front matter 的页数"写成了期望值 ⇒ **夹具把 bug 固化了**。修法：解析前剥掉 front matter，夹具期望值改为真实值，并**新增一条必失败断言**（front matter 不得算页）。
+- **许可留痕**：只吸收规则与流程，**未复制上游代码**；来源与许可见 `references/external-adoptions.md`。
+
 ## v3.2.85 —— 2026-10-17
 
 **第三方扫描件全部下载 + 机器盘点 + 吸收矩阵（下载 → 拆解 → 吸收的第一步）。**

@@ -744,6 +744,7 @@ const SUBCOMMANDS = [
   'report',
   'verify',
   'stylecheck',
+  'talk',
   'polish',
   'profile',
   'schemacheck',
@@ -7204,6 +7205,11 @@ if (cmd === 'form') {
     if (cmd === 'stylecheck') {
       // V2.9：写作质量机械检查（叙事纪律里可机检的那部分；语义留给跨模型 reviewer）
       return require('./stylecheck.cjs').main(argv.slice(1));
+    }
+    if (cmd === 'talk') {
+      // v3.2.86：讲授/呈现类（吸收自 lifecycle-skills 的 make-slides/write-talk-script，Apache-2.0）。
+      // 真源由 studio 传入（**talk.cjs 自己不读 pipeline.json**，遵守真源单一读法）。
+      return require('./talk.cjs').main(argv.slice(1), { pipeline: readPipeline() });
     }
     if (cmd === 'state') {
       // V2.12：多阶段运行的「完成 vs 受理」状态机（done≠accepted；resume 走到第一个非终态）
