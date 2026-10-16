@@ -266,3 +266,21 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 - `form budget --form <id> --draft <稿.md> [--minutes N] [--lang zh|en] [--answers <答案.json>]` —— **字数门 + 时间盒门**：区间按形态（**模板优先**）；课堂演讲按「分钟 × 口播速率」判**超时风险**与页数上限；**缺时长判未检查（不许猜）**
 - 自检：`node bin/keys-store.cjs --selftest` ⇒ **10/10**（含三条必失败面：损坏 JSON 不抛且给原因 · 非法 provider 名被拒 · 原子写不留残片）；studio 另有 8 条面板夹具，全部走临时 `DSH_PAPER_KEYS_FILE`，**不碰真凭据**。
 - 面板本体（客户端半体）做成**独立插件**（`dsh-paper-keys`）：paper-studio 保持"零面板"承诺，卸载面板不影响论文能力本体。
+
+<!-- AUTO:skill-modules:start 由 bin/sync-skill-modules.cjs 生成；勿手改 -->
+
+## 能力模块索引（按需要单独加载 · 7 个模块）
+
+> 发现器可按"何时用"只加载其中一个模块，不必吞下整包文档。每个模块的命令并集 = 真源 `agent_facing`（机器核对，见 `bin/sync-skill-modules.cjs --check`）。
+
+| 模块 | 何时用 | 命令数 |
+|---|---|---|
+| [`skills/paper-forms/SKILL.md`](skills/paper-forms/SKILL.md) | 要开一篇新稿、要判断该按哪种形态走（学位论文 / 开题 / 课程论文 / 会议 / 期刊 / 课堂演讲）、或要出章节骨架与写作任务书时 | 6 |
+| [`skills/paper-gates/SKILL.md`](skills/paper-gates/SKILL.md) | 稿子基本成形、要做「投稿前体检」，或要核对期刊契约 / 声明件 / 数字一致性 / 可复现材料时；也用于出厂前检查本插件自身是否自洽 | 11 |
+| [`skills/paper-writing/SKILL.md`](skills/paper-writing/SKILL.md) | 要把某段或整篇改到能投、要去 AI 味、要做中英双向转换、要体检图表题注与规格、或要生成双盲匿名版时 | 5 |
+| [`skills/paper-citing/SKILL.md`](skills/paper-citing/SKILL.md) | 要格式化参考文献（GB/T 7714—2025 / Vancouver 等）、要核对「引用是否真实存在」、或要给主张配引用锚点时 | 1 |
+| [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时 | 1 |
+| [`skills/paper-presenting/SKILL.md`](skills/paper-presenting/SKILL.md) | 论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时 | 1 |
+| [`skills/paper-process/SKILL.md`](skills/paper-process/SKILL.md) | 要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时 | 9 |
+
+<!-- AUTO:skill-modules:end -->

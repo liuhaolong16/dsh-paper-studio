@@ -1366,7 +1366,8 @@
     "reviewers.cjs": "node bin/reviewers.cjs --selftest",
     "sync-skill-table.cjs": "node bin/sync-skill-table.cjs --selftest",
     "license-scan.cjs": "node bin/license-scan.cjs --selftest",
-    "license-audit.cjs": "node bin/license-audit.cjs --selftest"
+    "license-audit.cjs": "node bin/license-audit.cjs --selftest",
+    "sync-skill-modules.cjs": "node bin/sync-skill-modules.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1434,5 +1435,172 @@
         }
       ]
     }
-  }
+  },
+  "skill_modules": [
+    {
+      "id": "paper-forms",
+      "title": "形态与开稿（论文形态 · 体裁 · 骨架 · 任务书）",
+      "when": "要开一篇新稿、要判断该按哪种形态走（学位论文 / 开题 / 课程论文 / 会议 / 期刊 / 课堂演讲）、或要出章节骨架与写作任务书时",
+      "not_for": "已经成稿后的润色、引用核对与投稿体检（分别走 paper-writing / paper-citing / paper-gates）",
+      "commands": [
+        "route",
+        "intake",
+        "genre",
+        "scaffold",
+        "draft",
+        "sections"
+      ],
+      "gates": [
+        "author-material（作者材料前提门）"
+      ],
+      "assets": [
+        "references/pipeline.json（task_types / stage_kinds / handoff.contracts）",
+        "references/forms/*.json（六形态：框架 / 格式 / 方法论 / 核心 / 工作流 / 重点 / 字数）",
+        "references/templates.json"
+      ],
+      "boundaries": [
+        "不判断投稿去向与期刊匹配（那要期刊契约与选刊资料，见 paper-gates 与 paper-citing）",
+        "不生成正文（只给骨架、必答问题与证据义务）"
+      ]
+    },
+    {
+      "id": "paper-gates",
+      "title": "门与合规体检（权威门 · 期刊契约 · 声明件 · 数字一致性）",
+      "when": "稿子基本成形、要做「投稿前体检」，或要核对期刊契约 / 声明件 / 数字一致性 / 可复现材料时；也用于出厂前检查本插件自身是否自洽",
+      "not_for": "起草与润色（paper-forms / paper-writing）· 单个引用的核对（paper-citing）",
+      "commands": [
+        "gates",
+        "verify",
+        "crosscheck",
+        "compliance",
+        "hygiene",
+        "claims",
+        "coverage",
+        "retract-check",
+        "credit",
+        "audit",
+        "docx"
+      ],
+      "gates": [
+        "12 道门（含 journal-contract · claim-anchor · review-protocol · confidentiality）"
+      ],
+      "assets": [
+        "references/contracts/*.json（7 份期刊契约）",
+        "references/compliance-checklist.md",
+        "references/pipeline.json（门与 args 模板）"
+      ],
+      "boundaries": [
+        "门只照它认识的判据判；**判据前提扫到零必须报红**，跳过一律单列且不计入通过数",
+        "不代替人读：语义与学术判断留给人或跨模型 reviewer"
+      ]
+    },
+    {
+      "id": "paper-writing",
+      "title": "写作与文字（润色 · 文风 · 中英通道 · 图表规格 · 双盲匿名化）",
+      "when": "要把某段或整篇改到能投、要去 AI 味、要做中英双向转换、要体检图表题注与规格、或要生成双盲匿名版时",
+      "not_for": "改动方法论与数据（那不属文字层）· 引用格式（paper-citing）",
+      "commands": [
+        "stylecheck",
+        "polish",
+        "revise",
+        "anonymize",
+        "figures"
+      ],
+      "assets": [
+        "assets/phrase-bank.json（本仓自产词库）",
+        "references/pipeline.json（篇幅预算 budget_words）",
+        "references/external-adoptions.md"
+      ],
+      "boundaries": [
+        "**改动账本**：每处改动必须留 kind 与 reason，缺了拒收",
+        "LaTeX 保真：公式原样，百分号 / 下划线 / 和号的转义不得破坏命令",
+        "去 AI 味只给可替换项与行号，**密度只作 advisory**"
+      ]
+    },
+    {
+      "id": "paper-citing",
+      "title": "文献与引用（著录格式 · 编号 · 核验与锚点）",
+      "when": "要格式化参考文献（GB/T 7714—2025 / Vancouver 等）、要核对「引用是否真实存在」、或要给主张配引用锚点时",
+      "not_for": "文献检索策略本身（走检索技能）· 稿件排版（paper-gates / paper-writing）",
+      "commands": [
+        "refs"
+      ],
+      "extra_commands": [
+        "anchors"
+      ],
+      "assets": [
+        "assets/csl/*.csl（3 个样式 · CC-BY-SA 3.0 · 见 assets/csl/PROVENANCE.md）",
+        "references/csl-lock.json（样式 sha256 锁）"
+      ],
+      "boundaries": [
+        "**verify-or-drop**：核不实就删或打标，绝不编造",
+        "零 key、离线可跑；联网核验由宿主或既有技能提供"
+      ]
+    },
+    {
+      "id": "paper-reviewing",
+      "title": "审稿与返修（模拟评审 · 意见分诊 · 回复与投稿信）",
+      "when": "投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时",
+      "not_for": "投稿件本身的合规体检（paper-gates）· 纯文字润色（paper-writing）",
+      "commands": [
+        "reviewers"
+      ],
+      "extra_commands": [
+        "review",
+        "response",
+        "cover"
+      ],
+      "assets": [
+        "references/pipeline.json（handoff.contracts）"
+      ],
+      "boundaries": [
+        "**咨询性、不预测结果**：风险带只帮你在还能改的时候发现问题",
+        "分诊未完成（有未分类项）就退 1，不许直接写 rebuttal",
+        "严重度＝对录用的威胁、成本＝回复窗口内的代价；同源关切被 2 个以上审稿人提出升一级"
+      ]
+    },
+    {
+      "id": "paper-presenting",
+      "title": "呈现与讲授（幻灯片预算 · 口播稿 · 幻灯片 lint）",
+      "when": "论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时",
+      "not_for": "论文正文写作（paper-writing）· 海报与定稿页数（后续轮次）",
+      "commands": [
+        "talk"
+      ],
+      "assets": [
+        "references/forms/class-talk.json（课堂演讲形态）",
+        "references/external-adoptions.md（吸收自 lifecycle-skills，Apache-2.0）"
+      ],
+      "boundaries": [
+        "**槽位时长必须由用户给出**，绝不从记忆或场所档案臆测",
+        "备份页不占预算；标题必须是断言，非断言标题判风险"
+      ]
+    },
+    {
+      "id": "paper-process",
+      "title": "过程与沉淀（状态机 · 教训 · 方法 · 交接 · 成本 · 模型通道）",
+      "when": "要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时",
+      "not_for": "论文内容本身（见其余模块）",
+      "commands": [
+        "state",
+        "lessons",
+        "method",
+        "handoff",
+        "cost",
+        "coach",
+        "profile",
+        "selftest",
+        "model"
+      ],
+      "assets": [
+        "plugin/hub/*（跨会话中枢）",
+        "references/lessons-from-first-draft.md"
+      ],
+      "boundaries": [
+        "**凭证值不入任何记忆 / 文件 / 日志**（model 只记处理方式）",
+        "教训必须带「怎么验」（可机检判据优先于口号）"
+      ]
+    }
+  ],
+  "skill_modules_note": "★ v3.2.96 模块化技能包：把 agent_facing 命令按「何时用」切成 7 个模块（各自一个 SKILL.md，发现器可按需单独加载）。硬约束由 bin/sync-skill-modules.cjs 机器核对：每模块命令必须真实存在于 SUBCOMMANDS · 并集必须恰好等于 agent_facing（不许漏 / 幽灵 / 重复认领）· when 不得少于 20 字。生成物：skills/<id>/SKILL.md + 两份入口文档的「能力模块索引」段（均由生成器维护，勿手改）。"
 }
