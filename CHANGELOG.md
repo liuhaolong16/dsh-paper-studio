@@ -3,6 +3,21 @@
 
 # 变更记录
 
+## v3.2.77 —— 2026-10-17
+
+**多形态论文 · 第 8 轮（收尾②）：源文件完整性与兼容度校验 —— 新增可复跑审计 `bin/package-audit.cjs`。**
+
+- **六项检查一次跑完**（`node bin/package-audit.cjs [--json] [--write-manifest <路径>]`）：
+  ① **随包清单由声明推导**（读 `package.json` 的 `files` 白名单再走文件系统，**不手写**）并逐文件算 **sha256** 落盘（`run/package-manifest.json`）；
+  ② **违禁项扫描**（`.npmrc` / `node_modules` / `.git/` / `.env` / 密钥文件出现在清单里 ⇒ **判失败**）；
+  ③ **密钥样式扫描**（`npm_…` / `ghp_…` / 私钥头）；
+  ④ **CSL 样式锁** 3/3 逐一对 sha256；
+  ⑤ **门副本逐字节对拍**（内置 vs 本机外部门）——**外部对照物不存在时记 SKIP，不是 PASS**；
+  ⑥ **适配器/宿主兼容面**（`plugin/tools-manifest.json` 的 action 枚举 + `install-mcp.cjs` / `install-codex.cjs` / `plugin/skill/SKILL.md` / `bin/mcp-server.mjs` 四件在册）。
+- **★口径诚实**：清单明示为 `files` 白名单推导、**不含 npm 自身忽略规则 ⇒ 是发布 tarball 的超集**；支持 `PS_NPM_FILE_COUNT` 传入 npm 实发条数**对拍**（本轮实测 npm **112** / 本清单 **121**，差 9 属正常）。
+- **自检 7/7**（含两类必失败臂）：清单含 `panel/` 与 `references/forms/` · **违禁项注入必被抓** · **外部对照缺失记 SKIP** · 样式锁 3/3 · 适配器面 · 端到端 ok · 清单落盘条目数与 sha256 长度 64。
+- **★登记纪律（本轮被自己的探针抓了一次）**：新 `bin/*.cjs` 必须登记进 `references/pipeline.json` 的 `selfchecks`（**它是「脚本名 → 自检命令」的字典**，不是数组）。我先按数组写、补丁报错中断，结果 studio 立刻掉到 **242/243**、插件 **37/38**、tools-probe 报红、数字对拍 **2 问题** —— 改对形状并登记后全部恢复（studio **243/243** · 插件 **38/38** · audit **6/6** · 对拍 **PASS**）。
+
 ## v3.2.76 —— 2026-10-16
 
 **收尾①补丁：`form show` 也把「★核心 / 常用方法论」显示出来。**
