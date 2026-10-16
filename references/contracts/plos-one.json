@@ -70,7 +70,24 @@
     "si_item_naming": "S+编号（如 S1 Table、S2 Appendix）",
     "cover_letter_separate": true,
     "required_sections": [],
-    "required_sections_note": "**显式声明为空**：PLOS 把 Financial Disclosure / Competing interests / Data Availability Statement / CRediT / 相关在先稿件声明收在**投稿系统**里（见本契约 system_only_fields），**不要求写进稿件** ⇒ 稿件侧不设必需节。空数组是\"已决定\"，不是\"忘了写\"。"
+    "required_sections_note": "**显式声明为空**：PLOS 把 Financial Disclosure / Competing interests / Data Availability Statement / CRediT / 相关在先稿件声明收在**投稿系统**里（见本契约 system_only_fields），**不要求写进稿件** ⇒ 稿件侧不设必需节。空数组是\"已决定\"，不是\"忘了写\"。",
+    "figure_lint": {
+      "banned_colormaps": [
+        "jet",
+        "rainbow",
+        "hsv",
+        "nipy_spectral"
+      ],
+      "require_axis_labels": true,
+      "require_units": true,
+      "red_green_only_forbidden": true,
+      "caption_min_chars": 20,
+      "code_exts": [
+        "py",
+        "m",
+        "ipynb"
+      ]
+    }
   },
   "references": {
     "style": "Vancouver / ICMJE",

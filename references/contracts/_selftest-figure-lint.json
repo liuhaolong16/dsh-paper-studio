@@ -1,0 +1,33 @@
+{
+  "journal": "（内部夹具）图件 lint 触发契约",
+  "publisher": "paper-studio",
+  "verified_at": "2026-10-16",
+  "verified_from": "internal fixture：只为让反向锁（每条检查必须被至少一份契约触发）有真源，不对应任何真实期刊",
+  "note": "★ 该契约仅用于自检/对拍；不要拿它去核真实稿件。",
+  "limits": {
+    "abstract_max_words": 250
+  },
+  "structure": {
+    "figure_lint": {
+      "banned_colormaps": [
+        "jet",
+        "rainbow",
+        "hsv",
+        "nipy_spectral"
+      ],
+      "require_axis_labels": true,
+      "require_units": true,
+      "red_green_only_forbidden": true,
+      "caption_min_chars": 20,
+      "code_exts": [
+        "py",
+        "m",
+        "ipynb"
+      ]
+    },
+    "figure_generators": [
+      "scripts/fig1.py"
+    ],
+    "figure_multipanel": true
+  }
+}

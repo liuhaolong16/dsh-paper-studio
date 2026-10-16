@@ -75,7 +75,24 @@
       }
     ],
     "required_sections_note": "来源：references/compliance-checklist.md §4（一手：该刊 Guide 的声明段要求）。**Ethics 有意不列入**：伦理批准/知情同意只对**人体或动物研究**适用，本刊投稿的电池类研究不适用 ⇒ 列入会产生假失败，改由人工按研究类型判断。CRediT 与生成式 AI 声明已有独立检查（credit_present / ai_declaration_present），不在此重复。 **v3.2.20**：证据强度含 ①标题行 ②**行首加粗/斜体标签** ③逐节 `patterns`（标准声明句）；三者同等强，且一律排除待办行。",
-    "required_sections_source": "references/compliance-checklist.md §4（2026-10-16 一手取证）"
+    "required_sections_source": "references/compliance-checklist.md §4（2026-10-16 一手取证）",
+    "figure_lint": {
+      "banned_colormaps": [
+        "jet",
+        "rainbow",
+        "hsv",
+        "nipy_spectral"
+      ],
+      "require_axis_labels": true,
+      "require_units": true,
+      "red_green_only_forbidden": true,
+      "caption_min_chars": 20,
+      "code_exts": [
+        "py",
+        "m",
+        "ipynb"
+      ]
+    }
   },
   "quotes": {
     "abstract": "You are required to provide a concise and factual abstract that does not exceed 250 words.",

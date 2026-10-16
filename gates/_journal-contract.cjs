@@ -613,6 +613,56 @@ if (process.argv.includes('--selftest')) {
       byId4.file_formats && byId4.file_formats.ok === false && /未检查/.test(String(byId4.file_formats.detail)),
       String((byId4.file_formats || {}).detail || '').slice(0, 80));
   })();
+  /* ★ v3.2.61 C19 夹具：图件 lint（禁用色图 / 轴标签 / 单位 / 红绿单编码 / 图题自足 / 多面板 / 生成脚本） */
+  (() => {
+    const dir = path.join(tmp, 'figlint'); fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'scripts', 'fig1.py'), [
+      'import matplotlib.pyplot as plt',
+      'fig, ax = plt.subplots()',
+      "ax.plot(t, v, color='#1f77b4')",
+      "ax.set_xlabel('Time (s)')",
+      "ax.set_ylabel('Voltage (V)')",
+      ''].join('\n'));
+    fs.writeFileSync(path.join(dir, 'Figure-captions.md'), 'Fig 1. Voltage versus time for the cells at 1C, 25 °C, showing the plateau region before the knee.\n');
+    const cFig = path.join(tmp, 'c-figlint.json');
+    fs.writeFileSync(cFig, JSON.stringify({ journal: 'FigLint 样例', publisher: 'P', verified_at: '2026-10-16', verified_from: 'u',
+      limits: { abstract_max_words: 90 },
+      structure: { figure_lint: { banned_colormaps: ['jet', 'rainbow', 'hsv'], require_axis_labels: true, require_units: true,
+        red_green_only_forbidden: true, caption_min_chars: 20, code_exts: ['py'] },
+        figure_generators: ['scripts/fig1.py'], figure_multipanel: true } }));
+    const okD = path.join(dir, 'm-ok.md'); fs.writeFileSync(okD, '# T\n\n## Abstract\n\nShort.\n\n## References\n\n[1] x\n');
+    const r1 = runJson(['--draft', okD, '--contract', cFig, '--package', dir, '--json']);
+    const b1 = {}; for (const x of (r1.j && r1.j.results) || []) b1[x.id] = x;
+    add('v3.2.61·C19 正控：规范绘图代码 + 自足图题 + 生成脚本存在 ⇒ 四项通过（单位/多面板按语义另计）',
+      ['figure_code_banned_colormap', 'figure_code_axis_labels', 'figure_code_red_green_only', 'figure_generator_missing'].every((k) => b1[k] && b1[k].ok === true),
+      JSON.stringify(['figure_code_banned_colormap','figure_code_axis_labels','figure_code_red_green_only','figure_generator_missing'].map((k) => k + '=' + (b1[k] ? (b1[k].ok ? 'ok' : 'FAIL') : 'MISSING'))));
+    add('v3.2.61·C19 正控：图题 ≥20 字符 ⇒ caption_min_chars 通过；多面板已声明但题注无 (a) ⇒ 必须 FAIL（如实判，不放水）',
+      b1.figure_caption_min_chars && b1.figure_caption_min_chars.ok === true && b1.figure_caption_multipanel && b1.figure_caption_multipanel.ok === false,
+      JSON.stringify({ cap: b1.figure_caption_min_chars && b1.figure_caption_min_chars.ok, multi: b1.figure_caption_multipanel && b1.figure_caption_multipanel.ok }));
+    /* 必失败面 */
+    const bad = path.join(tmp, 'figlint-bad'); fs.mkdirSync(bad, { recursive: true });
+    fs.writeFileSync(path.join(bad, 'plotter.py'), [
+      'import matplotlib.pyplot as plt',
+      'plt.imshow(z, cmap=\'jet\')',
+      "plt.plot(a, color='red'); plt.plot(b, color='green')",
+      ''].join('\n'));
+    fs.writeFileSync(path.join(bad, 'Figure-captions.md'), 'Fig 1. Results.\n');
+    const r2 = runJson(['--draft', okD, '--contract', cFig, '--package', bad, '--json']);
+    const b2 = {}; for (const x of (r2.j && r2.j.results) || []) b2[x.id] = x;
+    add('v3.2.61·C19 必失败面：jet 色图 / 缺轴标签 / 只红绿 / 图题过短 / 生成脚本缺失 ⇒ 五项都必须 FAIL',
+      ['figure_code_banned_colormap', 'figure_code_axis_labels', 'figure_code_red_green_only', 'figure_caption_min_chars', 'figure_generator_missing']
+        .every((k) => b2[k] && b2[k].ok === false),
+      JSON.stringify(['figure_code_banned_colormap','figure_code_axis_labels','figure_code_red_green_only','figure_caption_min_chars','figure_generator_missing'].map((k) => k + '=' + (b2[k] ? (b2[k].ok ? 'ok' : 'FAIL') : 'MISSING'))));
+    /* 诚实面：没有代码/题注来源 ⇒ 必须记「未检查」而不是通过 */
+    const empty = path.join(tmp, 'figlint-empty'); fs.mkdirSync(empty, { recursive: true });
+    const r3 = runJson(['--draft', okD, '--contract', cFig, '--package', empty, '--json']);
+    const b3 = {}; for (const x of (r3.j && r3.j.results) || []) b3[x.id] = x;
+    add('v3.2.61·C19 诚实面：无绘图代码/无题注来源 ⇒ 记 WARN 且写明「未检查」，不得当通过',
+      (!b3.figure_code_axis_labels || b3.figure_code_axis_labels.ok === false) && /未检查/.test(String((b3.figure_code_axis_labels || {}).detail || ''))
+      && (!b3.figure_caption_min_chars || b3.figure_caption_min_chars.ok === false) && /未检查/.test(String((b3.figure_caption_min_chars || {}).detail || '')),
+      String((b3.figure_code_axis_labels || {}).detail || '').slice(0, 70));
+  })();
   add('新检查·必失败面：契约声明了本门没执行的检查 ⇒ 必须 FAIL（登记过≠可机检）',
     !!(cov && cov.ok === false && /没执行/.test(cov.detail)), '实得 ' + JSON.stringify(cov && { ok: cov.ok, d: cov.detail }));
   const cCovered = path.join(tmp, 'c-covered.json');
@@ -749,6 +799,13 @@ const results = [];
  *  实测正是如此：`ai_declaration_present` 实现已久，但 6 份契约无一声明 `ai_declaration_required`。
  *  这张表登记「检查项 ← 触发它的契约键」，自检时遍历全部契约，要求每项至少被一份契约触发。 */
 const CONTRACT_DRIVEN = {
+  figure_code_banned_colormap: 'structure.figure_lint',
+  figure_code_axis_labels: 'structure.figure_lint',
+  figure_code_units: 'structure.figure_lint',
+  figure_code_red_green_only: 'structure.figure_lint',
+  figure_caption_min_chars: 'structure.figure_lint',
+  figure_caption_multipanel: 'structure.figure_multipanel',
+  figure_generator_missing: 'structure.figure_generators',
   /* ★ 表本身必须与门里真实存在的 check id 对齐（首版我凭印象写了 `docs_before_refs` —— 门里根本没这条 ⇒ 反向锁当场判它"死检查"，红得对）。
      匹配用的是键的**末段**（如 `limits.abstract_max_words` ⇒ 找 `"abstract_max_words"`）⇒ 偏宽松：
      它的职责是抓"**永远不被触发**"的检查，不是证明触发键唯一。 */
@@ -1138,6 +1195,152 @@ if (typeof S.si_item_naming === 'string' && S.si_item_naming) {
     check('si_item_naming', 'FAIL', bad.length === 0,
       bad.length ? ('SI 件命名未按契约「' + S.si_item_naming + '」：' + bad.slice(0, 3).join(' , ')) : ('SI 件命名合规（' + si.length + ' 件）'), '');
   }
+}
+
+/* ── C19（v3.2.61）：图件的「另一半」机检 —— 对拍上游 `paper-figure-validator`(MIT) 后补的实现 ──
+   上游的强项是**按图片头部**读 DPI/尺寸/格式（我们 v3.2.19 已有，且还能读 EPS 盒与 SVG 属性）；
+   我们的缺口在上游的另一半，而这四条**都在文本里**（绘图代码与图题）⇒ 不依赖像素即可机检：
+   ① 绘图代码里的**禁用色图**（jet/rainbow/hsv/nipy_spectral… 非色盲安全、感知不均匀）
+   ② 轴标签（含绘图调用却缺 xlabel/ylabel） ③ **只红绿两色**做编码（色盲不可读）
+   ④ 图题**自足性**（长度下限）与**多面板标记** ⑤ 声明的**生成脚本必须真的存在**。
+   契约开关：structure.figure_lint{...} / structure.figure_generators[] / structure.figure_multipanel。*/
+if (S.figure_lint && typeof S.figure_lint === 'object') {
+  const FL = S.figure_lint;
+  const baseDir = (pkg && pkg.dir) ? pkg.dir : (draftPath ? path.dirname(path.resolve(draftPath)) : '');
+  const walkIn = (dir, re, acc, depth) => {
+    if (!dir || depth > 4) return acc;
+    let ents = [];
+    try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return acc; }
+    for (const e of ents) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (!/^(?:node_modules|\.git|dist|\.dsh-project-memory|archive)$/.test(e.name)) walkIn(p, re, acc, depth + 1); }
+      else if (re.test(e.name)) acc.push(p);
+    }
+    return acc;
+  };
+  const readTxt = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch (e) { return ''; } };
+  const codeRe = new RegExp('\\.(?:' + (FL.code_exts || ['py', 'm', 'ipynb', 'jl']).join('|') + ')$', 'i');
+  const codeFiles = walkIn(baseDir, codeRe, [], 0);
+  const PLOT_CALL = /(?:plt|ax|axs|axes|fig|pyplot)\s*\.\s*(?:plot|scatter|bar|barh|imshow|pcolormesh|contour|contourf|hist|errorbar|plot_surface|heatmap|imagesc)\s*\(|(?:^\s*)(?:plot|scatter|bar|imagesc|imshow|heatmap)\s*\(/im;
+  const plotFiles = codeFiles.filter((f) => PLOT_CALL.test(readTxt(f)));
+
+  /* ① 禁用色图 */
+  if (FL.banned_colormaps && FL.banned_colormaps.length) {
+    const hits = [];
+    for (const f of codeFiles) {
+      readTxt(f).split('\n').forEach((ln, i) => {
+        for (const cm of FL.banned_colormaps) {
+          const esc = String(cm).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const assigned = new RegExp('(?:cmap|colormap|colors?)\\s*[=(]\\s*[\'"]' + esc + '[\'"]', 'i');
+          const bare = new RegExp('[\'"]' + esc + '[\'"]');
+          if (assigned.test(ln) || (bare.test(ln) && /cmap|colormap|color/i.test(ln))) hits.push(path.basename(f) + ':' + (i + 1) + ' ' + cm);
+        }
+      });
+    }
+    if (!codeFiles.length) {
+      check('figure_code_banned_colormap', 'WARN', false, '未找到可扫的代码文件（按 code_exts 扫 0 个）⇒ **未检查**（未检查≠通过）', '');
+    } else {
+      check('figure_code_banned_colormap', 'FAIL', hits.length === 0,
+        hits.length ? ('绘图代码用了禁用色图（非色盲安全 / 感知不均匀）：' + hits.slice(0, 3).join(' , '))
+                    : ('未发现禁用色图（扫了 ' + codeFiles.length + ' 个代码文件）'), '');
+    }
+  }
+
+  /* ② 轴标签 */
+  if (FL.require_axis_labels) {
+    const missing = [];
+    for (const f of plotFiles) {
+      const txt = readTxt(f);
+      const hasX = /(?:set_)?xlabel\s*\(|xtitle\s*\(/i.test(txt);
+      const hasY = /(?:set_)?ylabel\s*\(|ytitle\s*\(/i.test(txt);
+      if (!hasX || !hasY) missing.push(path.basename(f) + (hasX ? '（缺 y 轴标签）' : '（缺 x 轴标签）'));
+    }
+    if (!plotFiles.length) {
+      check('figure_code_axis_labels', 'WARN', false, '未找到绘图代码（按 code_exts 扫 ' + codeFiles.length + ' 个文件）⇒ **未检查**（未检查≠通过）', '');
+    } else {
+      check('figure_code_axis_labels', 'FAIL', missing.length === 0,
+        missing.length ? ('含绘图调用却缺轴标签：' + missing.slice(0, 3).join(' , ')) : ('轴标签齐（' + plotFiles.length + ' 个含绘图的文件）'), '');
+    }
+  }
+
+  /* ③ 单位（提醒级：无因次图不该被误判成缺陷） */
+  if (FL.require_units) {
+    const noUnit = [];
+    for (const f of plotFiles) {
+      const txt = readTxt(f);
+      const labels = txt.match(/(?:set_)?[xy]label\s*\(\s*['"][^'"]+['"]/gi) || [];
+      if (!labels.length) continue;
+      const unitRe = /(?:\([^)]*[A-Za-z%][^)]*\)|\[[^\]]*[A-Za-z%][^\]]*\]|%|°C|\bV\b|\bA\b|\bW\b|\bWh\b|\bkWh\b|\bHz\b|\bs\b|\bms\b|\bh\b|\bmin\b|\bkm\b|\bcm\b|\bmm\b|\bkg\b|\bg\b|\bmg\b|\bK\b|\bPa\b|\bMPa\b|\bGPa\b|\bmAh\b|\bAh\b|\bSOH\b|\bSOC\b|\bRUL\b|\bRMSE\b|\bMAE\b)/;
+      if (!labels.some((s) => unitRe.test(s))) noUnit.push(path.basename(f));
+    }
+    if (!plotFiles.length) {
+      check('figure_code_units', 'WARN', false, '未找到绘图代码 ⇒ **未检查**（未检查≠通过）', '');
+    } else {
+      check('figure_code_units', 'WARN', noUnit.length === 0,
+        noUnit.length ? ('轴标签里没看到单位（若确实无因次可忽略）：' + noUnit.slice(0, 3).join(' , ')) : '轴标签含单位', '');
+    }
+  }
+
+  /* ④ 只红绿两色 */
+  if (FL.red_green_only_forbidden) {
+    const bad = [];
+    for (const f of plotFiles) {
+      const txt = readTxt(f);
+      const colors = new Set((txt.match(/['"](?:red|green|blue|black|gray|grey|orange|purple|cyan|magenta|brown|pink|olive|teal|navy|gold|lime|#[0-9a-fA-F]{6})['"]/g) || [])
+        .map((s) => s.replace(/['"]/g, '').toLowerCase()));
+      const norm = (c) => (c === '#ff0000' ? 'red' : (c === '#00ff00' ? 'green' : c));
+      const set = new Set([...colors].map(norm));
+      const hasR = set.has('red');
+      const hasG = set.has('green') || set.has('lime');
+      const other = [...set].filter((c) => !['red', 'green', 'lime'].includes(c));
+      if (hasR && hasG && other.length === 0) bad.push(path.basename(f) + '（仅红/绿）');
+    }
+    if (!plotFiles.length) {
+      check('figure_code_red_green_only', 'WARN', false, '未找到绘图代码 ⇒ **未检查**（未检查≠通过）', '');
+    } else {
+      check('figure_code_red_green_only', 'FAIL', bad.length === 0,
+        bad.length ? ('只用红/绿两种颜色做编码（色盲不可读）：' + bad.slice(0, 3).join(' , ')) : '未发现红绿单编码', '');
+    }
+  }
+
+  /* ⑤ 图题自足性 + 多面板标记 */
+  const capRe = new RegExp('(?:' + (FL.caption_globs || ['caption', '图题', '图注', 'legend']).join('|') + ')', 'i');
+  const capFiles = walkIn(baseDir, /\.(?:md|txt)$/i, [], 0).filter((f) => capRe.test(path.basename(f)));
+  const caps = [];
+  for (const f of capFiles.slice(0, 20)) caps.push([path.basename(f), readTxt(f)]);
+  const capEntries = [];
+  for (const [name, txt] of caps) {
+    for (const para of txt.split(/\n\s*\n/)) {
+      const t = para.replace(/\s+/g, ' ').replace(/^[#>*\-\s]+/, '').trim();
+      if (!/^(?:Table|Fig(?:ure)?|图\s*\d|表\s*\d)/i.test(t)) continue;
+      capEntries.push([name, t]);
+    }
+  }
+  if (FL.caption_min_chars) {
+    if (!capEntries.length) {
+      check('figure_caption_min_chars', 'WARN', false, '未找到图题条目（可给 --package 或提供 *caption*/*图题* 文件）⇒ **未检查**（未检查≠通过）', '');
+    } else {
+      const short = capEntries.filter(([, t]) => t.length < FL.caption_min_chars).map(([n, t]) => n + ':「' + t.slice(0, 20) + '…」(' + t.length + ' 字符)');
+      check('figure_caption_min_chars', 'FAIL', short.length === 0,
+        short.length ? ('图题过短（契约要求 ≥' + FL.caption_min_chars + ' 字符且自足）：' + short.slice(0, 3).join(' , '))
+                     : ('图题长度达标（检查 ' + capEntries.length + ' 条）'), '');
+    }
+  }
+  if (S.figure_multipanel === true) {
+    if (!capEntries.length) {
+      check('figure_caption_multipanel', 'WARN', false, '未找到图题条目 ⇒ **未检查**（多面板标记核不了）', '');
+    } else {
+      const bad = capEntries.filter(([, t]) => !/(?:\([a-dA-D]\)|（[a-dA-D]）)/.test(t)).map(([n, t]) => n + ':「' + t.slice(0, 20) + '…」');
+      check('figure_caption_multipanel', 'FAIL', bad.length === 0,
+        bad.length ? ('声明了多面板但图题里没有 (a)/(b) 面板标记：' + bad.slice(0, 3).join(' , ')) : ('多面板标记齐（' + capEntries.length + ' 条）'), '');
+    }
+  }
+}
+if (Array.isArray(S.figure_generators) && S.figure_generators.length) {
+  const gBase = (pkg && pkg.dir) ? pkg.dir : (draftPath ? path.dirname(path.resolve(draftPath)) : '');
+  const miss = S.figure_generators.filter((g) => !fs.existsSync(path.resolve(gBase, String(g))));
+  check('figure_generator_missing', 'FAIL', miss.length === 0,
+    miss.length ? ('契约声明的生成脚本不存在：' + miss.slice(0, 3).join(' , ')) : ('生成脚本都在（' + S.figure_generators.length + ' 个）'), '');
 }
 
 /* ── C12–C17（v3.2.8 新增 · 全部契约驱动）：把契约里声明过的量**真正执行** ──
