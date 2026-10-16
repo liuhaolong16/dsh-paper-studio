@@ -15,7 +15,8 @@
       "D:\\DeepSeek\\research-paper-playbook\\.venv\\Scripts\\python.exe"
     ],
     "phrase_bank": "E:\\DeepSeek\\skills\\ai-workbench\\references\\phrase-bank.json",
-    "note": "只引用路径，不复制内容；第三方许可各自保留。python_exe = 首选解释器（playbook 自带 venv）；PATH 上的 python/python3 在本机是 WindowsApps 商店占位符，不是真解释器，须跳过。"
+    "note": "只引用路径，不复制内容；第三方许可各自保留。python_exe = 首选解释器（playbook 自带 venv）；PATH 上的 python/python3 在本机是 WindowsApps 商店占位符，不是真解释器，须跳过。",
+    "compliance_checklist": "references/compliance-checklist.md（投稿合规与许可清单：在先发表/预印本 · 第三方许可 · 地图政治正确性 · 伦理声明 · 清样）"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",

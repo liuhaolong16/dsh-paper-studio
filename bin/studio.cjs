@@ -1026,6 +1026,85 @@ function runSelftest() {
     return r.ok || ('缺口：' + r.gaps.join(', '));
   });
 
+  // ★ v3.2.0：合规门（蒸馏自 2026-10 一手取证；含必失败面）
+  check('合规门·清单文档：5 类锚点齐备（在先发表/许可/地图/清样/可机检）', () => {
+    const d = complianceDoc(null);
+    return d.ok || ('缺：' + d.missing.join('、'));
+  });
+  check('必失败：清单文档被删节时必须报（不许静默当齐备）', () => {
+    const d = complianceDoc('只有在先发表和许可两节');
+    return (!d.ok && d.missing.length === 3) || ('未报到：' + JSON.stringify(d));
+  });
+  check('合规门·正控：齐备投稿包应通过（硬项与声明段全在）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-ok-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), 'Data Availability: 见仓库\nCRediT: 单人\nConflict of Interest: 无\nFunding: 无\nEthics: 不适用\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'dear editor');
+    fs.writeFileSync(path.join(tmp, 'fig1.png'), 'x');
+    fs.writeFileSync(path.join(tmp, 'refs.md'), 'refs');
+    fs.writeFileSync(path.join(tmp, 'journal-contract.json'), '{}');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (r.ok && r.hardMissing.length === 0) || ('未通过：' + JSON.stringify({ hard: r.hardMissing, un: r.unreadable }));
+  });
+  check('必失败：缺 Cover Letter 时硬项必须报缺且不通过', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-noletter-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), 'Data Availability\nCRediT\nConflict of Interest\nFunding\nEthics\n');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (!r.ok && r.hardMissing.length === 1) || ('未报到：' + JSON.stringify({ ok: r.ok, hard: r.hardMissing }));
+  });
+  check('必失败：目录不存在必须显形为失败（取不到 ≠ 通过）', () => {
+    const ghost = path.join(require('os').tmpdir(), 'ps-comp-ghost-' + Date.now());
+    const r = complianceScan(ghost);
+    return (r.ok === false && r.unreadable.length === 1) || ('未显形：' + JSON.stringify(r));
+  });
+  check('合规门·三值区分：软项缺只显形、不置非零（硬项齐时 ok 仍为真）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-soft-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), 'Data Availability\nCRediT\nConflict of Interest\nFunding\nEthics\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'x');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (r.ok && r.missing.length >= 3) || ('三值未区分：' + JSON.stringify({ ok: r.ok, miss: r.missing, hard: r.hardMissing }));
+  });
+
+  check('必失败：声明段措辞必须覆盖 BMC 系（Competing interests / Availability of data）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-bmc-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), '## Declarations\nCompeting interests: none.\nAvailability of data and materials: repository link.\nEthics: not applicable.\nFunding: none.\nAuthor contributions: single author.\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'x');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    const miss = r.items.filter((i) => i.key.indexOf('decl:') === 0 && i.state !== 'hit').map((i) => i.key);
+    return (miss.length === 0) || ('BMC 措辞被误报缺：' + JSON.stringify(miss));
+  });
+  check('必失败：只写 Conflict of Interest 而不写 Competing interests 时仍应命中（宽口径双向）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-ieee-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), 'Conflicts of Interest: none. Data Availability: yes. Ethics: n/a. Funding: n/a. CRediT: one.\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'x');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    const miss = r.items.filter((i) => i.key.indexOf('decl:') === 0 && i.state !== 'hit').map((i) => i.key);
+    return (miss.length === 0) || ('IEEE 措辞被误报缺：' + JSON.stringify(miss));
+  });
+
+  check('必失败：正文含 availability 短语但无声明段时不得误判为命中（防假阳性）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-fp-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), 'Scope: explicitly not covered (an availability limitation, not a claim). Competing interest: none. Ethics: n/a. Funding: n/a. CRediT: one.\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'x');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    const da = r.items.find((i) => i.key === 'decl:Data Availability');
+    return (da && da.state === 'missing') || ('假阳性：' + JSON.stringify(da));
+  });
+  check('正控：Data and code availability 这类标题必须命中（第二处假阴性回归）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-comp-dca-'));
+    fs.writeFileSync(path.join(tmp, 'manuscript.md'), '### 4.6 Data and code availability\nAll materials supplied. Competing interest: none. Ethics: n/a. Funding: n/a. CRediT: one.\n');
+    fs.writeFileSync(path.join(tmp, 'Cover-Letter.md'), 'x');
+    const r = complianceScan(tmp);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    const da = r.items.find((i) => i.key === 'decl:Data Availability');
+    return (da && da.state === 'hit') || ('未命中：' + JSON.stringify(da));
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1608,6 +1687,87 @@ function cmdCoverage() {
   for (const g of r.gaps) console.log('  - ' + g);
   return 1;
 }
+
+// ── v3.2.0 合规门（投稿合规与许可）· 知识源 references/compliance-checklist.md ──
+// 蒸馏自本项目 2026-10 的真实取证：Elsevier 在先发表三条例外（官方问答，页面更新 2026-06-01）、
+// 第三方材料许可、地图类图件的政治正确性、清样阶段纪律。门只查"必备件在不在 + 声明段有没有"，
+// 不判内容质量；取不到一律显形为失败（本插件铁律）。
+const COMPLIANCE_DOC = 'references/compliance-checklist.md';
+const COMPLIANCE_DOC_ANCHORS = ['在先发表', '许可', '地图', '清样', '可机检'];
+
+function complianceDoc(text) {
+  let txt = text;
+  if (txt == null) { try { txt = fs.readFileSync(path.join(ROOT, COMPLIANCE_DOC), 'utf8'); } catch { return { ok: false, path: COMPLIANCE_DOC, missing: COMPLIANCE_DOC_ANCHORS, unreadable: true }; } }
+  const missing = COMPLIANCE_DOC_ANCHORS.filter((a) => !txt.includes(a));
+  return { ok: missing.length === 0, path: COMPLIANCE_DOC, missing, unreadable: false };
+}
+
+function complianceScan(dir) {
+  const out = { dir: String(dir || ''), exists: false, items: [], hardMissing: [], missing: [], unreadable: [], ok: false };
+  if (!out.dir) { out.unreadable.push('未给投稿包目录'); return out; }
+  out.exists = fs.existsSync(out.dir);
+  if (!out.exists) { out.unreadable.push('目录不存在：' + out.dir); return out; }
+  let rels = [];
+  try { rels = walkFiles(out.dir).map((f) => path.relative(out.dir, f)); } catch (e) { out.unreadable.push('目录读不到：' + String((e && e.message) || e)); return out; }
+  const basenames = rels.map((f) => path.basename(f).toLowerCase());
+  const NOT_MANU = /cover|letter|response|rebuttal|checklist|readme|licen[cs]e/i;
+  const pick = (re, extra) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i])));
+  const add = (key, level, label, hits) => out.items.push({ key, level, label, state: hits.length ? 'hit' : 'missing', files: hits.slice(0, 5) });
+  add('manuscript', 'hard', '稿件主文件（.md/.docx，不含投稿信/回复信）', pick(/\.(md|docx)$/i, NOT_MANU));
+  add('cover_letter', 'hard', 'Cover Letter / 投稿信（单独文件）', pick(/cover[-_ ]?letter|投稿信/i));
+  add('figures', 'soft', '图件文件（独立图件或 figures/ 目录）', pick(/\.(tif|tiff|png|eps|svg)$/i));
+  add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i));
+  add('journal_contract', 'soft', '该刊契约 json（闸门依赖）', pick(/(contract|契约).*\.json$/i));
+  const manu = pick(/\.md$/i, NOT_MANU)[0];
+  // ★ v3.2.0 修正（自查出的假阴性）：声明段标题各家措辞不同，只认一种会误报缺件。
+  //   BMC/Springer 用 Competing interests 与 Availability of data；IEEE 用 Conflicts of Interest；
+  //   中文刊用「利益冲突」「数据可用性」。宁可宽一点，也不要把"写了的"读成"没写"。
+  const DECL = {
+    // 第二处假阴性（同一类，实测抓到）：B 稿标题写的是 "Data and code availability"，
+    // 连写形态才匹配的正则会误报缺件；但也不能图省事用裸 /availability/（正文里 "an availability limitation"
+    // 之类短语会假阳性）⇒ 只认"数据/代码 + availability"的贴邻形态。
+    'Data Availability': /data (and code )?availability|code availability|availability of data|数据可用性|数据与代码可用性/i,
+    'CRediT': /credit|author contribution|作者贡献/i,
+    'Conflict of Interest': /conflict[s]? of interest|competing interest[s]?|declaration of interest|利益冲突/i,
+    'Funding': /funding|financial support|资助|基金/i,
+    'Ethics': /ethic|伦理|informed consent/i,
+  };
+  if (!manu) {
+    out.items.push({ key: 'decl', level: 'soft', label: '稿件声明段（无 .md 稿件可核 ⇒ 取不到，不当作通过）', state: 'unreadable', files: [] });
+  } else {
+    let txt = null;
+    try { txt = fs.readFileSync(path.join(out.dir, manu), 'utf8'); } catch { txt = null; }
+    for (const k of Object.keys(DECL)) {
+      if (txt === null) out.items.push({ key: 'decl:' + k, level: 'soft', label: '声明段 ' + k, state: 'unreadable', files: [manu] });
+      else out.items.push({ key: 'decl:' + k, level: 'soft', label: '声明段 ' + k, state: DECL[k].test(txt) ? 'hit' : 'missing', files: [manu] });
+    }
+    if (txt === null) out.unreadable.push('稿件读不到，声明段无法核：' + manu);
+  }
+  for (const it of out.items) { if (it.state === 'missing') out.missing.push(it.label); if (it.state === 'unreadable') out.unreadable.push(it.label); }
+  out.hardMissing = out.items.filter((i) => i.level === 'hard' && i.state === 'missing').map((i) => i.label);
+  out.ok = out.hardMissing.length === 0 && out.unreadable.length === 0;
+  return out;
+}
+
+function cmdCompliance(dirArg) {
+  const dir = dirArg || '';
+  const r = complianceScan(dir);
+  const doc = complianceDoc(null);
+  if (JSON_OUT) { console.log(JSON.stringify({ scan: r, doc }, null, 2)); return r.ok && doc.ok ? 0 : 1; }
+  console.log('合规门 · 投稿包：' + (r.dir || '（未给目录）'));
+  if (r.unreadable.length) { console.log('  ⚠ 取不到（按失败处理，不静默通过）：'); for (const u of r.unreadable) console.log('    - ' + u); }
+  for (const it of r.items) {
+    const mark = it.state === 'hit' ? '✔' : it.state === 'missing' ? '✘' : '?';
+    const lvl = it.level === 'hard' ? '硬' : '软';
+    console.log('  ' + mark + ' [' + lvl + '] ' + it.label + (it.files.length ? '  ← ' + it.files.join(', ') : ''));
+  }
+  console.log('  范围：**只扫给定目录，不上溯父级** —— 该刊契约与参考文献清单常放在投稿包的上一级（如 _refs/）⇒ 报缺不等于没有，请人工确认位置。');
+  console.log('  清单文档 ' + COMPLIANCE_DOC + '：' + (doc.ok ? '齐备（5 类锚点全在）' : '不齐：缺 ' + doc.missing.join('、')));
+  if (r.ok && doc.ok) { console.log('合规门：通过（硬项齐、可取、清单齐备）。软项缺项由作者定夺。'); return 0; }
+  if (!r.ok) console.log('合规门：未通过 —— 硬项缺 ' + (r.hardMissing.length ? r.hardMissing.join(' / ') : '无') + '；取不到 ' + r.unreadable.length + ' 处');
+  return 1;
+}
+
 function main(argv) {
   const cmd = argv[0];
   const json = argv.includes('--json');
@@ -1619,6 +1779,7 @@ function main(argv) {
       console.log('  hygiene  ⇒ 残留件门（备份/临时件不得留在技能树内；应归档到树外）');
       console.log('  claims   ⇒ 文档数字一致性门（文档里写的 N/N 必须与实跑一致）');
       console.log('  coverage ⇒ 自检覆盖门（bin/*.cjs 含自检者必须在 pipeline.json.selfchecks 登记）');
+      console.log('  compliance <投稿包目录> ⇒ 合规门（硬项：稿件 + Cover Letter；软项：图件/参考文献/契约/声明段；取不到即失败）');
       console.log('  report --task "<描述>" --draft <稿.md> [--docx <成品.docx>] [--anchors/--manifest/--contract]  ⇒ 带行号的待修项清单');
       return 0;
     }
@@ -1901,6 +2062,7 @@ function main(argv) {
     if (cmd === 'hygiene') return cmdHygiene();
     if (cmd === 'claims') return cmdClaims();
     if (cmd === 'coverage') return cmdCoverage();
+    if (cmd === 'compliance') return cmdCompliance(args[1] || '');
     console.error(`未知子命令：${cmd}`);
     return 2;
   } catch (e) {
