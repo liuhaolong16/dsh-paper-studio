@@ -127,15 +127,28 @@ function talkLint(text, opts) {
   const baseDir = o.baseDir || '';
   for (const s of content) {
     if (s.words > 100) push('RISK', 'overfull', s.index, '单页 ' + s.words + ' 词 > 100 ⇒ 这是文档不是幻灯片（拆页或改成图/一句数字）');
-    else if (s.words > 60) push('INFO', 'dense', s.index, '单页 ' + s.words + ' 词偏密（建议 ≤60）');
-    if (s.bullets > 6) push('RISK', 'bullet-overload', s.index, '要点 ' + s.bullets + ' 条 > 6 ⇒ 观众读不完（合并或改图）');
-    if (s.title && GENERIC_TITLE.test(s.title)) push('RISK', 'generic-title', s.index, '标题「' + s.title + '」不是断言 ⇒ 改成一句话主张');
+    else if (s.words > 60) push('WARN', 'dense', s.index, '单页 ' + s.words + ' 词偏密（>60；对齐 deck_lint 的 wordy 口径、由 INFO 升为 WARN）');
+    if (s.bullets > 6) push('WARN', 'bullet-overload', s.index, '要点 ' + s.bullets + ' 条 > 6 ⇒ 观众读不完（合并或改图）');
+    if (s.title && GENERIC_TITLE.test(s.title)) push('WARN', 'generic-title', s.index, '标题「' + s.title + '」不是断言 ⇒ 改成一句话主张');
     if (!s.title) push('INFO', 'no-title', s.index, '该页没有标题行 ⇒ 无法判 claim；补一句主张作标题');
     for (const img of s.images) {
       if (deck.kind === 'marp' && /\.pdf$/i.test(img)) push('RISK', 'marp-pdf-image', s.index, 'Marp 不能渲染 PDF 图：' + img + '（先转 PNG/SVG）');
       const p = path.isAbsolute(img) ? img : path.join(baseDir, img);
       if (baseDir && !fs.existsSync(p)) push('RISK', 'missing-image', s.index, '图片不存在：' + img);
     }
+  }
+  /* ── 以下三项为 2026-10-17 Task B 对拍后补齐（对面 deck_lint.py 有、我方缺）── */
+  // no-marp-header：markdown deck 没有 marp: true 前置元数据 ⇒ Marp 工具链会当普通 markdown
+  if (deck.kind === 'marp' && !/^---[\s\S]*?marp\s*:\s*true/im.test(text)) {
+    push('WARN', 'no-marp-header', null, 'markdown deck 缺 marp: true 前置元数据 ⇒ Marp 工具链会当普通 markdown 处理');
+  }
+  // tiny-font：Beamer 正文用 \tiny/\scriptsize ⇒ 投影不可读
+  if (deck.kind === 'beamer' && /\\(tiny|scriptsize)\b/.test(text)) {
+    push('WARN', 'tiny-font', null, 'Beamer 正文出现 \\tiny/\\scriptsize ⇒ 投影时不可读');
+  }
+  // aspect-ratio：Beamer 未设 16:9 ⇒ 多数会场是宽屏
+  if (deck.kind === 'beamer' && !/aspectratio\s*=\s*169/.test(text)) {
+    push('INFO', 'aspect-ratio', null, 'Beamer 未设 aspectratio=169 ⇒ 多数会议室为 16:9');
   }
   if (content.length > budget.hard_max_slides) push('RISK', 'pacing', null, '内容页 ' + content.length + ' 张 > 硬上限 ' + budget.hard_max_slides + '（' + m + ' 分钟 × 1.25）⇒ 删并页，不许讲快');
   else if (content.length > budget.content_slides_target) push('INFO', 'pacing-soft', null, '内容页 ' + content.length + ' 张 > 目标 ' + budget.content_slides_target + '（尚在上限内）');

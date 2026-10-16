@@ -3,6 +3,28 @@
 
 # 变更记录
 
+## v3.5.0 —— 2026-10-17
+
+**真对拍 Task B（呈现）完成 —— 首次做到「交叉工具对拍」：用对手自己的 linter 判我方，用我方 linter 判对手；据此补 3 项检查、改 2 处严重度口径。**
+
+- **前提（能力面硬事实）**：呈现类**只有一个对手有**（`lifecycle-skills` 的 `make-slides`/`make-poster`，且**带可跑脚本** `deck_lint.py` 321 行 / `slide_budget.py` / `extract_figures.py` / `poster_lint.py`）；
+  `dsh-sci-fault-diag-paper` 与 `academic-research-skills` **0 命中**、awesome 清单类无此能力。
+- **输入是真实正文**：论文 B `manuscript-B-v1-en.md` 的 Introduction（照引），指令 = 5 分钟 lightning talk 的 Marp deck。
+- **★双向读数（两份独立实现给同一结论）**：
+
+| deck | 他们的 `deck_lint.py` | 我方 `talk lint` |
+|---|---|---|
+| ours | 1 RISK（`marp-pdf-image`）+ 1 WARN（`bullet-overload`） | **1 RISK + 1 WARN（完全一致）** |
+| lifecycle-skills | 0 RISK + 1 WARN | **0 RISK + 1 WARN（完全一致）** |
+| 纸形天真版 | 1 RISK + 6 WARN | **1 RISK + 6 WARN（数量一致）** |
+
+- **据此改进（本轮已落代码）**：
+  1. **补 3 项缺口**：`no-marp-header`（markdown 缺 `marp: true`，WARN）· `tiny-font`（Beamer `\tiny`/`\scriptsize`，WARN）· `aspect-ratio`（Beamer 非 16:9，INFO）；
+  2. **严重度口径改正**：`bullet-overload` / `generic-title` 由 **RISK → WARN**（依据铁律 24「提醒不得当未通过」——工艺建议不该让门在还能改的草稿上假红）；`dense`（>60 词）由 INFO → **WARN**（对齐其 `wordy`）；
+  3. **保留我方更严的两处**：`pacing` 硬上限 **1.25×**（他们 1.5×）· `missing-image` 独立检查。
+- **改后复跑**：`talk` 自检 **10/10**；三份 deck 判定与他们同形。报告：`run/bakeoff/task-b-presenting/REPORT.md`。
+- **仍缺的对手能力（真实缺口，记入 backlog）**：`make-poster`（海报 + 2/5 分钟 pitch）· `rehearse-qa`（敌意问答彩排）· `fit-page-limit`。
+
 ## v3.4.1 —— 2026-10-17
 
 **把被实测推翻的旧结论就地更正（保留原文，加修正段）：`references/market-parity.md` 的「润色域是我方最大缺口」已被 Task A 对拍证据推翻。**

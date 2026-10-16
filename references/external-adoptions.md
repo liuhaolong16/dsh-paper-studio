@@ -94,3 +94,12 @@
 | `academic-research-skills` | **CC-BY-NC** | 仅 agent 角色分解的**分类方式**参照——**无产出** | —（记录） | license-scan 命中 0 |
 
 > 判据：凡上表有产出的行，必须能**复跑出读数**；无产出的行（AGPL / NC）只允许出现在吸收矩阵里，**不得出现在包里**。
+
+## lifecycle-skills · 呈现类对拍（2026-10-17 · Task B）—— 吸收 3 项、改正 2 处口径
+
+- **方法**：**交叉工具对拍**（用其 `deck_lint.py` 判我方 deck；用我方 `talk lint` 判其 deck）。输入＝论文 B 真稿 Introduction，任务＝5 分钟 lightning talk。
+- **双向读数一致**：ours 1 RISK+1 WARN（双方同）· 其 deck 0 RISK+1 WARN（双方同）· 纸形天真版 1 RISK+6 WARN（双方同数量）。
+- **吸收（已落代码 `bin/talk.cjs`）**：`no-marp-header`（WARN）· `tiny-font`（Beamer，WARN）· `aspect-ratio`（Beamer，INFO）。
+- **改正（有据）**：`bullet-overload` 与 `generic-title` 由 RISK 降为 WARN（铁律 24：提醒不得当未通过）· `dense`（>60 词）由 INFO 升为 WARN（对齐其 `wordy`）。
+- **保留我方更严**：`pacing` 硬上限 1.25×（其 1.5×）· `missing-image` 独立检查。
+- **未吸收（记入 backlog）**：`make-poster`（海报 + 2/5 分钟 pitch）· `rehearse-qa`（敌意问答彩排）· `fit-page-limit`。

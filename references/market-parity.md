@@ -172,3 +172,6 @@ skill/      ← 平铺 SKILL.md 副本，放进 ~/.agents/skills/ 让 DSH 发现
 2. **真正有差别的不是"润色质量"，而是"是否把不变量与可追溯性当硬规则"** —— prompt-清单类会**在润色时抹平具体数字与引用标记**；
 3. **仍未测**：语言自然度的**盲评**（需独立判者）· 对手**软件本体**效果（它们**没有可执行的 CLI**，本轮为方法级对拍）⇒ **不得声称"我们更强"，只能说"我们不再落后"**；
 4. 「呈现类（slides/poster/talk-script）」与「parse-cfp / camera-ready / fit-page-limit / simulate-reviewers / triage-reviews」两项缺口**仍成立**（`talk` 已补呈现的第一块，其余待做）。
+
+- **呈现类缺口状态（2026-10-17 Task B 后）**：`talk`（预算 / 口播 / deck lint）**已补**；deck 侧与唯一对手 `lifecycle-skills` **同档**（交叉工具对拍：两份独立 linter 对三份 deck 给出同样风险数），并据其对拍补齐 `no-marp-header`/`tiny-font`/`aspect-ratio` 三项、改正 `bullet-overload`/`generic-title`/`dense` 的严重度口径。
+  **仍缺**：`make-poster`（海报 + 2/5 分钟 pitch）· `rehearse-qa`（问答彩排）· `fit-page-limit` · `parse-cfp` · `camera-ready`。
