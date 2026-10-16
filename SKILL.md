@@ -53,7 +53,9 @@ node bin/studio.cjs response --letter <回复信.md> --comments <审稿意见.md
 node bin/studio.cjs report-check --report <报告.md> [--draft <稿> --contract <契约> --package <包> --anchors <表> --cover <信> --letter <信> --comments <意见>]   :: **报告陈旧检测**（报告自带的运行指纹 vs 现在手上的输入；无指纹 ⇒ exit 2，未比对/已变 ⇒ exit 1）
 node bin/studio.cjs reports --scan <目录> [--all]   :: **零参数陈旧巡检**：按报告里记录的路径重算指纹，一次看清哪份结论还成立（FRESH / STALE / MISSING / 无指纹 ⇒ 任一不成立 exit 1）
 node bin/studio.cjs refs --format <样式> --refs <CSL-JSON> [--out <文件>] [--json]   :: **按 CSL 样式格式化参考文献**（零 key、离线）：样式名支持 `gb-t-7714-2025-numeric`（中文刊顺序编码制）/ `gb-t-7714-2025-author-date` / `vancouver`；样式文件在 `assets/csl/`（第三方，CC-BY-SA 3.0，见同目录 PROVENANCE.md），**sha256 锁**在 `references/csl-lock.json` —— `refs --check` 核样式是否被无声替换；取不到样式/引擎一律报错并算未通过
-node bin/studio.cjs model providers|ping|run|check   :: **可选装载模型能力**（DeepSeek / OpenAI 兼容 / GLM / Qwen）：凭据**只从环境变量或 --key-file 读**，本工具从不写凭据；**零 key 时全部本地判据照旧**（`model check` 会洗掉所有 provider 环境变量再复跑本地命令来证明这一点）；无 key 时模型类命令明确报「未配置 ⇒ 未检查（不算通过）」（退 2），`model run` 的产物带 PROVENANCE 并标明「模型生成，非本地判据」
+node bin/studio.cjs model keys list|set|enable|disable|remove|test|path :: **面板凭据的 CLI 通道**（与面板写同一份本机存储；`set` 用 `--key` 或 `--from-file`）
+                                                     :: **优先级只定义一处**：`--key` > **面板停用（阻断）** > 面板启用 > `--key-file` > 环境变量；**只打印掩码**
+node bin/studio.cjs model providers|ping|run|check   :: **可选装载模型能力**（DeepSeek / OpenAI 兼容 / GLM / Qwen）：凭据来源＝面板录入 / 环境变量 / `--key-file`；**零 key 时全部本地判据照旧**（`model check` 会洗掉所有 provider 环境变量再复跑本地命令来证明这一点）；无 key 时模型类命令明确报「未配置 ⇒ 未检查（不算通过）」（退 2）；**面板里被停用时明说「被停用」而不是「未配置」**；`model run` 的产物带 PROVENANCE 并标明「模型生成，非本地判据」
 node bin/studio.cjs anonymize --draft <稿> [--authors "<名,名>"] [--authors-file <名单>] [--out <匿名稿>] [--audit <清单.json>]   :: **双盲投稿匿名化**：抹作者/单位/邮箱/ORCID/电话/基金号/致谢整节，**逐条记 original→replacement 进清单**（清单用于复核与还原，不写进正文）；自引表述与仓库链接**只提醒不擅改**；既无名单又无作者行 ⇒ 明确「未检查」退 1；**文档属性(docx/PDF 元数据)与图内水印不在覆盖范围**（如实标注）
 node bin/studio.cjs review --reviews <意见文件> [--draft <稿>] [--out <分诊表.md>] [--json]   :: **审稿/答辩/课堂意见分诊**：按编号切条目 → **启发式分类**（编辑要求/必改/可能的误解/需澄清；拿不准一律记「需人工判断」）→ 用意见原句在稿件里**定位**（找不到记「未定位」并计数）→ 出**回复骨架**（每条保留意见原文，可追溯）；一条都识别不到 ⇒ **退 2 并明说未检查**
 node bin/studio.cjs submission-fields --draft <稿> [--package <包>] [--contract <契约>] [--out <填写单.md>]   :: **投稿门户填写单**：逐字段抽出要粘的元数据（题名/短标题/摘要/关键词/Highlights/作者/五类声明）+ 契约限额对照；**每个值必须在来源里逐字存在**（缺失/非逐字/超限 ⇒ exit 1） ｜ `--proposal <建议书.md>`：**改动建议书**（逐字引用 + 明确改法；**不代选、不代填、不改稿**）
@@ -237,3 +239,14 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 **路由（CLI 已可执行 · v3.1.8）**：`route` 会直接吐出「期刊分类路由」块 —— 判定键 + 命中词 + **该读资产与存在性** + 边界；资产缺失即退出码 1。`cn+zh` → `references/cn-journals.md` · `intl+en` → `references/submission-runbook.md` · 混合象限两侧各取所需。**PLOS 系另有专章**：`intl+en` 且目标为 PLOS ONE 时，先读 `references/plos-one.md`（差异对照表 + 排版/图件/参考文献硬项 + Cover Letter 必含项）。机器真源见 `references/pipeline.json` 的 `journal_classes`；人类可读说明见 `references/journal-taxonomy.md`。
 
 **一条硬差别**（最常踩）：中文刊参考文献按 **GB/T 7714—2025**（**2026-07-01 起施行**）——责任者超 3 人**只著录前 3 人后加「，等」**；英文刊多为 Vancouver——前 **6** 位作者 + et al.。**同一稿中英双投必须分别生成两版参考文献，不许直译**。
+
+## 面板化「外置 key 连接器」（v3.2.65 起 · 数据层先行）
+
+- **唯一真源**：`bin/keys-store.cjs`（宿主半体 `plugin/dist/plugin.js` 与 CLI `bin/studio.cjs` **共用同一份**，不许各写一份解析逻辑 —— 那必然分叉）。
+- **存储位置**：`%DSH_PAPER_KEYS_FILE%`，否则 `~/.dsh/paper-studio/keys.json` —— **在仓库之外**；不进 git、不进日志、不在对话里回显；POSIX 下尽力 0600；原子写（临时文件 + rename）。
+- **凭据解析优先级（只在这里定义一处）**：`--key`（一次性）> **面板停用（阻断）** > 面板启用 > `--key-file` > 环境变量。
+  ★ **停用优先于环境变量** —— 用户点停用就是停用，不许被 env 悄悄复活（有夹具看门）。
+- **只显示掩码**（`sk-***ab（长度 N）`）与来源，从不回显明文。
+- **读失败/损坏绝不抛**：`model providers` 仍退 0（本地能力不受影响）并写明原因；`model keys list`（凭据主通道）**退 2 并说明**，不许当"没有凭据"静默通过。
+- 自检：`node bin/keys-store.cjs --selftest` ⇒ **10/10**（含三条必失败面：损坏 JSON 不抛且给原因 · 非法 provider 名被拒 · 原子写不留残片）；studio 另有 8 条面板夹具，全部走临时 `DSH_PAPER_KEYS_FILE`，**不碰真凭据**。
+- 面板本体（客户端半体）做成**独立插件**（`dsh-paper-keys`）：paper-studio 保持"零面板"承诺，卸载面板不影响论文能力本体。
