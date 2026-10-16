@@ -398,6 +398,44 @@ function runSelftest() {
     const r = out.results[0];
     return (r.verdict === 'skipped_not_applicable' && r.rc === null) ? true : `verdict=${r.verdict} rc=${r.rc}`;
   });
+  check('★契约声明 vs 门执行：每个 `limits.*` 键要么被门真的引用，要么在 informational 白名单里登记了原因（防"声明了却没人执行"）', () => {
+    const P = studio.readPipeline();
+    const info = ((P.contract_limits || {}).informational) || {};
+    const gaps = ((P.contract_limits || {}).known_gaps) || {};
+    const dir = path.join(ROOT, 'references', 'contracts');
+    if (!fs.existsSync(dir)) return true;
+    const cands = [];
+    try { const r = resolveGateScript({ id: 'journal-contract', entry: '_journal-contract.cjs' }, P); if (r && r.script) cands.push(r.script); } catch (e) {}
+    if (P.assets && P.assets.playbook_root) cands.push(path.join(P.assets.playbook_root, '_journal-contract.cjs'));
+    let gateSrc = '';
+    for (const c of cands) { if (c && fs.existsSync(c)) { gateSrc = fs.readFileSync(c, 'utf8'); break; } }
+    if (!gateSrc) return true;   // 门脚本不可得 ⇒ 本锁跳过（不假装通过）
+    const bad = []; const known = [];
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+      let c = null; try { c = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
+      const lim = c.limits || {};
+      const keys = [];
+      for (const k of Object.keys(lim)) {
+        if (lim[k] && typeof lim[k] === 'object' && !Array.isArray(lim[k])) { for (const sub of Object.keys(lim[k])) keys.push(k + '.' + sub); }
+        else keys.push(k);
+      }
+      for (const key of keys) {
+        const leaf = key.split('.').pop();
+        /* ★ null/undefined 的限额＝「未设限额」，不是「声明了没执行」 ⇒ 跳过。 */
+        const raw = (key.indexOf('.') >= 0) ? ((lim[key.split('.')[0]] || {})[key.split('.').pop()]) : lim[key];
+        if (raw === null || raw === undefined) continue;
+        const cited = new RegExp('\\b' + leaf + '\\b').test(gateSrc);
+        if (cited) continue;
+        if (Object.prototype.hasOwnProperty.call(info, leaf)) continue;
+        if (Object.prototype.hasOwnProperty.call(gaps, leaf)) { known.push(f + ':' + key); continue; }
+        bad.push(f + ':' + key);
+      }
+    }
+    if (bad.length) return '声明了却没有门引用、也不在台账里：' + bad.join(' · ');
+    /* 已知缺口不判失败，但**必须可见**（不得静默）。 */
+    if (known.length) console.log('    （已知未实现，已登记在 pipeline.json.contract_limits.known_gaps：' + known.join(' · ') + '）');
+    return true;
+  });
   check('★ 静态锁：门参数模板里的占位符必须都在执行器白名单里（否则该输入**永远传不进去**）', () => {
     const P = studio.readPipeline();
     const bad = [];

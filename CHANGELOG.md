@@ -3,6 +3,20 @@
 
 # 变更记录
 
+## v3.2.38 —— 2026-10-16
+
+**用"声明 vs 执行"这把尺子去量契约门自己：补两条真检查（分体裁字数上限 / Highlights 独立文件），并为这类缺口加一把机械锁 —— 锁当场又抓到 PLOS 契约的图件规格从未被执行。**
+
+- **起因**：把「声明的检查点 ↔ 实际执行的断言」这条判据用于**契约门与随包契约**的对拍 —— 列出 JoES 契约声明的 `limits.*`，逐条看门有没有引用它。
+- **补上的真检查（此前**声明了却没人执行**）**：
+  1. **分体裁字数上限**：契约可声明 `review_max_words` / `short_communication_max_words` 等按 `article_type` 取用的上限，而门**只读通用 `manuscript_max_words`** ⇒ 综述类稿件的上限**没人管**（论文 B 正是综述）。现按 `<article_type>_max_words` → 通用 → `manuscript_max_chars` 顺序解析，并新增一条**恒过的信息行 `word_cap_source`**（写明"本次适用哪条上限、凭什么"——读者不必猜 6000 是哪来的）。
+  2. **Highlights 独立可编辑文件**：契约 `limits.highlights.separate_editable_file` + `filename_must_contain` **两条键没有任何门在管**。现在包内查"文件名含指定词的可编辑文件"，缺失 ⇒ FAIL；未给包 ⇒ 记"未检查（≠ 通过）"。**A 稿实测命中 `Highlights.docx` ✓**（说明该检查不会制造假警报）。
+- **收窄一处我自己造的假警报**：首版对"声明了分体裁上限但当前 article_type 用不上"也报 WARN —— 这是**错的**：多体裁契约声明各体裁上限是正常的，当前体裁没有专属上限时用通用上限本来就对。收窄为"**`article_type` 缺失**时才告警"。
+- **★新增机械锁（契约声明 vs 门执行）**：`gate-runner --selftest` 里检查**每份随包契约**的每个 `limits.*` 键 —— 要么被门源码引用，要么登记在 `pipeline.json.contract_limits` 台账（`informational`＝不是可执行限额（如取证说明）；`known_gaps`＝**已确认未实现**，仍会打印出来但不算失败）。**任何新键既没执行也没登记 ⇒ 锁失败。**
+- **锁当场抓到的真缺口（已登记，待实现）**：`plos-one.json` 把**图件规格直接写在 `limits.*` 下**（`figure_format` / `figure_height_px_max` / `figure_file_max_mb` / `figure_text_fonts` / `figure_caption_max_words` / `si_file_max_mb` / `highlights_required`），而门只读 `limits.figure_spec` ⇒ **该契约的图件与补充材料要求从未被执行**。另：`word_limit` / `figures_tables_limit` 的值为 `null`（＝未设限额，锁已跳过 null，不算缺口）。`cn-hjnu.json` 的 `figure_spec.source` 是**取证说明**（informational）。
+- 自检：契约门 **49 → 55/55**（+6 夹具：分体裁上限（含正控/反控）· `article_type` 缺失 ⇒ WARN 显形 · Highlights 独立文件（含正控））· 门执行器 **43 → 44/44**（+契约声明/执行锁）；studio 151/151 不变。
+- 过程中的四处自身失误（诚实记）：① **块作用域**——把解析写进 `if` 块内、却在块外引用 ⇒ `ReferenceError`（教训：跨块复用的绑定必须声明在共同祖先作用域；这条我犯了两次）；② 插入信息行时**多补了一个 `}`** ⇒ 提前闭合代码块、语法错；③ 模板里 `${unit}` 有**两处**，只替换了一处 ⇒ 仍 `ReferenceError`；④ 新夹具的契约 JSON **缺 `verified_at`** ⇒ 门在前提层 exit 2，被误读成"检查没触发"。
+
 ## v3.2.37 —— 2026-10-16
 
 **修 v3.2.36 引入的"撞号"：总检报告里的小节序号改为按实际步数派生，并配一条序号唯一性锁。**

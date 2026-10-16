@@ -2,6 +2,25 @@
   "schema": "paper-studio.pipeline.v1",
   "updated": "2026-10-16",
   "note": "本文件是 paper-studio 的唯一真源：任务类型 / 链路阶段 / 必过门 / 交接契约 / 资产路径。CLI 与（将来的）面板只读它，禁止任何一处另写一份。门的 args 模板由 gate-runner 消费；占位符 {draft} {docx} {anchors} {manifest} {contract} {declaration} 由调用方提供，缺输入一律判「跳过（缺输入）」，绝不当通过。",
+  "contract_limits": {
+    "note": "★ v3.2.38：契约 limits 的「声明 vs 执行」台账。gate-runner 的静态锁要求每个 limits 键**要么被门引用，要么登记在此**。`informational`＝不是可执行限额（如取证说明）；`known_gaps`＝**已确认未实现**（登记原因与日期，仍会在锁里列出但不判失败）。",
+    "informational": {
+      "review_max_words": "按 article_type 动态取用（键名由 article_type + _max_words 拼出 ⇒ 词法扫描找不到字面量）",
+      "short_communication_max_words": "同上：按 article_type 动态取用",
+      "source": "figure_spec 里的**取证说明**（不是限额）"
+    },
+    "known_gaps": {
+      "word_limit": "plos-one.json 用它表示正文上限（值是 null ⇒ 未设限额）；门读的是 manuscript_max_words ⇒ 该键名门不认识。（null 已由锁跳过）",
+      "figures_tables_limit": "plos-one.json 用它表示图表数量区间（值 null ⇒ 未设）；同上，键名门不认识",
+      "highlights_required": "plos-one.json 的布尔限额；门读 limits.highlights.required ⇒ 键名不同",
+      "figure_format": "plos-one.json 把图件规格**直接写在 limits 下**，而门只读 limits.figure_spec ⇒ **该契约的图件要求从未被执行**（本轮由锁抓出，列为待实现）",
+      "figure_height_px_max": "同上：PLOS 图件规格未被执行",
+      "figure_file_max_mb": "同上：PLOS 图件规格未被执行",
+      "figure_text_fonts": "同上：PLOS 图件规格未被执行",
+      "figure_caption_max_words": "同上：PLOS 图件规格未被执行",
+      "si_file_max_mb": "同上：PLOS 补充材料规格未被执行"
+    }
+  },
   "assets": {
     "submission_runbook": "references/submission-runbook.md",
     "cn_journals": "references/cn-journals.md",
