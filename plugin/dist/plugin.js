@@ -264,7 +264,9 @@ const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 
   // ★ v3.2.33：新增 report-check（报告陈旧检测）—— 漂移锁会在缺项时报错。
   'report-check',
   // ★ v3.2.34：新增 reports（零参数陈旧巡检）
-  'reports']
+  'reports',
+  // ★ v3.2.35：新增 submission-fields（投稿门户填写单，逐字不变量）
+  'submission-fields']
 
 const PAPER_STUDIO_TOOL = {
   name: 'paper_studio',

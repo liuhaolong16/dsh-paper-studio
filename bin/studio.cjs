@@ -501,6 +501,7 @@ const SUBCOMMANDS = [
   'cover',
   'report-check',
   'reports',
+  'submission-fields',
   'route',
   'gates',
   'intake',
@@ -1413,6 +1414,56 @@ function runSelftest() {
     const roles = row && row.bad ? row.bad.map((x) => x.role) : [];
     return (good && out.status === 1 && row && row.state === 'STALE' && roles.length === 1 && /toolB/.test(roles[0]))
       ? true : `good=${good} rc=${out.status} state=${row && row.state} bad=${JSON.stringify(roles)}`;
+  });
+  /* ★ v3.2.35：投稿门户填写单 —— 核心不变量是「**每个值必须在来源里逐字存在**」。 */
+  check('submission-fields·正控：逐字段抽出，且**每个非缺失值都在其来源里逐字存在**，exit=0', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'sf1-'));
+    const d = path.join(tmp, 'draft.md');
+    fs.writeFileSync(d, ['# Cross-temperature battery SoH prediction', '', '## Abstract', '', 'We predict state of health across temperatures.', '', '**Keywords:** battery; SoH; cross-temperature', '', '## Highlights', '', '- first highlight', '- second highlight', '', '**Authors:** A. B., C. D.', '', '**Corresponding author:** A. B. (a.b@example.org)', '', '**CRediT authorship contribution statement.** Conceptualization: A. B.', '', '**Declaration of competing interest.** The authors declare no competing interests.', '', '**Funding.** This research did not receive any specific grant.', ''].join('\n'));
+    const out = spawnSync(process.execPath, [__filename, 'submission-fields', '--draft', d, '--json'], { encoding: 'utf8' });
+    const so = String(out.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    if (!j) return 'JSON 解析失败：' + so.slice(0, 120);
+    const draftTxt = fs.readFileSync(d, 'utf8');
+    const bad = j.rows.filter((r) => r.state === 'ok' && draftTxt.indexOf(r.value) < 0).map((r) => r.field);
+    const got = j.rows.filter((r) => r.state === 'ok').length;
+    return (out.status === 0 && j.fields_code === 'OK' && got >= 6 && bad.length === 0)
+      ? true : `rc=${out.status} code=${j.fields_code} ok行=${got} 非逐字=${JSON.stringify(bad)}`;
+  });
+  check('submission-fields·必失败面：关键词缺失 ⇒ 进 missing 且 exit=1（缺失不许静默留空）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'sf2-'));
+    const d = path.join(tmp, 'draft.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody text here.\n');
+    const out = spawnSync(process.execPath, [__filename, 'submission-fields', '--draft', d, '--json'], { encoding: 'utf8' });
+    const so = String(out.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    return (out.status === 1 && j && j.fields_code === 'MISSING' && j.missing.includes('Keywords 关键词'))
+      ? true : `rc=${out.status} code=${j && j.fields_code} missing=${JSON.stringify(j && j.missing)}`;
+  });
+  check('★submission-fields·反控（不得凭空造）：verbatimCheck 对真子串为真、对伪造串必为假', () => {
+    const src = '# T\n\nAbstract\n\nReal sentence about cells.\n';
+    const okReal = verbatimCheck('Real sentence about cells.', src) === true;
+    const okFake = verbatimCheck('A sentence that nobody ever wrote in this file.', src) === false;
+    const okEmpty = verbatimCheck('', src) === false;
+    return (okReal && okFake && okEmpty) ? true : `real=${okReal} fake=${okFake} empty=${okEmpty}`;
+  });
+  check('submission-fields·超限与嵌套限额：抽象词数超契约上限 ⇒ over_limit 且 exit=1；对象型限额逐子键比（不打成 [object Object]）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'sf3-'));
+    const d = path.join(tmp, 'draft.md'); const k = path.join(tmp, 'c.json');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\n' + 'word '.repeat(40) + '\n\n## Highlights\n\n- a\n- b\n- c\n- d\n');
+    fs.writeFileSync(k, JSON.stringify({ journal: 'J', limits: { abstract_max_words: 5, highlights: { max_items: 2 } } }));
+    const out = spawnSync(process.execPath, [__filename, 'submission-fields', '--draft', d, '--contract', k, '--json'], { encoding: 'utf8' });
+    const so = String(out.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    const over = j ? j.over_limit : [];
+    const hasObj = so.indexOf('[object Object]') >= 0;
+    /* ★ 断言过窄的修正：这份夹具的最小草稿**同时也缺关键词等字段**，所以 fields_code 会是 MISSING；
+       本条要验的是「超限被算出来 + 对象型限额逐子键比」。 */
+    return (out.status === 1 && j && over.includes('abstract_max_words') && over.includes('highlights.max_items') && !hasObj)
+      ? true : `rc=${out.status} code=${j && j.fields_code} over=${JSON.stringify(over)} objBug=${hasObj}`;
   });
   check('reports·正控：目录里一份新鲜报告 ⇒ FRESH / scan_code=ALL-FRESH / exit=0', () => {
     const { spawnSync } = require('node:child_process');
@@ -2776,6 +2827,217 @@ function reportHome(inputFile) {
  *   语义：记录路径不存在 ⇒ `MISSING`（不是新鲜）· 报告没有指纹 ⇒ `UNSTAMPED`（不得当新鲜）· 指纹坏 ⇒ `BADSTAMP`。
  *   默认只看 `_*.md`（本工具的落点约定；避免把稿子正文当成报告）；`--all` 才扫全部 .md。
  */
+/**
+ * ★★ v3.2.35 `submission-fields --draft <稿> [--package <包>] [--contract <契约>] [--out <填写单.md>]`
+ *   投稿门户（Editorial Manager / ScholarOne / 国内三平台）要逐格填元数据，手工复制粘贴是**错漏高发区**
+ *   （题名不一致、摘要截断、关键词漏一个）。本命令把要粘的东西**逐字段**抽出来，并且守住一条硬不变量：
+ *   **每个值必须在其来源里逐字存在** —— 抽不出就进「缺失」，不是逐字就标「✗ 非逐字」并让退出码非 0。
+ *   ⇒ 这张单子**不可能凭空造字**；它只搬运，不代写。（造字的那一步永远由人来。）
+ */
+/** ★★ 本命令专用：**最小归一**。`normText` 会压缩空格并剥掉 `**` 强调标记 ⇒ 抽出来的值虽语义相同，
+ *   但**不是原文字节**，粘贴出去就与稿件不一致。本命令的承诺是「直接复制」⇒ 只能做 CRLF/BOM 归一。
+ *   （这正是「逐字」不能被语义归一替代的地方；本轮由正控夹具逼出。） */
+function rawText(s) { return String(s || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'); }
+function verbatimCheck(value, sourceText) {
+  const v = String(value || '').trim();
+  if (!v) return false;
+  return String(sourceText || '').indexOf(v) >= 0;
+}
+function findEvidence(text, patterns) {
+  const lines = String(text || '').split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    for (const re of patterns) {
+      const m = re.exec(lines[i]);
+      if (m) {
+        const val = (m[1] !== undefined ? m[1] : lines[i]).trim();
+        if (val) return { value: val, line: i + 1, whole: lines[i] };
+      }
+    }
+  }
+  return null;
+}
+/** ★ 包内回退：有些门户字段（作者块/通讯作者）在**稿件正文里没有**，而在投稿包的其他文件里（如 Cover Letter）。
+ *   回退查找**只搬运**、并记录来源文件 ⇒ 逐字不变量照旧成立。 */
+function findInPackage(dir, patterns) {
+  if (!dir) return null;
+  const d = path.resolve(dir);
+  if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) return null;
+  const files = fs.readdirSync(d).sort().filter((f) => /\.(md|txt)$/i.test(f) && !f.startsWith('_'));
+  for (const f of files) {
+    const t = rawText(fs.readFileSync(path.join(d, f), 'utf8'));   // ★ 保字节
+    const hit = findEvidence(t, patterns);
+    if (hit) return { value: hit.value, file: f, line: hit.line, text: t };
+  }
+  return null;
+}
+function wordsOf(s) { return (String(s || '').replace(/\s+/g, ' ').match(/[A-Za-z0-9\u4e00-\u9fff][^\s]*/g) || []).length; }
+function cmdSubmissionFields(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const draftArg = val('draft');
+  if (!draftArg) { console.error('前提层失败：submission-fields 需要 --draft <稿.md>（可给 --contract 一并报限额、--package 找 Highlights）'); return 2; }
+  const dAbs = path.resolve(draftArg);
+  if (!fs.existsSync(dAbs)) { console.error('前提层失败：稿件不存在 —— ' + dAbs); return 2; }
+  const draft = rawText(fs.readFileSync(dAbs, 'utf8'));   // ★ 保字节（见 rawText 注释）
+  const pkgDir = val('package');
+  const rows = [];
+  const missing = [];
+  const absent = [];
+  /* ★ 必填 vs 可选：门户**必填**的只有题名/摘要/关键词/作者/通讯作者（空框就是要出事）；
+     短标题与各类声明「没提供」很常见（要不要由期刊契约/门去管，本命令不越权判红）——只报告，不计入不成立。 */
+  const push = (field, value, srcText, srcLabel, extra) => {
+    const r = Object.assign({ field, value: value || '', source: srcLabel || ('稿件 ' + path.basename(dAbs)) }, extra || {});
+    if (!r.value && !r.req) { r.state = 'absent'; absent.push(field); }
+    else if (!r.value) { r.state = 'missing'; missing.push(field); }
+    else if (srcText !== undefined && srcText !== null && !verbatimCheck(r.value, srcText)) { r.state = 'nonverbatim'; }
+    else r.state = 'ok';
+    rows.push(r);
+    return r;
+  };
+  /* ① 题名 */
+  const ta = titleAndAbstract(draft);
+  push('Title 题名', ta.title, draft, '稿件 ' + path.basename(dAbs) + ' 首行', { chars: ta.title.length, req: true });
+  /* ② 短标题 / running head */
+  const shortT = findEvidence(draft, [
+    /^\s*(?:\*\*)?(?:Short title|Running (?:title|head)|短标题)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i,
+    /^\s*(?:\*\*)?Short title\*\*\s*[:：]\s*(.+)$/i,
+  ]);
+  const SHORT_PATS = [/^\s*(?:\*\*)?(?:Short title|Running (?:title|head)|短标题)\s*[:：]\s*(.+)$/i];
+  const shortPkg = shortT ? null : findInPackage(pkgDir, SHORT_PATS);
+  push('Short title 短标题', shortT ? shortT.value : (shortPkg ? shortPkg.value : ''),
+    shortT ? draft : (shortPkg ? shortPkg.text : null),
+    shortT ? ('稿件 L' + shortT.line) : (shortPkg ? ('包内 ' + shortPkg.file + ' L' + shortPkg.line) : ''));
+  /* ③ 摘要（整块搬运，行号可查） */
+  let absText = ''; let absLine = 0;
+  {
+    const lines = draft.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\s*#*\s*(abstract|摘要)\b/i.test(lines[i]) || /^\s*(abstract|摘要)\s*[:：]/i.test(lines[i])) {
+        const seg = [];
+        for (let j = i + 1; j < lines.length; j++) { if (/^\s*#{1,6}\s/.test(lines[j])) break; seg.push(lines[j]); }
+        absText = seg.join('\n').trim(); absLine = i + 2; break;
+      }
+    }
+  }
+  push('Abstract 摘要', absText, draft, absLine ? ('稿件 L' + absLine + ' 起（整块逐字）') : '', { words: wordsOf(absText), chars: absText.length, req: true });
+  /* ④ 关键词 */
+  const kw = findEvidence(draft, [/^\s*(?:\*\*)?(?:Keywords?|Key words|关键词)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i]);
+  const kwItems = kw ? kw.value.split(/\s*[;；,，]\s*/).filter(Boolean) : [];
+  push('Keywords 关键词', kw ? kw.value : '', draft, kw ? ('稿件 L' + kw.line) : '', { items: kwItems.length, req: true });
+  /* ⑤ Highlights（稿内小节优先，其次包内 Highlights.md） */
+  let hlText = ''; let hlSrc = ''; let hlSrcText = null;
+  {
+    const lines = draft.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\s*#{1,6}\s*(highlights?|研究亮点)\s*$/i.test(lines[i])) {
+        const seg = [];
+        for (let j = i + 1; j < lines.length; j++) { if (/^\s*#{1,6}\s/.test(lines[j])) break; seg.push(lines[j]); }
+        hlText = seg.join('\n').trim(); hlSrc = '稿件 L' + (i + 2) + ' 起'; hlSrcText = draft; break;
+      }
+    }
+    if (!hlText && pkgDir) {
+      const p = path.resolve(pkgDir);
+      if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
+        const f = fs.readdirSync(p).find((x) => /^highlights?.*\.(md|txt)$/i.test(x));
+        if (f) { const t = rawText(fs.readFileSync(path.join(p, f), 'utf8')); hlText = t.trim(); hlSrc = '包内 ' + f + '（整份）'; hlSrcText = t; }
+      }
+    }
+  }
+  const hlItems = hlText ? hlText.split(/\r?\n/).map((s) => s.replace(/^\s*[-*+]\s*/, '').trim()).filter(Boolean) : [];
+  push('Highlights 亮点', hlText, hlSrcText, hlSrc, { items: hlItems.length });
+  /* ⑥ 作者块 / 通讯作者 */
+  const au = findEvidence(draft, [/^\s*(?:\*\*)?(?:Authors?|作者|作者姓名)\s*[:：]\s*(.+)$/i]);
+  const AU_PATS = [/^\s*(?:\*\*)?(?:Authors?|作者|作者姓名)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i];
+  const auPkg = au ? null : findInPackage(pkgDir, AU_PATS);
+  push('Authors 作者块', au ? au.value : (auPkg ? auPkg.value : ''),
+    au ? draft : (auPkg ? auPkg.text : null),
+    au ? ('稿件 L' + au.line) : (auPkg ? ('包内 ' + auPkg.file + ' L' + auPkg.line) : ''), { req: true });
+  const ca = findEvidence(draft, [/^\s*(?:\*\*)?(?:Corresponding author|通讯作者|通信作者)\s*[:：]\s*(.+)$/i]);
+  const CA_PATS = [/^\s*(?:\*\*)?(?:Corresponding author|通讯作者|通信作者)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i];
+  const caPkg = ca ? null : findInPackage(pkgDir, CA_PATS);
+  push('Corresponding author 通讯作者', ca ? ca.value : (caPkg ? caPkg.value : ''),
+    ca ? draft : (caPkg ? caPkg.text : null),
+    ca ? ('稿件 L' + ca.line) : (caPkg ? ('包内 ' + caPkg.file + ' L' + caPkg.line) : ''), { req: true });
+  /* ⑦ 各类声明（三种同等强形态：标题行 / 行首加粗标签 / 标准声明句） */
+  const DECL = [
+    ['CRediT 作者贡献', [/^\s*#{1,6}\s*(?:CRediT|Author contributions?|作者贡献)\b/i, /^\s*(?:\*\*|__)?\s*(?:CRediT authorship contribution statement|Author contributions?|作者贡献)\.?(?:\*\*|__)?\s*[:：]?(.*)$/i]],
+    ['Competing interest 利益冲突', [/^\s*#{1,6}\s*(?:Declaration of (?:competing )?interests?|Conflicts? of interest|利益冲突)\b/i, /^\s*(?:\*\*|__)?\s*(?:Declaration of (?:competing )?interests?|Conflicts? of interest|利益冲突)\.?(?:\*\*|__)?\s*[:：]?(.*)$/i, /^\s*The authors? declare[sd]? (?:no|that they have no) (?:known )?competing (?:financial )?interests?/i]],
+    ['Funding 资助', [/^\s*#{1,6}\s*(?:Funding|Acknowledgements?|资助|基金项目)\b/i, /^\s*(?:\*\*|__)?\s*(?:Funding|基金项目)\.?(?:\*\*|__)?\s*[:：]?(.*)$/i, /^\s*(?:This (?:research|work) (?:did not receive|was supported|received)|本研究(?:未)?(?:获得|受))[^\n]*/i]],
+    ['Data availability 数据可用性', [/^\s*#{1,6}\s*(?:Data (?:and code )?availability|数据可用性)\b/i, /^\s*(?:\*\*|__)?\s*(?:Data (?:and code )?availability|数据可用性)\.?(?:\*\*|__)?\s*[:：]?(.*)$/i]],
+    ['Generative AI 声明', [/^\s*#{1,6}\s*(?:Declaration of generative AI|生成式 ?AI)[^\n]*/i, /^\s*(?:\*\*|__)?\s*(?:Declaration of generative AI[^\n]*|生成式 ?AI[^\n]*)/i]],
+  ];
+  for (const [label, pats] of DECL) {
+    const hit = findEvidence(draft, pats);
+    push(label, hit ? hit.value : '', draft, hit ? ('稿件 L' + hit.line) : '');
+  }
+  /* ⑧ 契约限额对照（只报，不替门判定；没有对应读数的键如实说明） */
+  const contractArg = val('contract');
+  const limits = [];
+  if (contractArg) {
+    const cAbs = path.resolve(contractArg);
+    if (!fs.existsSync(cAbs)) { console.error('前提层失败：契约不存在 —— ' + cAbs); return 2; }
+    let c = null; try { c = JSON.parse(fs.readFileSync(cAbs, 'utf8')); } catch (e) { console.error('前提层失败：契约不是合法 JSON —— ' + String((e && e.message) || e)); return 2; }
+    const lim = c.limits || {};
+    const measured = { abstract_max_words: wordsOf(absText), title_max_chars: ta.title.length, keywords_max: kwItems.length, highlights_max_items: hlItems.length };
+    for (const k of Object.keys(lim)) {
+      const declared = lim[k];
+      /* ★ 限额可能是**对象**（如 highlights: {max_items, max_chars}）⇒ 逐个子键比，别打印成 [object Object]。 */
+      if (declared && typeof declared === 'object' && !Array.isArray(declared)) {
+        const hlMaxLen = hlItems.length ? Math.max.apply(null, hlItems.map((s) => s.length)) : 0;
+        const map = { max_items: hlItems.length, count: hlItems.length, max: hlItems.length, min: hlItems.length,
+          max_chars: hlText.length, max_chars_each: hlMaxLen, max_words: wordsOf(hlText) };
+        for (const sub of Object.keys(declared)) {
+          const got = Object.prototype.hasOwnProperty.call(map, sub) ? map[sub] : null;
+          const dv = declared[sub];
+          /* ★ 方向：`min*` 是**下限**（小于才违规）；布尔/字符串型（required/separate_editable_file/filename_must_contain）无对应读数，如实留空。 */
+          const numeric = (got !== null && typeof dv === 'number');
+          const isMin = /(^|\.)min/i.test(sub);
+          const ok = numeric ? (isMin ? got >= dv : got <= dv) : null;
+          limits.push({ key: k + '.' + sub, declared: dv, measured: got, ok });
+        }
+        continue;
+      }
+      const got = Object.prototype.hasOwnProperty.call(measured, k) ? measured[k] : null;
+      limits.push({ key: k, declared, measured: got, ok: got === null ? null : (got <= declared) });
+    }
+  }
+  const over = limits.filter((x) => x.ok === false);
+  const nonVerbatim = rows.filter((r) => r.state === 'nonverbatim');
+  const bad = missing.length > 0 || nonVerbatim.length > 0 || over.length > 0;
+  const code = nonVerbatim.length ? 'NONVERBATIM' : (missing.length ? 'MISSING' : (over.length ? 'OVER-LIMIT' : 'OK'));
+  if (!A.includes('--quiet')) {
+    console.log('投稿门户填写单 · ' + path.basename(dAbs));
+    for (const r of rows) {
+      const tag = r.state === 'ok' ? '✓' : (r.state === 'nonverbatim' ? '✗ 非逐字' : (r.state === 'absent' ? '· 未提供(可选)' : '· 缺失(必填)'));
+      const cnt = [r.chars ? r.chars + ' 字符' : '', r.words ? r.words + ' 词' : '', r.items ? r.items + ' 项' : ''].filter(Boolean).join(' · ');
+      console.log('  ' + tag + ' ' + r.field + (cnt ? '（' + cnt + '）' : '') + (r.source ? '  ← ' + r.source : ''));
+    }
+    if (limits.length) { console.log('  契约限额对照：'); for (const x of limits) console.log('    ' + (x.ok === false ? '✘ 超限' : (x.ok === true ? '✓ 未超' : '· 无对应读数')) + ' ' + x.key + ' 声明=' + x.declared + (x.measured === null ? '' : ' 实测=' + x.measured)); }
+    console.log('  结论：' + (bad ? (missing.length + nonVerbatim.length + over.length) + ' 项待处理（必填缺失 ' + missing.length + ' · 非逐字 ' + nonVerbatim.length + ' · 超限 ' + over.length + '）' : '必填字段齐、全部可逐字粘贴、无超限') + '（fields_code=' + code + '）');
+    if (absent.length) console.log('  可选未提供 ' + absent.length + ' 项（不判红，是否必须由期刊契约/门决定）：' + absent.join(' / '));
+  }
+  const outArg = val('out');
+  if (outArg) {
+    const o = path.resolve(outArg);
+    const L2 = ['# 投稿门户填写单 · ' + path.basename(dAbs), '', '- 由 `studio.cjs submission-fields` 生成；**每个值都在来源里逐字存在**（抽不出就列入缺失，非逐字会被标出）。', '- 用途：投稿系统（Editorial Manager / ScholarOne / 国内三平台）逐格填写时**直接复制**，避免手工重打出错。', ''];
+    L2.push('| 字段 | 值（逐字，可直接粘贴） | 来源 | 计数 | 状态 |');
+    L2.push('|---|---|---|---|---|');
+    for (const r of rows) {
+      const v = r.value.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+      const cnt = [r.chars ? r.chars + ' 字符' : '', r.words ? r.words + ' 词' : '', r.items ? r.items + ' 项' : ''].filter(Boolean).join(' · ');
+      L2.push('| ' + r.field + ' | ' + (v || (r.req ? '**（缺失·必填）**' : '（未提供·可选）')) + ' | ' + r.source + ' | ' + cnt + ' | ' + (r.state === 'ok' ? '✓' : (r.state === 'nonverbatim' ? '**✗ 非逐字**' : (r.state === 'absent' ? '· 未提供' : '· 缺失'))) + ' |');
+    }
+    if (limits.length) {
+      L2.push(''); L2.push('## 契约限额对照（只报，不替门判定）');
+      for (const x of limits) L2.push('- ' + (x.ok === false ? '**✘ 超限** ' : (x.ok === true ? '✓ ' : '· 无对应读数 ')) + '`' + x.key + '` 声明=' + x.declared + (x.measured === null ? '' : ' 实测=' + x.measured));
+    }
+    L2.push(''); L2.push('<!-- PROVENANCE: ' + JSON.stringify({ tool: 'paper-studio', version: toolVersion(), at: new Date().toISOString(), inputs: [{ role: 'draft', path: dAbs, kind: 'file', sha12: digestOf(dAbs).sha12, n: fs.statSync(dAbs).size }] }) + ' -->');
+    fs.writeFileSync(o, L2.join('\n') + '\n', 'utf8');
+    console.log('  填写单：' + o);
+  }
+  if (JSON_OUT) console.log(JSON.stringify({ draft: dAbs, fields_code: code, rows, limits, missing, absent_optional: absent, nonverbatim: nonVerbatim.map((r) => r.field), over_limit: over.map((x) => x.key) }, null, 2));
+  return bad ? 1 : 0;
+}
 function cmdReports(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -4011,6 +4273,7 @@ function main(argv) {
     if (cmd === 'cover') return cmdCover(args, argv);
     if (cmd === 'report-check') return cmdReportCheck(args, argv);
     if (cmd === 'reports') return cmdReports(args, argv);
+    if (cmd === 'submission-fields') return cmdSubmissionFields(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;
