@@ -1,0 +1,77 @@
+{
+  "schema": "submission-formats.v1",
+  "verified_at": "2026-10-16",
+  "verified_from": "CTAN 包页**逐包实地抓取**（2026-10-16 本机 HTTP 200）：elsarticle / IEEEtran / gbt7714 / ctex；GitHub 仓库元数据经 GitHub API 读取：rstudio/rticles（updated 2026-10-14，1539 stars）",
+  "formats": [
+    {
+      "publisher": "Elsevier",
+      "template": "elsarticle",
+      "kind": "LaTeX class",
+      "version": "3.5",
+      "released": "2026-01-09",
+      "license": "LPPL 1.3",
+      "source": "https://ctan.org/pkg/elsarticle",
+      "class_names": ["elsarticle"],
+      "note": "CTAN 页原文：『accepted for submitted articles both in Elsevier's electronic submission system and elsewhere』"
+    },
+    {
+      "publisher": "IEEE",
+      "template": "IEEEtran",
+      "kind": "LaTeX class",
+      "version": "1.8b",
+      "license": "LPPL 1.3",
+      "source": "https://ctan.org/pkg/IEEEtran",
+      "class_names": ["IEEEtran"],
+      "note": "让作者产出 IEEE 期刊/会议『officially-correct output』"
+    },
+    {
+      "publisher": "中文期刊（GB/T 7714）",
+      "template": "gbt7714",
+      "kind": "BibTeX 样式",
+      "version": "3.1.1",
+      "released": "2026-09-27",
+      "license": "LPPL 1.3c",
+      "source": "https://ctan.org/pkg/gbt7714",
+      "class_names": [],
+      "package_names": ["gbt7714"],
+      "note": "GB/T 7714（《信息与文献 参考文献著录规则》）的 BibTeX 实现 ⇒ **中文刊参考文献首选**"
+    },
+    {
+      "publisher": "中文排版通用",
+      "template": "ctex",
+      "kind": "LaTeX 中文排版类/包",
+      "version": "2.6.5",
+      "license": "LPPL 1.3c",
+      "source": "https://ctan.org/pkg/ctex",
+      "class_names": ["ctexart", "ctexrep", "ctexbook", "ctexbeamer"],
+      "note": "中文排版基线（(pdf)LaTeX / XeLaTeX / LuaLaTeX）"
+    },
+    {
+      "publisher": "多刊合集（R Markdown）",
+      "template": "rticles",
+      "kind": "R 包（一包多刊模板）",
+      "version": "",
+      "license": "见仓库",
+      "source": "https://github.com/rstudio/rticles",
+      "class_names": [],
+      "note": "『LaTeX Journal Article Templates for R Markdown』；仓库 2026-10-14 仍有更新（活跃维护）⇒ 内含 Elsevier/PLOS/IEEE 等多刊模板"
+    }
+  ],
+  "not_verified": [
+    "**sn-jnl**（Springer Nature 类文件）：CTAN 上 **HTTP 404** ⇒ 不在 CTAN，须从 Springer 官网 / Overleaf 模板库取自有分发件",
+    "**PLOS 官方 LaTeX 模板**：CTAN 404；GitHub 搜索未见官方仓库 ⇒ **未取证**（不得声称存在，也不得凭记忆描述）",
+    "**bmcart** / **wiley-article**：CTAN 404 ⇒ 未取证",
+    "**Elsevier / IEEE 的 Guide for Authors 正文**：本机访问返回 **HTTP 403**（机器人阻断）⇒ 逐刊具体要求仍须人工核对（见 references/contract-provenance.md 的通道分型）",
+    "**知网腾云等中文刊门户**：`*.cbpt.cnki.net` 首页为跳转壳、须知页 **302 → 验证码页** ⇒ 自动化取不到，只能人工登录"
+  ],
+  "human_only": [
+    "模板只解决**排版**：字数上限、摘要结构与字数、关键词数、声明段（CRediT / 利益冲突 / 资助 / 数据可用性 / AI 使用）、图件规格、参考文献样式细节，**一律以该刊 Guide for Authors / 投稿须知为准**",
+    "同一出版商可能要求**该刊自有版本**的类文件（与 CTAN 版本不同）⇒ 投稿前以该刊给出的下载件为准",
+    "中文刊的页脚必著录项（收稿日期 / 基金项目 / 作者简介 / 通信作者）与中图分类号取值，模板不覆盖"
+  ],
+  "how_to_use": [
+    "英文刊：先看本表是否命中目标出版商 ⇒ 用对应类文件排版；未命中则从该刊 Guide for Authors 下载官方模板（本机无法自动取，见 not_verified）",
+    "中文刊：`ctex` 打底 + `gbt7714` 做参考文献；页脚著录项按该刊须知补",
+    "`node bin/studio.cjs formats --detect <你的.tex>` ⇒ 报告实际用的 documentclass / bibliographystyle / 宏包，并比对本表（不猜）"
+  ]
+}

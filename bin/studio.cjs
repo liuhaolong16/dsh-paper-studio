@@ -484,6 +484,7 @@ function detectGenre(text, pipeline, override) {
 const SUBCOMMANDS = [
   'retract-check',
   'credit',
+  'formats',
   'route',
   'gates',
   'intake',
@@ -1180,6 +1181,21 @@ function runSelftest() {
   });
 
   // ★ v3.2.1：接口面一致性门（由用户一问"你是以 skill 放进去的吗"追问出的真漂移）
+  check('格式表：真源可读且来源可核（verified_at / verified_from 必须在）', () => {
+    try { const f = readFormats(); return (Array.isArray(f.formats) && f.formats.length >= 3 && !!f.verified_at && !!f.verified_from) || '表不完整'; }
+    catch (e) { return String((e && e.message) || e); }
+  });
+  check('格式检测·正控：\\documentclass{elsarticle} 必须命中 Elsevier/elsarticle（读真实内容，不猜）', () => {
+    const det = detectTexFormat('\\documentclass[5p]{elsarticle}\n\\bibliographystyle{elsarticle-num}\n\\usepackage{graphicx}\n');
+    const hit = readFormats().formats.filter((f) => (f.class_names || []).indexOf(det.documentclass) >= 0)[0];
+    return (det.documentclass === 'elsarticle' && det.bibliographystyle === 'elsarticle-num' && hit && hit.publisher === 'Elsevier')
+      || ('实得 ' + JSON.stringify({ det, hit: hit && hit.publisher }));
+  });
+  check('格式检测·必失败面：未知类文件不得命中（不许"随便什么都算通过"）', () => {
+    const det = detectTexFormat('\\documentclass{__no_such_class__}\n');
+    const hit = readFormats().formats.filter((f) => (f.class_names || []).indexOf(det.documentclass) >= 0)[0];
+    return (!hit && det.documentclass === '__no_such_class__') || '未知类被误判命中';
+  });
   check('接口面：分派支持的命令必须都在 SUBCOMMANDS 登记（不许加了命令忘登记）', () => {
     const r = subcommandGaps(fs.readFileSync(__filename, 'utf8'), SUBCOMMANDS);
     return (r.missing.length === 0 && r.phantom.length === 0) || ('未登记: ' + r.missing.join(',') + ' ｜ 幽灵登记: ' + r.phantom.join(','));
@@ -1874,6 +1890,78 @@ function creditScan(text) {
   out.ok = out.section && out.variants.length === 0 && out.rolesFound.length > 0;
   return out;
 }
+/** 投稿格式模板表（v3.2.16）
+ *  素材来源：CTAN 包页逐包实地抓取（一手）+ GitHub 仓库元数据（经 GitHub API）。
+ *  为什么要有它：**模板只解决排版**，但"用错类文件"是投稿被打回的低级常见原因；
+ *  同时把"哪些刊的官方模板**本机取不到**（403 / 验证码 / 不在 CTAN）"如实列出——
+ *  取不到就必须说取不到，不得凭记忆描述官方要求。
+ */
+const FORMATS_PATH = path.join(ROOT, 'references', 'submission-formats.json');
+function readFormats() {
+  if (!fs.existsSync(FORMATS_PATH)) { const e = new Error('前提层失败：找不到模板表 ' + FORMATS_PATH); e.code = 'FORMATS_MISSING'; throw e; }
+  let d;
+  try { d = JSON.parse(fs.readFileSync(FORMATS_PATH, 'utf8')); }
+  catch (err) { const e = new Error('前提层失败：模板表不是合法 JSON（' + err.message + '）'); e.code = 'FORMATS_BAD_JSON'; throw e; }
+  if (!Array.isArray(d.formats) || !d.verified_at || !d.verified_from) {
+    const e = new Error('前提层失败：模板表缺 formats / verified_at / verified_from（来源必须可核）'); e.code = 'FORMATS_INCOMPLETE'; throw e;
+  }
+  return d;
+}
+/** 读 .tex 的真实内容，取类文件与参考文献样式（不猜） */
+function detectTexFormat(text) {
+  const cls = (String(text).match(/\\documentclass(?:\[[^\]]*\])?\{([^}]+)\}/) || [])[1] || '';
+  const bib = (String(text).match(/\\bibliographystyle\{([^}]+)\}/) || [])[1] || '';
+  const pkgs = [];
+  for (const m of String(text).matchAll(/\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g)) pkgs.push(m[1].trim());
+  return { documentclass: cls.trim(), bibliographystyle: bib.trim(), packages: pkgs };
+}
+function cmdFormats(args) {
+  let d;
+  try { d = readFormats(); } catch (e) { console.error(String((e && e.message) || e)); return 2; }
+  const i = args.indexOf('--detect');
+  if (i >= 0) {
+    const file = args[i + 1] || '';
+    if (!file || file.startsWith('--')) { console.error('前提层失败：--detect 需要一个 .tex 文件参数'); return 2; }
+    const abs = path.resolve(file);
+    if (!fs.existsSync(abs)) { console.error('前提层失败：文件不存在 —— ' + abs); return 2; }
+    let text = '';
+    try { text = fs.readFileSync(abs, 'utf8'); } catch (e) { console.error('前提层失败：读不到 —— ' + String((e && e.message) || e)); return 2; }
+    const det = detectTexFormat(text);
+    const hit = d.formats.filter((f) => (f.class_names || []).indexOf(det.documentclass) >= 0)[0] || null;
+    const out = { file: abs, documentclass: det.documentclass, bibliographystyle: det.bibliographystyle, packages: det.packages,
+      matches: hit ? hit.publisher + ' / ' + hit.template : null, verified_at: d.verified_at, source: d.verified_from };
+    if (JSON_OUT) { console.log(JSON.stringify(out, null, 2)); return hit ? 0 : 1; }
+    console.log('格式检测：' + abs);
+    console.log('  documentclass = ' + (det.documentclass || '（未找到）'));
+    console.log('  bibliographystyle = ' + (det.bibliographystyle || '（未找到）'));
+    if (det.packages.length) console.log('  usepackage = ' + det.packages.join(', '));
+    if (hit) console.log('  ✔ 命中已核实的官方模板：' + hit.publisher + ' / ' + hit.template + '（表核于 ' + d.verified_at + '）');
+    else {
+      console.log('  ⇒ 未命中本表：请从**目标刊 Guide for Authors** 取官方类文件（本表只收**已核实**的，未核实的在 not_verified 里）');
+      if (/^(ctex|gbt7714)/.test(det.documentclass) || det.packages.indexOf('gbt7714') >= 0) console.log('     （中文稿：参考文献可用 gbt7714 宏包）');
+    }
+    return hit ? 0 : 1;
+  }
+  if (JSON_OUT) { console.log(JSON.stringify(d, null, 2)); return 0; }
+  console.log('投稿格式模板（真源：references/submission-formats.json · 核于 ' + d.verified_at + '）');
+  console.log('  来源：' + d.verified_from);
+  for (const f of d.formats) {
+    console.log('  · ' + f.publisher + ' ｜ ' + f.template + '（' + f.kind + '）' + (f.version ? ' v' + f.version : '')
+      + (f.released ? ' ' + f.released : '') + (f.license ? ' · ' + f.license : '') + '  ← ' + f.source);
+    if (f.note) console.log('      ' + f.note);
+  }
+  if (Array.isArray(d.not_verified) && d.not_verified.length) {
+    console.log('  —— 未取证 / 取不到（**不得当成要求**）——');
+    for (const x of d.not_verified) console.log('     ! ' + x);
+  }
+  if (Array.isArray(d.human_only) && d.human_only.length) {
+    console.log('  —— 人工边界（机器不判）——');
+    for (const x of d.human_only) console.log('     ~ ' + x);
+  }
+  console.log('  用法：node bin/studio.cjs formats --detect <你的.tex>');
+  return 0;
+}
+
 function cmdCredit(file) {
   if (!file) { console.error('前提层失败：credit 需要一个文件参数（稿件或声明文件）'); return 2; }
   const abs = path.resolve(file);
@@ -2507,6 +2595,7 @@ function main(argv) {
     if (cmd === 'coverage') return cmdCoverage();
     if (cmd === 'compliance') return cmdCompliance(args[1] || '');
     if (cmd === 'credit') return cmdCredit(args[1] || '');
+    if (cmd === 'formats') return cmdFormats(args);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;

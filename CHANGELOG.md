@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.2.16 —— 2026-10-16
+
+**去公开仓库/权威源找素材：把"投稿用什么模板"做成可核对的真源 + 可机检的检测命令。**
+
+- **新增子命令 `formats`**（`node bin/studio.cjs formats [--detect <你的.tex>]`）：
+  - 无参数 ⇒ 打印模板表（真源 `references/submission-formats.json`），含**来源、版本、许可证、以及"未取证/取不到"清单**；
+  - `--detect <file>` ⇒ 读 .tex **真实内容**，报 `documentclass` / `bibliographystyle` / `usepackage`，并比对表内 `class_names`；命中已知官方模板 exit 0，未命中 exit 1（**不改文件**）。
+- **素材一手核实（本机实地抓取）**：CTAN 包页 **HTTP 200** 逐包取证 —— `elsarticle` **v3.5 / 2026-01-09 / LPPL 1.3**（Elsevier 投稿类）· `IEEEtran` **v1.8b**（IEEE 官方类）· **`gbt7714` v3.1.1 / 2026-09-27**（GB/T 7714 参考文献 ⇒ **中文刊首选**）· `ctex` **v2.6.5**（中文排版基线）；GitHub API 读取 `rstudio/rticles`（**1539★ · 2026-10-14 仍有更新**）。
+- **如实列出取不到的（不得当成要求）**：`sn-jnl`（Springer 自有分发，CTAN **404**）· PLOS 官方 LaTeX 模板（CTAN 404 且 GitHub 搜索**未见官方仓库**）· `bmcart`/`wiley-article`（CTAN 404）· **Elsevier/IEEE 的 Guide for Authors 正文本机 403**（机器人阻断）· **知网腾云门户首页跳转壳 / 须知页 302 → 验证码页** ⇒ 逐刊要求仍须人工核对。
+- 自检新增 **3 条**：真源可读且 `verified_at`/`verified_from` 必须在（来源必须可核）· `\documentclass{elsarticle}` 必须命中 Elsevier（正控）· **未知类文件不得命中**（必失败面）。
+
 ## v3.2.15 —— 2026-10-16
 
 **把"对外文本不得含本机路径"从判据变成事实：被跟踪文件命中 **57 → 0**。**
