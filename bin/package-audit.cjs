@@ -154,6 +154,12 @@ function runAudit(opts) {
     csl: cslLock(root),
     gate: gateParity(root, o.externalGate || EXTERNAL_GATE, o.expectedGate || declaredExternal(root)),
     adapters: adapterCheck(root),
+    /* ★ v3.2.94：许可合规（依赖许可原文 + 随包资产登记/署名）。跑不起来记 SKIP 并写明原因（不是通过）。 */
+    licenseAudit: (() => {
+      try { const la = require('./license-audit.cjs'); const r = la.audit(root);
+        return { status: r.status, fails: r.fails, warns: r.warns, skips: r.skips, deps: r.deps.rows.length, assets: r.assets.rows.length };
+      } catch (e) { return { status: 'SKIP', reason: '许可合规检查跑不起来：' + String((e && e.message) || e) }; }
+    })(),
     manifest: null,
     derivation: 'package.json files 白名单（★不含 npm 自身的忽略规则 ⇒ 本清单是发布 tarball 的**超集**）',
     npmFileCount: Number(process.env.PS_NPM_FILE_COUNT) || null,
@@ -172,6 +178,7 @@ function runAudit(opts) {
   if (!res.csl.ok) fails.push('样式锁不成立：' + (res.csl.bad || []).join(' / ') + (res.csl.reason ? ' ' + res.csl.reason : ''));
   if (res.gate.status === 'FAIL') fails.push('门副本对拍失败：' + JSON.stringify(res.gate));
   if (!res.adapters.ok) fails.push('适配器/宿主兼容项缺失：' + res.adapters.items.filter((x) => !x.ok).map((x) => x.name).join(' / '));
+  if (res.licenseAudit.status === 'FAIL') fails.push('许可合规未通过（依赖许可或随包资产登记/署名）⇒ 跑 node bin/license-audit.cjs 看明细');
   if (res.pluginVersion !== res.version) fails.push('版本不同步：主包 ' + res.version + ' vs 插件 ' + res.pluginVersion);
   res.ok = fails.length === 0;
   res.fails = fails;
@@ -297,6 +304,7 @@ function main(argv) {
   console.log('  样式锁：' + (r.csl.ok ? '✔ ' + r.csl.checked + '/' + r.csl.total : '✘ ' + JSON.stringify(r.csl)));
   console.log('  门副本逐字节：' + r.gate.status + (r.gate.sha ? '（sha256 ' + r.gate.sha + '…）' : r.gate.reason ? '（' + r.gate.reason + '）' : ''));
   console.log('  适配器/宿主兼容：' + (r.adapters.ok ? '✔ ' + r.adapters.items.length + ' 项' : '✘ 缺 ' + r.adapters.items.filter((x) => !x.ok).map((x) => x.name).join(' / ')));
+  console.log('  许可合规：' + (r.licenseAudit.status === 'PASS' ? '✔ 依赖 ' + r.licenseAudit.deps + ' 项 / 资产 ' + r.licenseAudit.assets + ' 项（无 FAIL）' : (r.licenseAudit.status + '（FAIL ' + r.licenseAudit.fails + ' · WARN ' + r.licenseAudit.warns + ' · SKIP ' + r.licenseAudit.skips + '）' + (r.licenseAudit.reason ? ' ' + r.licenseAudit.reason : ''))));
   console.log(r.ok ? '\n  判定：通过' : '\n  判定：失败\n' + r.fails.map((f) => '    ✘ ' + f).join('\n'));
   return r.ok ? 0 : 2;
 }

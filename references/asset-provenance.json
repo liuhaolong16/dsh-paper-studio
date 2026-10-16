@@ -1,0 +1,29 @@
+{
+  "note": "随包分发的**第三方资产**登记表（许可 + 来源 + 哈希）。asset 面由 bin/license-audit.cjs 核对：未登记/sha 不符/许可不可再分发/需署名而未署名 ⇒ FAIL。",
+  "assets": [
+    {
+      "file": "assets/csl/china-national-standard-gb-t-7714-2025-author-date.csl",
+      "sha256": "sha256:5b8b56b8d9f18a151d6edd9ca315ae332ff0a219163d6e08ebb2e00f181d6695",
+      "license": "CC-BY-SA 3.0",
+      "upstream": "https://www.zotero.org/styles/（CSL 官方样式库）",
+      "attribution_required": true,
+      "note": "来源与作者见 assets/csl/PROVENANCE.md；未改动内容"
+    },
+    {
+      "file": "assets/csl/china-national-standard-gb-t-7714-2025-numeric.csl",
+      "sha256": "sha256:4df240a008123cb070dfd5224f45514f868e1fb27fb2dc678edc6b01fd314900",
+      "license": "CC-BY-SA 3.0",
+      "upstream": "https://www.zotero.org/styles/（CSL 官方样式库）",
+      "attribution_required": true,
+      "note": "来源与作者见 assets/csl/PROVENANCE.md；未改动内容"
+    },
+    {
+      "file": "assets/csl/vancouver.csl",
+      "sha256": "sha256:3bcebfe5ac07cba3d17716e77e6ded213435fba77ceb28a55e8e39f1eb9d2dfd",
+      "license": "CC-BY-SA 3.0",
+      "upstream": "https://www.zotero.org/styles/（CSL 官方样式库）",
+      "attribution_required": true,
+      "note": "来源与作者见 assets/csl/PROVENANCE.md；未改动内容"
+    }
+  ]
+}

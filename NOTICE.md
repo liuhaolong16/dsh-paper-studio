@@ -22,3 +22,36 @@
 - **运行时**：Node.js ≥ 20（本仓 `plugin/package.json` 的 `engines`）；DSH 宿主（插件形式安装时）。
 - **可选**：`DSH_AI_WORKBENCH_REGISTRY`（指向你自己的能力登记表；**缺失时出厂审查会显式跳过相关两项**，不是静默通过）。
 - 本仓**不要求**任何付费/需登录的 API；联网能力（检索/核对）由宿主或既有技能提供。
+
+## 依赖许可（**读 `node_modules/*/package.json` 原文字段**，不采信登记）
+
+| 依赖 | 版本 | 许可（原文） | 我们怎么用 | 义务 |
+|---|---|---|---|---|
+| `citeproc` | 2.4.63 | **CPAL-1.0 OR AGPL-1.0**（传染性） | **仅作运行时依赖**（`require('citeproc')` 做 CSL 格式化）；**未修改、未随包分发**（`package.json.files` 不含 `node_modules`） | 如实登记即可；**若将来把它内联进包，必须停下**（`bin/license-audit.cjs` 会 FAIL） |
+| `citeproc-locales` | 1.0.2 | MIT | 运行时依赖（CSL 语言包） | 保留许可 |
+
+> ★ 口径说明：**"作依赖使用"≠"再分发"**。我们不在 tarball 里分发它们的代码，用户由 npm 自行安装；因此不触发传染性许可对我们代码的要求。
+> ★ 这句是**机器核过的**：`node bin/license-audit.cjs` 会检查"传染性依赖是否落进 `files` 白名单"（落进去就 FAIL）。
+> ★ 历史教训：本仓早先的生态扫描把 `citeproc` 记成了 **MIT** —— **许可标注不可信，必须读原文**；这句话对自己的依赖同样成立。
+
+## 随包分发的第三方资产（机器台账）
+
+- 台账：`references/asset-provenance.json`（逐文件：`sha256` + 许可 + 来源 + 是否需署名）；人读说明：`assets/csl/PROVENANCE.md`。
+- 机器核：`node bin/license-audit.cjs` —— 未登记 / sha256 不符 / 许可不可再分发 / 需署名而未署名 ⇒ **FAIL**。
+- 现有资产：3 个 CSL 样式（**CC-BY-SA 3.0**，来自 CSL 官方样式库，未改动内容，署名与来源见 `assets/csl/PROVENANCE.md`）+ `assets/phrase-bank.json`（本仓自产）。
+
+## 第三方吸收（2026-10-17 批次 · 逐家许可与处置）
+
+| 来源 | 许可（读 LICENSE 原文） | 处置 | 落点 |
+|---|---|---|---|
+| `lifecycle-skills` | **Apache-2.0** | 可复制（带声明）——我们**只吸收规则与流程并重写实现**，未复制其代码 | `bin/talk.cjs` · `bin/reviewers.cjs` · `review.js`(严重度分诊) · `references/external-adoptions.md` |
+| `kalaris-skills` | **MIT** | 同上（通用学术子集 37 项待逐个比对） | `references/absorption-matrix-20261017.md` |
+| `auto-empirical-research-skills` | **CC-BY** | 可改编（须署名）——仅作方法参考 | 同上 |
+| `dsh-sci-fault-diag-paper` | **木兰宽松许可证 第 2 版**（其 `package.json` 写 MIT 属标注不准确） | 可复制（带声明）——吸收了插件打包体例与教训分级范式 | `plugin/*` · `references/pipeline.json` |
+| `paperdebugger` | **AGPL-3.0** | **只学架构，不搬代码** | 仅记于吸收矩阵 |
+| `academic-research-skills` | **CC-BY-NC** | **只吸思想，不复制内容**（NC 不得随包分发） | 仅记于吸收矩阵 |
+| `awesome-ai-research-writing` · 3 个 DSH npm 包 | **无 License**（默认保留全部权利） | 只学思路 | 仅记于吸收矩阵 |
+
+> ★ 机器核：`node bin/license-scan.cjs --scan "<扫描件目录>"` —— 我方文本 × **受限源**（NC/传染性/无许可）做 13 词窗口重合比对，命中即 FAIL。
+> 真扫描（2026-10-17）：受限源 8 个 · 我方 121 文件 / 131,205 指纹 / **命中 0**。
+> ★ 该工具的边界已写明：只能抓逐字与近似逐字，**改写/换词/翻译抓不到** —— 地板线，不是免罪符。
