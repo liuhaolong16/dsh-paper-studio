@@ -1,6 +1,6 @@
 {
   "name": "dsh-paper-studio-v3",
-  "version": "3.2.66",
+  "version": "3.2.67",
   "description": "论文插件 V3：把「论文方案」（论文框架 + 方法论 + 工作流）做成对话驱动、无面板、双模式的写作编排层。**跨宿主**：DSH 侧是两个原生工具（paper_studio / paper_dev，用户模式下写入真被拒）；另有**零依赖 MCP 服务器**（bin/mcp-server.mjs），Codex / Claude Code / Cursor 等任何 MCP 宿主可接入；判据只有一份（dist/plugin.js 的 __test__ + 已冻结的 paper-studio CLI），换宿主不产生第二套说法。含 paper_progress 工具：宿主没有原生目标机制时用它顶住长任务（避免每步停下等人催）。",
   "license": "MIT",
   "type": "module",

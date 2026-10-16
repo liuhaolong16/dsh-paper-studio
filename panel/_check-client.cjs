@@ -385,6 +385,71 @@ process.env.DSH_PAPER_KEYS_FILE = path.join(tmpDir, 'keys.json')
     return true
   })
 
+  // ───────────────── ⑥ 视图映射（纯函数）+ 渲染冒烟（把「不白屏」变成断言）─────────────────
+
+  ck('⑥ 视图映射：null / 空对象 / 字符串 / 无效载荷 ⇒ **绝不进 ready**（不许渲染空的就绪列表）且不抛', () => {
+    const vm = loaded.mod.__paperKeys.viewModel
+    for (const v of [null, undefined, {}, 'oops', 42, { ok: false, error: 'HTTP 500' }]) {
+      let r
+      try { r = vm(v) } catch (e) { return '抛了：' + String((e && e.message) || e) }
+      if (!r || r.mode === 'ready') return '无效载荷被当成就绪：' + JSON.stringify(v).slice(0, 40)
+      if (['loading', 'unavailable', 'not_wired'].indexOf(r.mode) < 0) return '未知 mode=' + r.mode
+      if (!r.title) return '没给标题（用户会看到空白）'
+    }
+    return true
+  })
+
+  ck('⑥ 视图映射：未接线载荷 ⇒ not_wired 且必须带原因（不许静默空白）', () => {
+    const vm = loaded.mod.__paperKeys.viewModel
+    const r = vm({ ok: false, wired: false, reason: '找不到 paper-studio 的 bin/keys-store.cjs' })
+    if (r.mode !== 'not_wired') return 'mode=' + r.mode
+    return /keys-store/.test(String(r.message)) ? true : ('原因丢了：' + r.message)
+  })
+
+  ck('⑥ 视图映射：完整载荷 ⇒ 行数/状态/掩码；★停用行必须仍显示掩码（证明「保留」）', () => {
+    const vm = loaded.mod.__paperKeys.viewModel
+    const r = vm({
+      ok: true, wired: true, path: 'C:/x/keys.json', updated_at: '2026-10-16T12:00:00Z', file_ok: true,
+      providers: [
+        { id: 'deepseek', label: '深度求索', present: true, enabled: true, key_masked: 'sk-***ab（长度 39）', last_test: { at: '2026-10-16T11:00:00Z', ok: true, note: '连通' } },
+        { id: 'openai', label: 'OpenAI', present: true, enabled: false, key_masked: 'sk-***zz' },
+        { id: 'glm', label: 'GLM', present: false },
+      ],
+    })
+    if (r.mode !== 'ready') return 'mode=' + r.mode
+    if (r.rows.length !== 3) return '行数=' + r.rows.length
+    if (r.rows[0].state !== '已连接' || !/\*\*\*/.test(r.rows[0].masked)) return '第一行不对：' + JSON.stringify(r.rows[0])
+    if (r.rows[0].lastTestAt !== '2026-10-16T11:00:00Z') return '上次测试时间丢了'
+    if (r.rows[1].state !== '已停用（保留）') return '停用行状态=' + r.rows[1].state
+    if (!/\*\*\*/.test(r.rows[1].masked)) return '★停用行必须仍显示掩码'
+    if (r.rows[2].state !== '未录入' || r.rows[2].masked !== '') return '未录入行不对：' + JSON.stringify(r.rows[2])
+    return true
+  })
+
+  ck('⑥ 视图映射：畸形载荷（providers 非数组 / 行是 null / 字段类型错）⇒ 降级但**绝不抛**', () => {
+    const vm = loaded.mod.__paperKeys.viewModel
+    const bad = [
+      { ok: true, providers: 'not-an-array' },
+      { ok: true, providers: [null, 7, { id: 1, key_masked: 2, last_test: 'x' }] },
+      { ok: true, providers: [{}] },
+    ]
+    for (const v of bad) {
+      let r
+      try { r = vm(v) } catch (e) { return '抛了：' + String((e && e.message) || e) + ' 载荷=' + JSON.stringify(v).slice(0, 60) }
+      if (!r || !Array.isArray(r.rows)) return 'rows 不是数组'
+    }
+    return true
+  })
+
+  ck('⑥ 渲染冒烟：组件在 loading 态（view=null）必须返回元素而非抛错（白屏的直接防线）', () => {
+    const Section = loaded.mod.__paperKeys.PaperKeysSection
+    if (typeof Section !== 'function') return '组件不是函数'
+    let el
+    try { el = Section({}) } catch (e) { return '渲染抛了：' + String((e && e.message) || e) }
+    if (!el || typeof el !== 'object') return '没返回元素'
+    return el.type === 'div' ? true : ('返回的 type=' + String(el.type))
+  })
+
   // ───────────────── 汇总 ─────────────────
 
   try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch (e) { /* 清理失败不致命 */ }

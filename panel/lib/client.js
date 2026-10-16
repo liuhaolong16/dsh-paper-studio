@@ -89,6 +89,49 @@ window.__ModuleLoader__.load({
         .catch(function (e) { return { ok: false, error: '请求失败：' + String((e && e.message) || e) } });
     }
 
+    /**
+     * 视图映射（**纯函数**，可夹具）：把服务端返回翻译成「该渲染什么」。
+     * 为什么抽出来：白屏/渲染抛错在开发机上最难复现；抽成纯函数就能断言，
+     *   且宿主/服务端返回空对象、null、畸形结构时都不许让渲染路径抛。
+     */
+    function viewModel(view) {
+      var out = { mode: 'loading', title: SECTION_LABEL, rows: [], warnings: [], path: '', updatedAt: '', message: '' };
+      if (!view || typeof view !== 'object') return out;
+      if (view.ok === false && view.wired === false) {
+        out.mode = 'not_wired';
+        out.message = String(view.reason || '未接线');
+        return out;
+      }
+      /* ★ 严格要求 ok === true 才进 ready：取不到有效载荷时宁可显示占位与原因，
+         也**绝不**渲染成"空的就绪列表"（那正是用户看到的"白屏"形态） */
+      if (view.ok !== true) {
+        out.mode = 'unavailable';
+        out.message = String(view.error || '读不到凭据状态（服务端未给出有效载荷）');
+        return out;
+      }
+      out.mode = 'ready';
+      out.path = String(view.path || '');
+      out.updatedAt = view.updated_at ? String(view.updated_at) : '';
+      if (view.file_ok === false) out.warnings.push('凭据文件有问题：' + String(view.file_reason || '不可读'));
+      var list = Array.isArray(view.providers) ? view.providers : [];
+      out.rows = list.map(function (it) {
+        var o = (it && typeof it === 'object') ? it : {};
+        var st = stateOf(o);
+        return {
+          id: String(o.id || ''),
+          label: String(o.label || o.id || ''),
+          state: st,
+          masked: st === '未录入' ? '' : String(o.key_masked || ''),
+          enabled: o.enabled !== false,
+          present: !!o.present,
+          lastTestAt: (o.last_test && o.last_test.at) ? String(o.last_test.at) : '',
+          lastTestOk: !!(o.last_test && o.last_test.ok),
+          lastTestNote: (o.last_test && o.last_test.note) ? String(o.last_test.note) : '',
+        };
+      });
+      return out;
+    }
+
     // ───────────────────────── 视图 ─────────────────────────
 
     function ProviderRow(props) {
@@ -172,24 +215,28 @@ window.__ModuleLoader__.load({
         }
       };
 
-      if (!view) return h('div', { className: 'pk-wrap' }, h('p', { className: 'pk-title' }, SECTION_LABEL), h('p', { className: 'pk-sub' }, '正在读取本机凭据状态…'));
-      if (view.ok === false && view.wired === false) {
+      /* 渲染全部走纯函数 viewModel ⇒ 「该渲染什么」可夹具，「渲染路径不抛」可断言 */
+      var vm = viewModel(view);
+      if (vm.mode === 'loading') return h('div', { className: 'pk-wrap' }, h('p', { className: 'pk-title' }, SECTION_LABEL), h('p', { className: 'pk-sub' }, '正在读取本机凭据状态…'));
+      if (vm.mode === 'not_wired' || vm.mode === 'unavailable') {
         return h('div', { className: 'pk-wrap' },
           h('p', { className: 'pk-title' }, SECTION_LABEL),
-          h('p', { className: 'pk-msg bad' }, view.reason || '未接线'),
-          h('p', { className: 'pk-note' }, '未接线时本面板**不改动任何文件**：装上 paper-studio 或设好 DSH_PAPER_STUDIO_ROOT 后回来刷新即可。'),
+          h('p', { className: 'pk-msg bad' }, vm.message || '未接线'),
+          vm.mode === 'not_wired'
+            ? h('p', { className: 'pk-note' }, '未接线时本面板**不改动任何文件**：装上 paper-studio 或设好 DSH_PAPER_STUDIO_ROOT 后回来刷新即可。')
+            : h('p', { className: 'pk-note' }, '本条不是"没有凭据"，而是**没读到状态**——请稍后刷新；本面板不会因此改动任何文件。'),
         );
       }
 
       return h('div', { className: 'pk-wrap' },
         h('p', { className: 'pk-title' }, SECTION_LABEL),
         h('p', { className: 'pk-sub' }, '在这里录入各家模型的 token：**凭据只写本机**（不进仓库、不进日志、不在对话里回显）；面板只显示掩码。启用与否同时决定 CLI（`studio model …`）能不能用到它。'),
-        (view.providers || []).map(function (it) { return h(ProviderRow, { key: it.id, it: it, onResult: onResult }) }),
-        view.file_ok === false ? h('p', { className: 'pk-msg bad' }, '凭据文件有问题：' + (view.file_reason || '不可读') + '（内容原样保留，未改动）') : null,
+        (view && view.providers ? view.providers : []).map(function (it) { return h(ProviderRow, { key: it.id, it: it, onResult: onResult }) }),
+        vm.warnings.length ? h('p', { className: 'pk-msg bad' }, vm.warnings.join('；') + '（内容原样保留，未改动）') : null,
         msg ? h('p', { className: 'pk-msg ' + msg.kind }, msg.text) : null,
         h('p', { className: 'pk-note' },
-          '存储位置：', h('span', { className: 'pk-path' }, String(view.path || '（未知）')),
-          view.updated_at ? h('span', null, ' · 最近写入 ' + String(view.updated_at)) : null,
+          '存储位置：', h('span', { className: 'pk-path' }, vm.path || '（未知）'),
+          vm.updatedAt ? h('span', null, ' · 最近写入 ' + vm.updatedAt) : null,
         ),
         h('p', { className: 'pk-note' }, '规则：**停用优先于环境变量** —— 这里点停用，就等于停用（环境变量里的同名 key 不会被偷偷拿来用）；要用回环境变量请删掉本面板里的这一条。'),
       );
@@ -225,7 +272,7 @@ window.__ModuleLoader__.load({
     exports.inject = inject;
     exports.__paperKeys = {
       VERSION: VERSION, SECTION_ID: SECTION_ID, SECTION_LABEL: SECTION_LABEL, API: API, CSS: CSS,
-      stateOf: stateOf, actionBody: actionBody, PaperKeysSection: PaperKeysSection,
+      stateOf: stateOf, actionBody: actionBody, viewModel: viewModel, PaperKeysSection: PaperKeysSection,
     };
     return module.exports;
   },
