@@ -492,6 +492,7 @@ function detectGenre(text, pipeline, override) {
 
 /** 阶段词汇表（骨干层）：chain 项必须能解析到真实实现，不许「只是名字」。 */
 const SUBCOMMANDS = [
+  'doctor',
   'retract-check',
   'credit',
   'formats',
@@ -1373,6 +1374,36 @@ function runSelftest() {
     let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
     const row = j && (j.scan.items || []).find((x) => x.key === 'decl');
     return (row && row.state === 'unreadable') ? true : ('row=' + JSON.stringify(row));
+  });
+  /* ★ v3.2.48：`doctor` —— 环境自检。两条夹具：真源应齐备；**缺外部资产必须非零退出**（fail-first）。
+     为什么值得测：本插件 12 道门**全在插件之外** ⇒ 新装的人很可能"门一个都没有"，那时 doctor 必须说清楚。 */
+  check('v3.2.48·doctor·正控：本机真源应门全可用（gatesOk === gatesTotal，ok=true）', () => {
+    const r = doctorScan(readPipeline(), {});
+    return (r.gatesTotal > 0 && r.gatesOk === r.gatesTotal && r.ok === true)
+      ? true : ('门 ' + r.gatesOk + '/' + r.gatesTotal + ' 素材 ' + r.assetsOk + '/' + r.assetsTotal + ' ok=' + r.ok + ' degraded=' + JSON.stringify(r.degraded));
+  });
+  check('v3.2.48·doctor·fail-first：门解析不到（__LOCAL__ 未解析）⇒ 报缺口 + **退出码非 0**', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-'))
+    const pj = path.join(tmp, 'p.json');
+    /* 用**真源的副本**、只把 playbook_root 换成未解析占位 —— 更贴近"新装机没配本机路径表"的真实场景。
+       （首版用最小合成真源 ⇒ 被 readPipeline 的 task_types 校验挡下，属夹具不合格。） */
+    const real = JSON.parse(fs.readFileSync(path.join(ROOT, 'references', 'pipeline.json'), 'utf8'));
+    real.assets = Object.assign({}, real.assets, { playbook_root: '__LOCAL__/playbook_root' });
+    fs.writeFileSync(pj, JSON.stringify(real));
+    /* ★ 关键：还必须把"本机路径表"也指走 —— 否则 readPipeline 会拿本机真表把 `__LOCAL__` 解析成真路径，
+       于是"新装机"场景根本模拟不出来（首版就栽在这里：实得 12/12）。 */
+    const emptyPaths = path.join(tmp, 'paths.json');
+    fs.writeFileSync(emptyPaths, '{}');
+    const env = Object.assign({}, process.env, { DSH_PAPER_LOCAL_PATHS: emptyPaths });
+    const r = spawnSync(process.execPath, [__filename, 'doctor', '--pipeline', pj, '--json'], { encoding: 'utf8', env });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    if (!j) return 'JSON 解析失败：' + o.slice(0, 120);
+    if (j.gatesOk !== 0 || j.ok !== false) return ('应报 0/N 缺口，实得 ' + j.gatesOk + '/' + j.gatesTotal + ' ok=' + j.ok);
+    if (r.status === 0) return '缺资产却退出 0（必须非零）';
+    if (!(j.degraded || []).length) return 'degraded 为空（应列出不可用的门）';
+    return true;
   });
   check('★报告默认落点不得写进投稿包目录（**逐个会写报告的命令都测**：cover / anchors / preflight）', () => {
     const { spawnSync } = require('node:child_process');
@@ -3530,6 +3561,102 @@ function cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has) {
   console.log('  工作单：' + outPath + '（**候选须你确认；本工具不代填**）');
   return 0;
 }
+/** ═══ v3.2.48 `doctor`：环境与能力自检 ═════════════════════════════════════════════════════════════
+ *  为什么：本插件的**12 道门全在插件之外**（`rel=playbook_root`，靠 `~/.dsh/paper-studio/local-paths.json` 解析）。
+ *  单装插件、没配那套外部资产的人，12 道门一个都没有 —— 此前只能靠一条条命令各自的报错去猜"到底少了什么、少了会怎样"。
+ *  纪律：**未检查 ≠ 通过**；缺什么就直说缺什么并给可执行的补救；`doctor` 只报告环境，不做任何业务判定。
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+function doctorScan(pipeline, opt) {
+  const o = opt || {};
+  const exists = o.exists || ((p) => { try { return fs.existsSync(p); } catch { return false; } });
+  const assets = (pipeline && pipeline.assets) || {};
+  const gates = (pipeline && pipeline.gates) || [];
+  /* 门：逐个解析（resolveGateScript 已内置 __LOCAL__ 未解析的处理） */
+  const gateRows = gates.map((g) => {
+    let r = { script: '', why: '' };
+    try { r = resolveGateScript(g, pipeline); } catch (e) { r = { script: '', why: String((e && e.message) || e) }; }
+    const ok = !!r.script && exists(r.script);
+    return { id: g.id, rel: g.rel || 'ROOT', entry: g.entry, path: r.script || '', ok, why: r.why || '' };
+  });
+  /* 素材：只把"看起来是路径"的值当路径（说明性长文本跳过） */
+  const isPathLike = (s) => typeof s === 'string' && s.length <= 120 && /^[A-Za-z0-9_./\\:-]+$/.test(s) && /\.[A-Za-z0-9]{1,5}$/.test(s);
+  const assetRows = Object.keys(assets).filter((k) => isPathLike(assets[k])).map((k) => {
+    const raw = assets[k];
+    const unresolved = String(raw).indexOf('__LOCAL__') === 0;
+    const abs = unresolved ? '' : (path.isAbsolute(raw) ? raw : path.join(ROOT, raw));
+    return { key: k, raw, unresolved, path: abs, ok: !!abs && exists(abs) };
+  });
+  const gatesOk = gateRows.filter((g) => g.ok).length;
+  const assetsOk = assetRows.filter((a) => a.ok).length;
+  const localPaths = {
+    env: process.env.DSH_PAPER_LOCAL_PATHS || '',
+    home: HOME_PATHS_FILE,
+    homeExists: exists(HOME_PATHS_FILE),
+    legacy: LEGACY_PATHS_FILE,
+    legacyExists: exists(LEGACY_PATHS_FILE),
+    example: path.join(ROOT, 'references', 'local-paths.example.json'),
+    exampleExists: exists(path.join(ROOT, 'references', 'local-paths.example.json')),
+  };
+  return {
+    node: process.version,
+    root: ROOT,
+    pipeline: PIPELINE_PATH,
+    gateRows, gatesOk, gatesTotal: gates.length,
+    assetRows, assetsOk, assetsTotal: assetRows.length,
+    localPaths,
+    /* 门缺失时**哪些能力会降级**（只陈述依赖关系，不替门判定） */
+    degraded: gateRows.filter((g) => !g.ok).map((g) => g.id),
+    ok: gatesOk === gates.length && assetsOk === assetRows.length,
+  };
+}
+function cmdDoctor(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  let pipeline = null;
+  const pjArg = val('pipeline');
+  try { pipeline = readPipeline(pjArg ? path.resolve(pjArg) : PIPELINE_PATH); } catch (e) { console.error('前提层失败：真源读不到 —— ' + String((e && e.message) || e)); return 2; }
+  const r = doctorScan(pipeline, {});
+  if (JSON_OUT) { console.log(JSON.stringify(r, null, 2)); return r.ok ? 0 : 1; }
+  const L = [];
+  L.push('# 环境与能力自检（doctor）');
+  L.push('');
+  L.push('> 只报告环境，**不做业务判定**；凡"不可用"一律记 **未检查**（**未检查 ≠ 通过**）。');
+  L.push('');
+  L.push('## 一、运行时');
+  L.push('');
+  L.push('- Node：`' + r.node + '`');
+  L.push('- 插件根：`' + r.root + '`');
+  L.push('- 真源：`' + r.pipeline + '`');
+  L.push('- 本机路径表（`__LOCAL__` 解析用）：' + (r.localPaths.env ? '环境变量 `DSH_PAPER_LOCAL_PATHS` = `' + r.localPaths.env + '`' : (r.localPaths.homeExists ? '`' + r.localPaths.home + '`（存在）' : (r.localPaths.legacyExists ? '`' + r.localPaths.legacy + '`（存在，向后兼容档）' : '**未找到**（三档皆无）→ 外部资产与门都无法解析'))));
+  L.push('');
+  L.push('## 二、门（' + r.gatesOk + '/' + r.gatesTotal + ' 可用）');
+  L.push('');
+  L.push('| 门 | rel | 入口 | 状态 |');
+  L.push('|---|---|---|---|');
+  for (const g of r.gateRows) L.push('| `' + g.id + '` | ' + g.rel + ' | `' + g.entry + '` | ' + (g.ok ? '✓' : '**✗ 不可用**' + (g.why ? '：' + g.why : '（文件不存在：' + g.path + '）')) + ' |');
+  L.push('');
+  L.push('## 三、素材（' + r.assetsOk + '/' + r.assetsTotal + ' 存在）');
+  L.push('');
+  for (const a of r.assetRows) L.push('- ' + (a.ok ? '✓' : '✗') + ' `' + a.key + '` → ' + (a.unresolved ? '**未解析的 `__LOCAL__` 占位**' : '`' + a.path + '`'));
+  L.push('');
+  L.push('## 四、结论');
+  L.push('');
+  if (r.ok) {
+    L.push('- **环境齐备**：门 ' + r.gatesOk + '/' + r.gatesTotal + '、素材 ' + r.assetsOk + '/' + r.assetsTotal + '。');
+  } else {
+    L.push('- **有缺口**（**未检查 ≠ 通过**）：门可用 ' + r.gatesOk + '/' + r.gatesTotal + '，素材 ' + r.assetsOk + '/' + r.assetsTotal + '。');
+    if (r.degraded.length) L.push('- 不可用的门：' + r.degraded.map((x) => '`' + x + '`').join(' · ') + ' ⇒ 依赖它们的检查会记「未检查」。');
+    L.push('- 补救：把 `references/local-paths.example.json` 复制成 `' + r.localPaths.home + '`（或设 `DSH_PAPER_LOCAL_PATHS`）并填真实路径；外部资产（门脚本/短语库等）见 SKILL.md 的"外部依赖"一节。');
+    L.push('- **插件内实现的能力不受此影响**：`submission-fields`（含 `--proposal`）· `anchors`（`--resolve/--oa/--quote-hints`）· `compliance`（含包卫生）· `cover`/`response` 的要素核对 · `reports --scan`（按报告自带指纹核）。');
+  }
+  /* ★ 默认**不落文件**（工具产物不该污染插件根/工作目录）；要落就显式 `--out`。 */
+  const outPath = val('out') ? path.resolve(val('out')) : '';
+  if (outPath) { try { fs.writeFileSync(outPath, JSON.stringify(r, null, 2) + '\n', 'utf8'); } catch (e) { console.error('写不出 --out：' + String((e && e.message) || e)); } }
+  console.log(L.join('\n'));
+  console.log('');
+  console.log('doctor：' + (r.ok ? '环境齐备' : '**有缺口**') + '（门 ' + r.gatesOk + '/' + r.gatesTotal + ' · 素材 ' + r.assetsOk + '/' + r.assetsTotal + '）' + (outPath ? '；机器可读：' + outPath : '（未落文件；要机器可读加 `--json` 或 `--out <路径>`）'));
+  return r.ok ? 0 : 1;
+}
 function cmdReports(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -4854,7 +4981,8 @@ function main(argv) {
     if (cmd === 'response') return cmdResponse(args, argv);
     if (cmd === 'cover') return cmdCover(args, argv);
     if (cmd === 'report-check') return cmdReportCheck(args, argv);
-    if (cmd === 'reports') return cmdReports(args, argv);
+    if (cmd === 'doctor') return cmdDoctor(args, argv);
+  if (cmd === 'reports') return cmdReports(args, argv);
     if (cmd === 'submission-fields') return cmdSubmissionFields(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
