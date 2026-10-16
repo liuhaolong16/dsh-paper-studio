@@ -3,6 +3,14 @@
 
 # 变更记录
 
+## v3.2.82 —— 2026-10-17
+
+**把交付验证证据文档回填到 v3.2.81 的实测读数，并新增「CI 结果通道与诊断」一节。**
+
+- **证据文档 `references/package-verification-20261017.md` 重新由实跑反写**（采集脚本 → `readings381.json` → 文档，零手抄）：八套自检 · 源文件完整性与兼容度六项 · **npm 线上与真装验证** · 复跑命令 · 已知边界。
+- **★npm 状态更新**：线上 `latest = 3.2.81`，与仓库版本**已同步**；真装验证 113 文件 · 含 `panel/`、`references/forms/`、`bin/package-audit.cjs` · 装后 studio **245/245** · 面板 **25/25** · 插件 **38/38**；**证据链三处闭合**（终端回显 shasum ＝ `dist.shasum` ＝ 实装那一份，`e93ed3a81f88d224141014ab39befded2327bf8d`）。
+- **★新增 CI 诊断（本机读不到 Actions 日志的替代通路）**：读取 `ci-status` 分支的 `ci-status/publish-npm.json`（`git fetch github ci-status` 即可，不依赖网页/API）。v3.2.81 那次运行的实测：`npm11/npmci/selfchecks/pack` **全部 success**，**只有 `publish` 为 failure** ⇒ 失败点在 **npm 侧鉴权（Trusted Publisher 未配置或与仓库/工作流不匹配）**，不是工作流或本机环境。
+- **发布通路现状如实记录**：手动发版可用且已三次验证（3.2.71 / 3.2.75 / 3.2.81）；自动发版（OIDC）卡在 npm 网站配置所需的 2FA 环节。
 ## v3.2.81 —— 2026-10-17
 
 **★给 CI 装一个「自报结果」通道（用 git 回传），因为本机读不到 Actions 日志。**
