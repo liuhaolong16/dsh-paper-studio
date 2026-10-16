@@ -1087,6 +1087,38 @@ function crosscheck(pair) {
  * 而是把「这篇论文该分几步写、每步产出什么、需要哪类证据、交付前过哪道门」**从真源推导**成两份可执行文件。
  * 项目目录若还没有骨架，顺带跑一次 scaffold（开一篇新稿：14 个文件）。
  */
+function formCoverageReport(forms) {
+  /* 七要素完整性探针（纯函数）：用户点名的七要素——框架 / 格式 / 方法论 / 核心 / 工作流 / 重点 / 字数。
+     ★空白字符串与"只有两节的框架"都不算"有"；另外检查**差异化**：core 必须两两不同。 */
+  const ELEMENTS = ['framework', 'format', 'methodology', 'core', 'workflow', 'focus', 'length'];
+  const ne = (v, min) => (typeof v === 'string' ? v.trim().length >= (min || 4) : Array.isArray(v) ? v.length >= (min || 1) : !!v);
+  const rows = [], missing = [];
+  for (const f of (forms || [])) {
+    const n = f.norms || {};
+    const lb = n.length_bands || {};
+    const el = {
+      framework: Array.isArray(f.framework) && f.framework.length >= 5 && f.framework.every((x) => x && x.id && x.label),
+      format: ne(n.format) || ne(n.numbering) || ne(n.citation),
+      methodology: Array.isArray(f.methodology) ? f.methodology.length >= 2 : ne(f.methodology, 8),
+      core: ne(f.core, 10),
+      workflow: Array.isArray(f.workflow) && f.workflow.length >= 3,
+      focus: Array.isArray(f.focus) && f.focus.length >= 3,
+      length: !!lb.unit && ['chars', 'pages', 'contract'].indexOf(lb.unit) >= 0,
+    };
+    const miss = ELEMENTS.filter((e) => !el[e]);
+    if (miss.length) missing.push(f.id + '：缺 ' + miss.join('/'));
+    rows.push({ id: f.id, label: f.label, elements: el, missing: miss });
+  }
+  const cores = (forms || []).map((f) => String(f.core || '').trim());
+  const coreDupe = cores.length > 1 && new Set(cores).size !== cores.length;
+  const meths = (forms || []).map((f) => JSON.stringify(f.methodology || ''));
+  const methSame = meths.length > 1 && new Set(meths).size === 1;
+  const warnings = [];
+  if (coreDupe) warnings.push('有形态的 core 完全相同 ⇒ 差异化失败');
+  if (methSame) warnings.push('各形态的 methodology 完全相同 ⇒ 差异化失败');
+  return { ok: missing.length === 0 && warnings.length === 0, elements: ELEMENTS, rows, missing, warnings, formsChecked: rows.length };
+}
+
 function formSectionBudget(form, opts) {
   /* 分节预算（纯函数）：把该形态的总量摊到各节上——**每个形态的单位不同**：
      字符型按字、会议按页、课堂演讲按分钟（口播）+ 页数。模板值优先。 */
@@ -3750,6 +3782,68 @@ function runSelftest() {
           try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
           if (/## 1c\. 形态级起草清单/.test(task)) return '旧用法被塞进了形态级小节';
           return /## 1b\./.test(task) ? true : '旧用法的 §1b 章节清单没了（兼容面被破坏）';
+        });
+
+
+        // ── v3.2.75 · 七要素完整性（完善程度检查）──────────────────────
+        check('v3.2.75·coverage·六形态七要素必须齐全（框架/格式/方法论/核心/工作流/重点/字数）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const rep = formCoverageReport(r.list);
+          if (rep.formsChecked !== r.list.length) return '覆盖数不等于形态数：' + rep.formsChecked + '/' + r.list.length;
+          if (!rep.ok) return '不齐全：' + rep.missing.concat(rep.warnings).join(' ｜ ');
+          return rep.elements.length === 7 ? true : '要素数应为 7，实得 ' + rep.elements.length;
+        });
+
+        check('v3.2.75·coverage·★必失败面：故意抽掉 core 必须判不合格并点名', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const fake = JSON.parse(JSON.stringify(r.list.slice(0, 2)));
+          delete fake[0].core;
+          const rep = formCoverageReport(fake);
+          if (rep.ok) return '缺 core 竟判齐全';
+          if (!rep.missing.some((m) => /core/.test(m))) return '没点名 core：' + rep.missing.join(' ｜ ');
+          return true;
+        });
+
+        check('v3.2.75·coverage·★诚实面：空白字符串与「只有两节的框架」都不算"有"', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const a = JSON.parse(JSON.stringify(r.list[0])); a.core = '   '; a.methodology = [];
+          const rep1 = formCoverageReport([a]);
+          if (rep1.ok) return '空白 core / 空 methodology 被判为"有"';
+          const b = JSON.parse(JSON.stringify(r.list[0])); b.framework = [{ id: 'x', label: 'X' }, { id: 'y', label: 'Y' }];
+          const rep2 = formCoverageReport([b]);
+          if (rep2.ok) return '只有两节的框架被判为"有"';
+          return true;
+        });
+
+        check('v3.2.75·coverage·★差异化：六形态的 core 必须两两不同（相同即判不合格）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const cores = r.list.map((f) => String(f.core || '').trim());
+          if (new Set(cores).size !== cores.length) return 'core 有重复';
+          const rep = formCoverageReport(r.list);
+          if (rep.warnings.some((w) => /core/.test(w))) return '探针没发现重复 core（判据失效）';
+          // 反向：把两形态 core 改成一样，探针必须报
+          const fake = JSON.parse(JSON.stringify(r.list.slice(0, 2)));
+          fake[1].core = fake[0].core;
+          const rep2 = formCoverageReport(fake);
+          if (rep2.ok) return 'core 相同时探针仍判 ok';
+          return true;
+        });
+
+        check('v3.2.75·coverage·探针必须逐形态给出行（不许只给总数）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const rep = formCoverageReport(r.list);
+          for (const f of r.list) {
+            const row = rep.rows.find((x) => x.id === f.id);
+            if (!row) return '缺行：' + f.id;
+            if (Object.keys(row.elements).length !== 7) return f.id + ' 的要素格子数不是 7';
+          }
+          return true;
+        });
+
+        check('v3.2.75·coverage·端到端（子进程·静默）：form coverage 必须退 0', () => {
+          const { execFileSync } = require('child_process');
+          try { execFileSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'form', 'coverage'], { stdio: ['ignore', 'ignore', 'ignore'] }); return true; }
+          catch (e) { return 'form coverage 退 ' + ((e && e.status) || 1) + '（应为 0）'; }
         });
 
   const failed = results.filter((r) => !r.ok);
@@ -6781,6 +6875,23 @@ if (cmd === 'form') {
           console.log('用法：form show <id> | form check --form <id> --draft <稿.md> [--json]');
         }
         return 0;
+      }
+      if (sub === 'coverage') {
+        const rep = formCoverageReport(forms.list);
+        if (json) console.log(JSON.stringify(rep, null, 2));
+        else {
+          console.log('七要素完整性检查（框架 / 格式 / 方法论 / 核心 / 工作流 / 重点 / 字数）· 覆盖 ' + rep.formsChecked + ' 个形态');
+          const head = rep.elements.map((e) => e.slice(0, 4)).join(' ');
+          console.log('      形态'.padEnd(20) + head);
+          for (const r of rep.rows) {
+            const marks = rep.elements.map((e) => (r.elements[e] ? ' ✔  ' : ' ✘  ')).join('');
+            console.log('      ' + (r.id + ' ' + r.label).slice(0, 18).padEnd(20) + marks);
+          }
+          for (const w of rep.warnings) console.log('      ⚠ ' + w);
+          for (const m of rep.missing) console.log('      ✘ ' + m);
+          console.log(rep.ok ? '  判定：七要素齐全且形态间有差异' : '  判定：不完整（有缺失或差异化为零）');
+        }
+        return rep.ok ? 0 : 2;
       }
       if (sub === 'ask') {
         const forced = flag('--form');
