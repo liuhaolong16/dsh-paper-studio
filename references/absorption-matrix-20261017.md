@@ -126,5 +126,6 @@
 | P1 | `prepare-camera-ready` / `fit-page-limit`（定稿与页数适配） | lifecycle-skills | 借清单；页数类与我们的 docx 版面判据合并 |
 | P1 | `check-originality` / `benchmark-paper` / `study-exemplars`（原创性/对标/范例研读） | lifecycle-skills | 借方法；原创性不得联网查重（无 key 且涉隐私）⇒ 只做自引与重复段 |
 | P2 | kalaris 的通用子集（`academic-plotting` / `bibtex-hygiene` / `apa7` / `acm-sigconf` / `arxiv-submission` 等） | kalaris-skills（MIT） | 逐个比对我们的 stylecheck/figures/refs，只补缺口 |
-| ➖ | `work-with-overleaf` / `render-workspace-html` / `refactor-research-code`（LaTeX 通路 / Web 界面 / 代码重构） | lifecycle + paperdebugger | **不做**：用户已定"去面板"；LaTeX 通路登记为 known_gap；科研代码重构不在论文插件职责内 |
+| ➖ | `work-with-overleaf` / `refactor-research-code`（LaTeX 通路 / 科研代码重构） | lifecycle | **不做**：LaTeX 通路登记为 known_gap；科研代码重构不在论文插件职责内 |
+| ⏸ | `render-workspace-html` 及一切 **UI / 面板形态** | lifecycle + paperdebugger | **暂缓 ≠ 不做**（2026-10-17 用户指出原「不做」是误记）：真实原因是早前连续崩溃后判断当时技术力不足以承担 UI 风险，**决定权保留在用户**；构想与前提条件已收集在 `references/ui-backlog.md`（含我们**已有**的 `panel/` 半体与 25/25 检查器、竞品 UI 做法、7 条启用前提） |
 | ⚠️ | paperdebugger 的多智能体编排与 Overleaf 集成 | AGPL | **只写想法不搬码**：其"编辑器内多智能体 + MCP 形态"作为架构参考记入本文件，不复制任何代码 |
