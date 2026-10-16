@@ -1437,6 +1437,34 @@ function runSelftest() {
     if (!n) return '外部与内置没有可对拍的公共文件（至少应有一道）';
     return diff.length === 0 ? true : ('内外副本不一致（会各自漂移）：' + diff.join(', '));
   });
+  /* ★ v3.2.50：**DOI 解析三态** —— 判 DOI 正误的黄金判据是 doi.org 解析，不是某个索引有没有收录。
+     真身事故：我曾把 OpenAlex/EPMC 查不到写成「该 DOI 值得核对」，实测该 DOI 在 doi.org 是 302 ⇒ 假警报。 */
+  check('v3.2.50·DOI 解析三态：302⇒已注册 / 404⇒未注册 / 抛错⇒未取到（三者不得混同）', () => {
+    const a = doiStatus('10.1000/ok', () => '302');
+    const b = doiStatus('10.1000/bad', () => '404');
+    const c = doiStatus('10.1000/maybe', () => { throw new Error('net down'); });
+    const d = doiStatus('', () => '302');
+    const ok = a.state === 'registered' && b.state === 'not-registered' && c.state === 'not-retrieved' && d.state === 'no-doi';
+    return ok ? true : JSON.stringify([a, b, c, d]);
+  });
+  check('v3.2.50·DOI 解析三态·措辞：未取到不得暗示「题录错」；404 才可指向题录疑误', () => {
+    const src = fs.readFileSync(__filename, 'utf8');
+    const okUnretrieved = /不得据此判题录对错/.test(src);
+    const ok404 = /未注册（doi.org 404 ⇒ 题录疑误）/.test(src);
+    const okIndex = /这只说明本库未收录该刊/.test(src);
+    return (okUnretrieved && ok404 && okIndex) ? true : ('措辞缺失：unretrieved=' + okUnretrieved + ' 404=' + ok404 + ' index=' + okIndex);
+  });
+  check('v3.2.50·三态必须可见：`--quote-hints` 的"须人工读原文"清单里必须印出 DOI 解析三态（算了不输出＝没接）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ds-'))
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBattery degradation matters a lot for state of health estimation [1].\n');
+    fs.writeFileSync(path.join(tmp, 'anchors-已解析.json'), JSON.stringify({ anchors: [{ marker: '1', identifier: { doi: '10.1000/nope' } }] }));
+    const r = spawnSync(process.execPath, [__filename, 'anchors', '--draft', d, '--quote-hints', '--out', path.join(tmp, 'w.md')], { encoding: 'utf8' });
+    const w = fs.readFileSync(path.join(tmp, 'w.md'), 'utf8');
+    if (!/DOI 解析：/.test(w)) return '清单里没有 DOI 解析三态：' + w.slice(-200);
+    return true;
+  });
   check('★报告默认落点不得写进投稿包目录（**逐个会写报告的命令都测**：cover / anchors / preflight）', () => {
     const { spawnSync } = require('node:child_process');
     const results = [];
@@ -2918,8 +2946,13 @@ function oaLookup(dois, fetcher, opts) {
  * ═══════════════════════════════════════════════════════════════════════════════════════ */
 function epmcCurlFetcher() {
   const { spawnSync } = require('child_process');
-  return (url) => {
-    const r = spawnSync('curl', ['-sS', '--max-time', '40', '-H', 'User-Agent: paper-studio/3.2.44 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  return (url, opts) => {
+    /* ★ v3.2.50：`{head:true}` ⇒ 只要 HTTP 状态码（DOI 解析三态用） */
+    const head = !!(opts && opts.head);
+    const argv = head
+      ? ['-sS', '-o', 'NUL', '-w', '%{http_code}', '--max-redirs', '0', '--max-time', '30', '-H', 'User-Agent: paper-studio/3.2.50 (mailto:local)', url]
+      : ['-sS', '--max-time', '40', '-H', 'User-Agent: paper-studio/3.2.50 (mailto:local)', url];
+    const r = spawnSync('curl', argv, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
     if (r.error) throw new Error('curl 不可用：' + r.error.message);
     if (r.status !== 0) throw new Error('curl 退出码 ' + r.status);
     return r.stdout || '';
@@ -2955,7 +2988,7 @@ function epmcLookup(doi, f) {
     j = JSON.parse(f(u));
   } catch (e) { return { state: 'not-retrieved', why: '检索失败：' + String((e && e.message) || e) }; }
   const rec = (((j || {}).resultList || {}).result || [])[0];
-  if (!rec) return { state: 'not-retrieved', why: 'Europe PMC 未收录该 DOI' };
+  if (!rec) return { state: 'not-retrieved', why: 'Europe PMC 未收录该 DOI（**注意：这只说明本库未收录该刊**，不构成题录判据）' };
   const out = { state: 'not-retrieved', title: rec.title || '', pmcid: rec.pmcid || '', id: rec.id || '' };
   if (rec.pmcid && String(rec.isOpenAccess || '').toUpperCase() === 'Y') {
     try {
@@ -3494,6 +3527,22 @@ function cmdSubmissionFields(args, argv) {
   return bad ? 1 : 0;
 }
 /** v3.2.44：`anchors --quote-hints` —— 把"得先读原文"这一步从人身上挪到工具身上，但**只给候选**。 */
+/** ★ v3.2.50 **DOI 解析三态**（免 key）。为什么加：我曾把"某个索引未收录"当成"该 DOI 值得核对"，
+ *  实测 `10.1016/j.rser.2019.109254` 在 doi.org 上 **302 已注册** ⇒ 那句是我的**假警报**。
+ *  判据分级：**判 DOI 正误的黄金判据是 doi.org 解析**（302=已注册 / 404=未注册 / 取不到=未取到）；
+ *  索引收录与否只能说明**该索引未收录**。三态必须分开报，禁止把"未收录"写成"题录错"。 */
+function doiStatus(doi, f) {
+  const clean = String(doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+  if (!clean) return { state: 'no-doi' };
+  try {
+    const r = f('https://doi.org/' + encodeURIComponent(clean), { head: true });
+    const code = (typeof r === 'string') ? ((String(r).match(/\b30[0-9]\b|\b404\b|\b200\b/g) || [])[0] || '') : String((r && (r.status || r.code)) || '');
+    if (['301', '302', '303', '307', '308', '200'].indexOf(code) >= 0) return { state: 'registered', http: code };
+    if (code === '404') return { state: 'not-registered', http: code };
+    return { state: 'not-retrieved', why: '解析返回 ' + (code || '未识别') };
+  } catch (e) { return { state: 'not-retrieved', why: '解析失败：' + String((e && e.message) || e) }; }
+}
+const DOI_STATE_LABEL = { registered: '已注册（doi.org 解析成功）', 'not-registered': '**未注册（doi.org 404 ⇒ 题录疑误）**', 'not-retrieved': '未取到（解析通道不可用 ⇒ **不得据此判题录对错**）', 'no-doi': '无 DOI（数据集/报告类引用常态，非缺陷）' };
 /** OpenAlex 倒排摘要重建（免 key）。★ 重要：倒排索引**只有词与位置、没有标点** ⇒ 重建文本
  *   **不能当"逐字原句"**（≥30 字原句要求逐字，标点与句界都必须保留）⇒ 只能作"对读线索"。 */
 function openalexLookup(doi, f) {
@@ -3527,6 +3576,8 @@ function cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has) {
     const key = String(a.marker || '');
     const claim = (hits.get(key) || {}).sentences || [];
     const doi = ((a.identifier || {}).doi) || '';
+    /* ★ v3.2.50：两条通路（EPMC 收录 / OpenAlex）都不认时，**另报 DOI 解析三态** —— 这一格专门防
+       "把索引未收录写成题录错"（我本人踩过）。三态各自独立，不做推断。 */
     let got = epmcLookup(doi, f);
     let hints = [];
     const clues = [];
@@ -3551,7 +3602,8 @@ function cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has) {
         got = { state: got.state, why: (got.why || '') + '；' + (oa.why || ''), source: '', title: got.title || oa.title || '' };
       }
     }
-    rows.push({ key, doi, state: got.state, source: got.source || '', why: got.why || '', title: got.title || '', claim, hints, clues });
+    const dois = (!hints.length && !clues.length && doi) ? doiStatus(doi, f) : {};
+    rows.push({ key, doi, state: got.state, source: got.source || '', why: got.why || '', title: got.title || '', claim, hints, clues, dois });
   }
   const withHints = rows.filter((r) => r.hints.length);
   const withClues = rows.filter((r) => !r.hints.length && (r.clues || []).length);
@@ -3590,7 +3642,7 @@ function cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has) {
   if (mustRead.length) {
     L.push('## 须人工读原文（工具取不到 ⇒ 不假装有）');
     L.push('');
-    for (const r of mustRead) L.push('- `[' + r.key + ']`　' + r.doi + '　' + (r.state === 'no-doi' ? '**无 DOI**（先在锚点表里补 identifier）' : r.state + (r.why ? '：' + r.why : '')));
+    for (const r of mustRead) L.push('- `[' + r.key + ']`　' + r.doi + '　' + (r.state === 'no-doi' ? '**无 DOI**（数据集/报告类引用常态；如需可补登记式出处）' : r.state + (r.why ? '：' + r.why : '')) + (r.doi ? '　｜ **DOI 解析：' + (DOI_STATE_LABEL[(r.dois || {}).state] || '未检查') + '**' : ''))   // ★ v3.2.50：算了就必须印出来);
     L.push('');
   }
   const outPath = val('out') || path.join(reportHome(draftAbs), '_原句候选-' + new Date().toISOString().slice(0, 10) + '.md');
