@@ -29,9 +29,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/liuhaolong16/dsh-paper-studio.git"
+    "url": "https://github.com/liuhao_long16/dsh-paper-studio.git"
   },
-  "homepage": "https://github.com/liuhaolong16/dsh-paper-studio#readme",
+  "homepage": "https://github.com/liuhao_long16/dsh-paper-studio#readme",
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",
