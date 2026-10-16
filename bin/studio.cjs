@@ -215,13 +215,14 @@ function resolveGate(gate, pipeline) {
           if (!r.error && r.status === 0) { runtimeOk = true; runtimeNote = cmd; break; }
         }
       }
-      if (!runtimeOk) { runtimeNote = '未找到真 python 解释器；已试：' + tried.join(' | '); }
+      if (!runtimeOk) { runtimeNote = '未找到真 python 解释器；已试：' + tried.join(' | ') + (tried.some((x) => String(x).indexOf('__LOCAL__') >= 0) ? ' ⇒ ' + LOCAL_HINT : ''); }
     }
   } catch (e) {
     runtimeOk = false;
     runtimeNote = String(e.message || e);
   }
-  return { id: gate.id, label: gate.label, runtime: gate.runtime, entry: full, scriptOk, runtimeOk, runtimeNote };
+  return { id: gate.id, label: gate.label, runtime: gate.runtime, entry: full, scriptOk, runtimeOk, runtimeNote,
+    placeholder: /^__LOCAL__/.test(String(full)) };
 }
 
 /**
@@ -321,7 +322,7 @@ function printRoute(res, pipeline) {
   for (const g of gs) {
     const r = resolveGate(g, pipeline);
     const ok = r.scriptOk && r.runtimeOk;
-    lines.push(`  - ${g.id}：${g.label}  [${ok ? '可用' : '不可用'}]  (${g.runtime} ${r.entry}${r.scriptOk ? '' : ' · 脚本不存在'}${r.runtimeOk ? '' : ' · 运行时不可用：' + r.runtimeNote})`);
+    lines.push(`  - ${g.id}：${g.label}  [${ok ? '可用' : '不可用'}]  (${g.runtime} ${r.entry}${r.scriptOk ? '' : ' · 脚本不存在'}${r.runtimeOk ? '' : ' · 运行时不可用：' + r.runtimeNote})${r.placeholder ? ' ⇒ ' + LOCAL_HINT : ''}`);
   }
   if (t.precondition) lines.push(`前置条件：${t.precondition}`);
   lines.push(`产出：${(t.outputs || []).join(' · ')}`);
@@ -2366,7 +2367,7 @@ function main(argv) {
       if (json) console.log(JSON.stringify(list, null, 2));
       else {
         console.log('必过门清单（真源：references/pipeline.json）：');
-        for (const g of list) console.log(`  - ${g.id}：${g.label}  [${g.scriptOk && g.runtimeOk ? '可用' : '不可用'}]  ${g.runtime} ${g.entry}${g.scriptOk ? '' : ' · 脚本不存在'}${g.runtimeOk ? '' : ' · ' + g.runtimeNote}`);
+        for (const g of list) console.log(`  - ${g.id}：${g.label}  [${g.scriptOk && g.runtimeOk ? '可用' : '不可用'}]  ${g.runtime} ${g.entry}${g.scriptOk ? '' : ' · 脚本不存在'}${g.runtimeOk ? '' : ' · ' + g.runtimeNote}${g.placeholder ? ' ⇒ ' + LOCAL_HINT : ''}`);
       }
       return list.every((g) => g.scriptOk && g.runtimeOk) ? 0 : 1;
     }
