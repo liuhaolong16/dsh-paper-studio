@@ -81,6 +81,56 @@ function offlineChecks(entries, opts) {
   return findings;
 }
 
+/** 按标题找同名的其他版本（OpenAlex）。返回 [{id,doi,title,year,type,citations}]；失败返回 null（fail-soft） */
+function fetchTitleMatches(title, opts) {
+  const o = opts || {};
+  if (o.injectedTitleMatches) return o.injectedTitleMatches(title);
+  const { spawnSync } = require('child_process');
+  const q = encodeURIComponent(String(title || '').slice(0, 180));
+  const url = 'https://api.openalex.org/works?search=' + q + '&per-page=5&select=id,doi,title,publication_year,type,cited_by_count';
+  const r = spawnSync('curl', ['-sS', '-o', '-', '-w', '\n%{http_code}', '--max-time', '25', '-H', 'User-Agent: paper-studio/3.13.0 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  if (r.status !== 0) return null;
+  const out = String(r.stdout || '');
+  const code = (out.match(/\n(\d{3})$/) || [])[1];
+  if (code !== '200') return null;
+  try {
+    const j = JSON.parse(out.replace(/\n\d{3}$/, ''));
+    return (j.results || []).map((w) => ({ id: w.id, doi: w.doi, title: w.title, year: w.publication_year, type: w.type, citations: w.cited_by_count || 0 }));
+  } catch (e) { return null; }
+}
+
+/** 版本核验：当前条目解析到的 instance vs 同名其他 instance */
+function canonicalCheck(entry, rec, matches, opts) {
+  const o = opts || {};
+  const minRatio = o.minRatio || 2, minGap = o.minGap || 10;
+  const findings = [];
+  if (matches === null || matches === undefined) return [{ level: 'INFO', check: 'CHECK_SKIPPED', key: entry.key, msg: '标题检索失败 ⇒ **版本核验未完成**（未核对 ≠ 通过）' }];
+  const cur = rec || {};
+  const curId = cur.id || null;
+  const normTitle = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, ' ').trim();
+  const base = normTitle(cur.title || entry.fields.title);
+  const higher = [];
+  for (const m of matches) {
+    if (curId && m.id === curId) continue;
+    if (!base || normTitle(m.title) !== base) continue;      /* 只比**同名**，避免把"相关但不同"的作品当版本 */
+    const curCit = cur.citations || 0;
+    const formal = /^(article|review)$/i.test(String(m.type || ''));
+    const curInformal = /^(preprint|report|dissertation|book-chapter)$/i.test(String(cur.type || ''));
+    if ((m.citations >= Math.max(curCit * minRatio, curCit + minGap)) || (formal && curInformal)) {
+      higher.push(m);
+    }
+  }
+  /* ★ v3.13.0：**先证过程真的跑了** —— 查过但没有替代实例时也要留痕，否则读者分不清「查了没问题」与「没跑」 */
+  if (!higher.length && matches.length) {
+    findings.push({ level: 'INFO', check: 'CANONICAL_OK', key: entry.key, msg: '版本核验已执行：同名命中 ' + matches.length + ' 条，其中无更权威实例（当前条目即最优）' });
+  }
+  if (higher.length) {
+    const list = higher.slice(0, 3).map((m) => (m.year || '?') + ' · ' + (m.type || '?') + ' · 引用 ' + (m.citations || 0) + ' · ' + String(m.doi || m.id || '')).join(' ｜ ');
+    findings.push({ level: 'WARN', check: 'CANONICAL_INSTANCE', key: entry.key, msg: '同名作品存在**另一实例**（本领域通常引正式版）：当前 = ' + (cur.year || '?') + ' · ' + (cur.type || '?') + ' · 引用 ' + (cur.citations || 0) + ' ⇒ 可选：' + list + '（**只提醒，不自动改**）' });
+  }
+  return findings;
+}
+
 /** 元数据比对：把索引记录与条目逐字段比（索引值为准，条目值错则报） */
 function compareMetadata(entry, rec) {
   const f = [];
@@ -127,6 +177,11 @@ function verify(entries, opts) {
     }
     rows.push({ key: e.key, status: 'RESOLVED', index_title: r.title, index_year: r.year, is_retracted: !!r.is_retracted });
     for (const x of compareMetadata(e, r)) findings.push(x);
+    /* ★ v3.13.0 版本核验（默认关，`--canonical` 开）：同名的**其他实例**（预印本 vs 正式版 / 报告 vs 论文） */
+    if (o.canonical && e.fields.title) {
+      const matches = typeof o.fetchTitleMatches === 'function' ? o.fetchTitleMatches(e.fields.title) : null;
+      for (const x of canonicalCheck(e, r, matches, o)) findings.push(x);
+    }
   }
   const nErr = findings.filter((x) => x.level === 'ERROR').length;
   return { entries: rows, findings, summary: { entries: entries.length, resolved: rows.filter((r) => r.status === 'RESOLVED').length, not_found: rows.filter((r) => r.status === 'NOT_FOUND').length, skipped: rows.filter((r) => r.status === 'CHECK_SKIPPED').length, errors: nErr, warns: findings.filter((x) => x.level === 'WARN').length }, status: nErr ? 'FAIL' : 'PASS' };
@@ -199,6 +254,46 @@ function selftest() {
     return (r.entries[0].status === 'CHECK_SKIPPED') ? true : JSON.stringify(r);
   });
 
+  ck('v3.13.0·canonical·★必失败面：同名作品存在**引用更高的正式版** ⇒ 必须报 CANONICAL_INSTANCE（附替代项与引用数）', () => {
+    const e = parseBib(BIB('p', '10.1234/aa', 'Highly accurate protein structure prediction with AlphaFold', 2021));
+    const r = verify(e, {
+      canonical: true, fetchRecord: () => ({ kind: 'ok', id: 'W1', title: 'Highly accurate protein structure prediction with AlphaFold', year: 2021, type: 'preprint', citations: 5 }),
+      fetchTitleMatches: () => [
+        { id: 'W1', title: 'Highly accurate protein structure prediction with AlphaFold', year: 2021, type: 'preprint', citations: 5 },
+        { id: 'W2', doi: '10.1038/s41586-021-03819-2', title: 'Highly accurate protein structure prediction with AlphaFold', year: 2021, type: 'article', citations: 30000 },
+      ],
+    });
+    const hit = r.findings.find((x) => x.check === 'CANONICAL_INSTANCE');
+    if (!hit) return '未报版本问题：' + JSON.stringify(r.findings);
+    if (!/30000/.test(hit.msg)) return '未列出替代项引用数：' + hit.msg;
+    if (!/只提醒，不自动改/.test(hit.msg)) return '未声明只提醒：' + hit.msg;
+    return true;
+  });
+
+  ck('v3.13.0·canonical·反面对照：只有**同一个**实例时不报（不误报）', () => {
+    const e = parseBib(BIB('q', '10.1234/bb', 'A study of something specific', 2020));
+    const r = verify(e, {
+      canonical: true, fetchRecord: () => ({ kind: 'ok', id: 'W9', title: 'A study of something specific', year: 2020, type: 'article', citations: 100 }),
+      fetchTitleMatches: () => [{ id: 'W9', title: 'A study of something specific', year: 2020, type: 'article', citations: 100 }],
+    });
+    return r.findings.some((x) => x.check === 'CANONICAL_INSTANCE') ? '误报：' + JSON.stringify(r.findings) : true;
+  });
+
+  ck('v3.13.0·canonical·★必失败面：标题检索失败 ⇒ 记 CHECK_SKIPPED（未核对 ≠ 通过）', () => {
+    const e = parseBib(BIB('s', '10.1234/cc', 'Some title here', 2021));
+    const r = verify(e, { canonical: true, fetchRecord: () => ({ kind: 'ok', id: 'W1', title: 'Some title here', year: 2021 }), fetchTitleMatches: () => null });
+    return r.findings.some((x) => x.check === 'CHECK_SKIPPED') ? true : JSON.stringify(r.findings);
+  });
+
+  ck('v3.13.0·canonical·过程可见：查过但无替代实例 ⇒ 必须留 CANONICAL_OK（先证过程真跑了）', () => {
+    const e = parseBib(BIB('t', '10.1234/dd', 'A very specific study title here', 2021));
+    const r = verify(e, {
+      canonical: true, fetchRecord: () => ({ kind: 'ok', id: 'W1', title: 'A very specific study title here', year: 2021, type: 'article', citations: 50 }),
+      fetchTitleMatches: () => [{ id: 'W1', title: 'A very specific study title here', year: 2021, type: 'article', citations: 50 }],
+    });
+    return r.findings.some((x) => x.check === 'CANONICAL_OK') ? true : JSON.stringify(r.findings);
+  });
+
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.n + (c.ok ? '' : '  ← ' + c.d));
   console.log('\nrefs-verify 自检：' + (cases.length - bad.length) + '/' + cases.length + ' 通过');
@@ -213,7 +308,8 @@ function main(argv) {
   const entries = parseBib(fs.readFileSync(bib, 'utf8'));
   if (!entries.length) { console.error('解析出 0 条条目 ⇒ 未核对（不是通过）'); return 2; }
   const noNet = argv.includes('--no-net');
-  const r = verify(entries, { noNet, fetchRecord: noNet ? null : fetchOpenAlex, nowYear: new Date().getFullYear() });
+  const canonical = argv.includes('--canonical');
+  const r = verify(entries, { noNet, canonical, fetchRecord: noNet ? null : fetchOpenAlex, fetchTitleMatches: noNet ? null : fetchTitleMatches, nowYear: new Date().getFullYear() });
   if (argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return r.status === 'FAIL' ? 2 : 0; }
   console.log('引用核验（' + entries.length + ' 条' + (noNet ? ' · 离线' : ' · 在线 OpenAlex') + '）：' + r.status);
   for (const e of r.entries) console.log('  ' + e.key.padEnd(20) + e.status + (e.reason ? '（' + e.reason + '）' : '') + (e.is_retracted ? ' · 已撤稿' : ''));
