@@ -4,6 +4,19 @@
 # 变更记录
 
 
+
+## v3.2.2 —— 2026-10-16
+
+**把合规门接进"插件工具面"，并给跨面漂移装上判据（由用户一问"哪种比较完善"追出的可达性缺口）。**
+
+- **起因（实测证据）**：合规门原本只在 **CLI** 与**仓库级 SKILL.md** 可达；`plugin/dist/plugin.js` 里 `compliance` 出现 **0 次** ⇒ **插件的工具面（`paper_studio`，也是 Codex / Claude Code / Cursor 等宿主用的那条路）完全调不到这道门**；`route`/`gates` 输出里也没有它。**结论：不是"要不要再抽一个独立技能"的问题，而是现状本身有三处不可达。**
+- **新增单一真源** `references/pipeline.json` 的 **`agent_facing`**（27 条）："哪些命令必须能从 agent 工具面调到"只在这里声明一次。
+- **插件工具面**：`STUDIO_ACTIONS` 补上 `compliance` / `hygiene` / `claims` / `coverage`（原本漏接 4 个）。
+- **两道跨面判据（各带必失败面）**：① `agent_facing ⊆ SUBCOMMANDS`（CLI 侧，防拼错/删命令）；② `agent_facing ⊆ STUDIO_ACTIONS`（工具面侧，防"CLI 加了命令、工具面漏接"——本轮的缺口正是这一类）。**取不到真源即判失败，不得当通过。**
+- **文档**：`plugin/skill/SKILL.md`（插件包自带的技能半体）补上合规门与三个自审动作的调用式，并写明"依据＝仓库单一真源，工具面不复制判据"。
+- 自检：CLI **83 → 85** · 插件 **31 → 33**。
+- **未做（需你点头）**：把合规门接进 `route`/`gates` 的**真源流程**——现有 11 个门**全部住在 playbook 仓**（`rel=playbook_root`，脚本在 `D:\DeepSeek\research-paper-playbook\`），要接流程得**动那个仓库**；按你此前"论文线只在当轮明确要求时恢复"的指示，我没有自行推进。
+
 ## v3.2.1 —— 2026-10-16
 
 **修一处由用户一问追出的真漂移：接口面与文档面。**

@@ -463,6 +463,29 @@ asyncChecks.push(['★ 必失败 · 未知 action 被拒（前提层错误，不
   return (r.ok === false && /前提层错误/.test(r.note)) ? true : JSON.stringify(r)
 }])
 
+// ★ v3.2.2：跨面一致性 —— 真源 agent_facing 的命令必须都能从插件工具面调到
+check('跨面：真源 agent_facing 的命令必须都在插件 STUDIO_ACTIONS 里（防 CLI 加了命令、工具面漏接）', () => {
+  let pj = {}
+  try { pj = JSON.parse(readFileSync(join(ROOT, 'references', 'pipeline.json'), 'utf8')) } catch (e) { return '读不到真源 pipeline.json ⇒ 不得当通过：' + String(e.message || e) }
+  const need = pj.agent_facing || []
+  if (need.length < 5) return '真源 agent_facing 条数异常（' + need.length + '）⇒ 前提不成立，不得当通过'
+  const src = readFileSync(join(ROOT, 'plugin', 'dist', 'plugin.js'), 'utf8')
+  const m = /const STUDIO_ACTIONS = \[([\s\S]*?)\]/.exec(src)
+  if (!m) return '读不到 STUDIO_ACTIONS（插件半体结构变了？）⇒ 不得当通过'
+  const have = new Set((m[1].match(/'([a-z-]+)'/g) || []).map((s) => s.slice(1, -1)))
+  const miss = need.filter((c) => !have.has(c))
+  return miss.length === 0 || ('工具面未接线: ' + miss.join(', '))
+})
+
+check('★ 必失败 · agent_facing 里的幽灵动作必须被抓（不许静默通过）', () => {
+  const src = "const STUDIO_ACTIONS = ['route', 'selftest']"
+  const m = /const STUDIO_ACTIONS = \[([\s\S]*?)\]/.exec(src)
+  const have = new Set((m[1].match(/'([a-z-]+)'/g) || []).map((s) => s.slice(1, -1)))
+  const need = ['route', 'ghost-action-xyz']
+  const miss = need.filter((c) => !have.has(c))
+  return (miss.length === 1 && miss[0] === 'ghost-action-xyz') || ('未抓到：' + JSON.stringify(miss))
+})
+
 for (const [name, fn] of asyncChecks) {
   try { const r = await fn(); results.push({ name, ok: r === true, detail: r === true ? '' : String(r) }) }
   catch (e) { results.push({ name, ok: false, detail: String((e && e.message) || e) }) }

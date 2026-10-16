@@ -1161,6 +1161,18 @@ function runSelftest() {
     return (miss.length === 1 && miss[0] === 'verify') || ('未抓到：' + JSON.stringify(miss));
   });
 
+  // ★ v3.2.2：跨面一致性（真源 agent_facing ↔ CLI 登记表）
+  check('跨面：真源 agent_facing 的命令必须都在 SUBCOMMANDS 里（防拼错/删命令）', () => {
+    const need = (pipeline && pipeline.agent_facing) || [];
+    const miss = need.filter((c) => !SUBCOMMANDS.includes(c));
+    return (need.length >= 5 && miss.length === 0) || ('未登记: ' + miss.join(', ') + '（agent_facing ' + need.length + ' 条）');
+  });
+  check('必失败：agent_facing 里拼错的命令必须被抓', () => {
+    const need = ['route', 'ghost-mm'];
+    const miss = need.filter((c) => !SUBCOMMANDS.includes(c));
+    return (miss.length === 1 && miss[0] === 'ghost-mm') || ('未抓到：' + JSON.stringify(miss));
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
