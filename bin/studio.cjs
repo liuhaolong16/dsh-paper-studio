@@ -1196,6 +1196,26 @@ function runSelftest() {
     const hit = readFormats().formats.filter((f) => (f.class_names || []).indexOf(det.documentclass) >= 0)[0];
     return (!hit && det.documentclass === '__no_such_class__') || '未知类被误判命中';
   });
+  check('格式检测·CLI 分支（走真进程，不调内部函数）：--detect 必须走检测分支而不是打印整张表', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = path.join(os.tmpdir(), 'dsh-fmt-' + Date.now() + '.tex');
+    fs.writeFileSync(tmp, '\\documentclass[5p]{elsarticle}\n\\bibliographystyle{elsarticle-num}\n');
+    const r = spawnSync(process.execPath, [__filename, 'formats', '--detect', tmp], { encoding: 'utf8' });
+    try { fs.unlinkSync(tmp); } catch {}
+    const out = String(r.stdout || '');
+    const ok = r.status === 0 && out.indexOf('documentclass = elsarticle') >= 0 && out.indexOf('投稿格式模板（真源') < 0;
+    return ok || ('exit=' + r.status + ' ｜ 含类名=' + (out.indexOf('documentclass = elsarticle') >= 0)
+      + ' ｜ 误打整表=' + (out.indexOf('投稿格式模板（真源') >= 0));
+  });
+  check('格式检测·CLI 必失败面：未知类必须 exit=1 且明说未命中（不许一律通过）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = path.join(os.tmpdir(), 'dsh-fmt-bad-' + Date.now() + '.tex');
+    fs.writeFileSync(tmp, '\\documentclass{__no_such_class__}\n');
+    const r = spawnSync(process.execPath, [__filename, 'formats', '--detect', tmp], { encoding: 'utf8' });
+    try { fs.unlinkSync(tmp); } catch {}
+    const out = String(r.stdout || '');
+    return (r.status === 1 && out.indexOf('未命中') >= 0) || ('exit=' + r.status + ' ｜ 含未命中=' + (out.indexOf('未命中') >= 0));
+  });
   check('接口面：分派支持的命令必须都在 SUBCOMMANDS 登记（不许加了命令忘登记）', () => {
     const r = subcommandGaps(fs.readFileSync(__filename, 'utf8'), SUBCOMMANDS);
     return (r.missing.length === 0 && r.phantom.length === 0) || ('未登记: ' + r.missing.join(',') + ' ｜ 幽灵登记: ' + r.phantom.join(','));
@@ -1915,12 +1935,15 @@ function detectTexFormat(text) {
   for (const m of String(text).matchAll(/\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g)) pkgs.push(m[1].trim());
   return { documentclass: cls.trim(), bibliographystyle: bib.trim(), packages: pkgs };
 }
-function cmdFormats(args) {
+function cmdFormats(args, argv) {
   let d;
   try { d = readFormats(); } catch (e) { console.error(String((e && e.message) || e)); return 2; }
-  const i = args.indexOf('--detect');
-  if (i >= 0) {
-    const file = args[i + 1] || '';
+  /* ★ 修正（自查出的真缺陷）：`main()` 里 `args = argv.filter(a => !a.startsWith('--'))` ⇒ **flags 已被剥掉**，
+     首版用 args.indexOf('--detect') 永远取不到 ⇒ 静默走了"打印整张表"那条分支，而**两条分支 exit 都是 0**，
+     靠退出码看不出走错。故：flag 从 `argv` 取，文件从位置参数取（args[0] 是子命令名）。 */
+  const flagAt = (argv || []).indexOf('--detect');
+  if (flagAt >= 0) {
+    const file = args[1] || '';
     if (!file || file.startsWith('--')) { console.error('前提层失败：--detect 需要一个 .tex 文件参数'); return 2; }
     const abs = path.resolve(file);
     if (!fs.existsSync(abs)) { console.error('前提层失败：文件不存在 —— ' + abs); return 2; }
@@ -2595,7 +2618,7 @@ function main(argv) {
     if (cmd === 'coverage') return cmdCoverage();
     if (cmd === 'compliance') return cmdCompliance(args[1] || '');
     if (cmd === 'credit') return cmdCredit(args[1] || '');
-    if (cmd === 'formats') return cmdFormats(args);
+    if (cmd === 'formats') return cmdFormats(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;

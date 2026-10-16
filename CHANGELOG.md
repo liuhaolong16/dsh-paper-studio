@@ -13,6 +13,7 @@
 - **素材一手核实（本机实地抓取）**：CTAN 包页 **HTTP 200** 逐包取证 —— `elsarticle` **v3.5 / 2026-01-09 / LPPL 1.3**（Elsevier 投稿类）· `IEEEtran` **v1.8b**（IEEE 官方类）· **`gbt7714` v3.1.1 / 2026-09-27**（GB/T 7714 参考文献 ⇒ **中文刊首选**）· `ctex` **v2.6.5**（中文排版基线）；GitHub API 读取 `rstudio/rticles`（**1539★ · 2026-10-14 仍有更新**）。
 - **如实列出取不到的（不得当成要求）**：`sn-jnl`（Springer 自有分发，CTAN **404**）· PLOS 官方 LaTeX 模板（CTAN 404 且 GitHub 搜索**未见官方仓库**）· `bmcart`/`wiley-article`（CTAN 404）· **Elsevier/IEEE 的 Guide for Authors 正文本机 403**（机器人阻断）· **知网腾云门户首页跳转壳 / 须知页 302 → 验证码页** ⇒ 逐刊要求仍须人工核对。
 - 自检新增 **3 条**：真源可读且 `verified_at`/`verified_from` 必须在（来源必须可核）· `\documentclass{elsarticle}` 必须命中 Elsevier（正控）· **未知类文件不得命中**（必失败面）。
+- **★ 本轮自查出的真缺陷（值得单记）**：`formats --detect` 首版**根本没走检测分支**，而是打印了整张表 —— 根因是 `main()` 里 `args = argv.filter(a => !a.startsWith('--'))` **把 flags 剥掉了**，我却用 `args.indexOf('--detect')` 取 flag（其它子命令都是从 `argv` 取，我照抄时漏了）。要害在于：**两条分支 exit 都是 0**，靠退出码/自检数字都看不出走错；而首版夹具只调内部函数、**没走 CLI 分支**，所以溜过了。修法：flag 从 `argv` 取、文件从位置参数取；并补 **2 条走真进程的 CLI 分支夹具**（`--detect` 必须给出 `documentclass = …` 且**不得**打印整表 · 未知类必须 exit=1 且说"未命中"）⇒ 自检 **105 → 107**。
 
 ## v3.2.15 —— 2026-10-16
 
