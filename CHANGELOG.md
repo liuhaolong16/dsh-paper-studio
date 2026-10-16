@@ -6,6 +6,19 @@
 
 
 
+
+## v3.2.4 —— 2026-10-16
+
+**两件事：① 首次做「真装实测」并把它写成文档（此前只有打包干跑）；② 补上 PLOS ONE 机器可读契约 + 一条"运行时依赖是否入包"的判据。**
+
+- **真装实测（首次 · 可复现）**：`npm pack` → `npm install --prefix <临时前缀> <tgz>`（**无需联网**）→ 在**装机目录**里跑：
+  - `node bin/studio.cjs route "把这篇稿子按中文核心期刊的要求改一遍"` ⇒ 退出码 0，期刊分类路由指向包内 `references/cn-journals.md` **[存在]**；
+  - `node bin/studio.cjs selftest` ⇒ **85/85**；`node plugin/selftest.mjs` ⇒ **36/36**；
+  - **排除假绿**：把装机副本里那条机器专属兜底候选（`E:\DeepSeek\skills\paper-studio`）**抹掉**（1 → 0 次）后再跑插件自检 ⇒ **仍 36/36** ⇒ 证明起作用的是**「包内自带」候选**，不是本机兜底路径。
+- **新增资产**：`references/contracts/plos-one.json` —— PLOS ONE 的**机器可读契约**（limits/structure/references/cover_letter/system_only_fields/**human_only**/machine_checkable + `verified_at`/`verified_from`）。每个数字都取自 `references/plos-one.md` 的官方原文；本机取不到的项（APC/豁免、开放评审、Striking image、系统字段顺序）**只列 human_only，不写成要求**。登记进真源 `assets`，并在 `plos-one.md` §10 建立互指。
+- **新增判据 4 条（含 2 条必失败）**：① 契约资产必须存在、严格可解析、**带取证日期与来源**、limits 关键数字齐、`human_only` 非空；② **必失败**：契约缺 `verified_at` 必须被抓；③ **运行时引用的仓内文件必须都被 `package.json.files` 覆盖**（防"代码读了没入包的文件"）；④ **必失败**：`files` 漏顶层目录必须被抓。
+- 自检：CLI **85 → 89** · 插件 **36/36** · 审计 **6/6**。
+
 ## v3.2.3 —— 2026-10-16
 
 **两件事：①「装了插件包就拿到全部能力」整包化；② 合规门接进 `route`/`gates` 流程提醒（A 方案）。**

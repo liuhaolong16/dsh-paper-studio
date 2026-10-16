@@ -1,0 +1,139 @@
+{
+  "journal": "PLOS ONE",
+  "publisher": "PLOS",
+  "article_type": "research_article",
+  "verified_at": "2026-10-16",
+  "verified_from": "https://journals.plos.org/plosone/s/submission-guidelines 与 https://journals.plos.org/plosone/s/figures（两页 HTTP 200，2026-10-16 本机取回）",
+  "verification_note": "本文件每个数字都取自 references/plos-one.md（其原文来自上述两页官方页面，逐条有出处）；改动前必须重核页面并更新 verified_at，不得凭印象修改。本机取不到的项（APC 金额与豁免资格、开放评审选项、Striking image 是否必填、投稿系统字段顺序）一律不写成\"要求\"，只列入 human_only。",
+  "limits": {
+    "title_max_chars": 250,
+    "short_title_max_chars": 100,
+    "short_title_required": true,
+    "abstract_max_words": 300,
+    "heading_levels_max": 3,
+    "word_limit": null,
+    "figures_tables_limit": null,
+    "highlights_required": false,
+    "figure_format": [
+      "TIFF",
+      "EPS"
+    ],
+    "figure_width_px": {
+      "min": 789,
+      "max": 2250
+    },
+    "figure_height_px_max": 2625,
+    "figure_dpi": {
+      "min": 300,
+      "max": 600
+    },
+    "figure_file_max_mb": 10,
+    "figure_text_pt": {
+      "min": 8,
+      "max": 12
+    },
+    "figure_text_fonts": [
+      "Arial",
+      "Times",
+      "Symbol"
+    ],
+    "figure_caption_max_words": 15,
+    "si_file_max_mb": 20
+  },
+  "structure": {
+    "file_formats": [
+      "DOC",
+      "DOCX",
+      "RTF"
+    ],
+    "latex_via_pdf": true,
+    "double_spaced": true,
+    "multi_column": false,
+    "page_numbers": true,
+    "continuous_line_numbers": true,
+    "footnotes_allowed": false,
+    "title_page_first": true,
+    "abstract_after_title_page": true,
+    "tail_order": [
+      "Acknowledgments",
+      "References",
+      "Supporting information captions"
+    ],
+    "figures_separate_files": true,
+    "figure_caption_in_manuscript": true,
+    "figure_caption_after_first_cite": true,
+    "tables_in_manuscript": true,
+    "table_caption_above": true,
+    "funding_in_manuscript": false,
+    "si_captions_at_end_of_manuscript": true,
+    "si_item_naming": "S+编号（如 S1 Table、S2 Appendix）",
+    "cover_letter_separate": true
+  },
+  "references": {
+    "style": "Vancouver / ICMJE",
+    "numbering": "按首次出现顺序",
+    "in_text": "[n]",
+    "citations_in_abstract": false,
+    "authors": "前六位 + et al.",
+    "journal_abbrev": "NCBI 所载缩写",
+    "doi_labeled": "doi: 10.xxxx/yyyy（不得给短 DOI 或 URL）",
+    "preprint_allowed_if": "有 DOI 或 arXiv URL",
+    "not_citable": [
+      "未发表/未接收",
+      "私人通讯",
+      "被撤稿文献（除非交代背景且注明撤稿状态）"
+    ],
+    "examples": {
+      "journal": "Hou WR, Hou YL, Wu GF, Song Y, Su XL, Sun B, et al. Title. Genet Mol Res. 2011;10: 1576-1588.",
+      "conference": "In: <会议名>; <年>. p. <页>. doi: …",
+      "preprint": "Krick T, Shub DA, Verstraete N, et al. Title. arXiv:1403.3301v1 [Preprint]. 2014 [cited 2014 March 17]. Available from: <arXiv URL>",
+      "dataset": "Roberts SB. Title; 2013 [cited 2013 Oct 5]. Database: figshare [Internet]. Available from: <URL>"
+    }
+  },
+  "cover_letter": {
+    "separate_file": true,
+    "max_pages": 1,
+    "must_include": [
+      "对科学文献的贡献",
+      "与已发表工作的关系",
+      "文章类型",
+      "与 PLOS 关于本稿的既往往来",
+      "建议的 Academic Editor（从官方 Editorial Board 名单选）",
+      "回避的审稿人"
+    ],
+    "forbidden": [
+      "在 cover letter 里提任何费用减免请求（减免须在投稿系统内单独填）"
+    ]
+  },
+  "system_only_fields": [
+    "Financial Disclosure（资助，含基金号）",
+    "Competing interests",
+    "Data Availability Statement",
+    "作者贡献（CRediT，至少每位作者一项）",
+    "相关/在先稿件声明"
+  ],
+  "human_only": [
+    "注册与登录（含邮箱验证）由作者本人完成",
+    "通讯作者 ORCID 由作者在系统内绑定",
+    "APC 金额与豁免资格（本机未核实）",
+    "开放评审相关选择（本机未核实）",
+    "Striking image 是否必填（本机未核实）",
+    "投稿系统的具体字段顺序（本机未核实）"
+  ],
+  "machine_checkable": [
+    "标题层级 ≤3",
+    "全标题 ≤250 字符",
+    "短标题存在且 ≤100 字符",
+    "摘要 ≤300 词且不含 [n] 引用",
+    "Title page 存在且为第一页",
+    "结尾顺序为 Acknowledgments→References→SI captions",
+    "图件不在正文内嵌",
+    "图题紧邻首次引用段",
+    "正文引用编号按首次出现严格递增",
+    "参考文献条目符合 Vancouver 四类样例形态",
+    "正文不含资助信息（关键词扫描）",
+    "存在数据可用性声明"
+  ],
+  "discipline": "凡本契约未覆盖或本机取不到的项，门必须显形跳过并写明「未被检查 ≠ 通过」。",
+  "exemption_window": "官方明确：图件格式要求在\"暂定编辑接收（provisional Editorial Accept）\"之前一律放宽 —— 首投不必为图件规格卡住，但结构/参考/声明该改仍要改。"
+}

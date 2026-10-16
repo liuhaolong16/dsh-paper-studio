@@ -1173,6 +1173,66 @@ function runSelftest() {
     return (miss.length === 1 && miss[0] === 'ghost-mm') || ('未抓到：' + JSON.stringify(miss));
   });
 
+  // ★ v3.2.4：契约资产自证 + 整包清单覆盖运行时依赖（都由本轮"真装实测/合规门缺口"驱动）
+  check('契约资产：PLOS ONE 契约必须存在、严格可解析、且带取证日期与来源', () => {
+    const p = path.join(ROOT, 'references', 'contracts', 'plos-one.json');
+    let c = null;
+    try { c = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return '读不到或不可解析（不得当通过）：' + String((e && e.message) || e); }
+    const need = ['journal', 'publisher', 'article_type', 'verified_at', 'verified_from', 'limits', 'structure', 'references', 'cover_letter', 'human_only', 'machine_checkable'];
+    const miss = need.filter((k) => !(k in c));
+    if (miss.length) return '缺必填键: ' + miss.join(', ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(c.verified_at))) return 'verified_at 形态不对: ' + c.verified_at;
+    if (!String(c.verified_from).trim()) return 'verified_from 为空 ⇒ 无取证来源不得当通过';
+    if (!(c.limits.title_max_chars > 0 && c.limits.abstract_max_words > 0 && c.limits.heading_levels_max > 0)) return 'limits 关键数字缺失';
+    if (!(c.human_only || []).length) return 'human_only 为空 ⇒ 人工边界没写出来（易被读成"机器全包"）';
+    return true;
+  });
+  check('必失败：契约缺取证日期必须被抓（不许无取证日期入真源）', () => {
+    const bad = { journal: 'X', publisher: 'Y', article_type: 'z', verified_from: 'u', limits: {}, structure: {}, references: {}, cover_letter: {}, human_only: ['h'], machine_checkable: ['m'] };
+    const miss = ['journal', 'publisher', 'article_type', 'verified_at', 'verified_from', 'limits', 'structure', 'references', 'cover_letter', 'human_only', 'machine_checkable'].filter((k) => !(k in bad));
+    return (miss.length === 1 && miss[0] === 'verified_at') || ('未抓到：' + JSON.stringify(miss));
+  });
+  check('整包：运行时引用的仓内文件必须都被 package.json.files 覆盖（防"代码读了没入包的文件"）', () => {
+    let pkg = {};
+    try { pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')); } catch (e) { return '读不到根 package.json（不得当通过）：' + String((e && e.message) || e); }
+    const files = pkg.files || [];
+    const cands = new Set();
+    for (const rel of ['bin/studio.cjs', 'bin/gate-runner.cjs', 'plugin/dist/plugin.js', 'plugin/selftest.mjs', 'references/pipeline.json']) {
+      let txt = '';
+      try { txt = fs.readFileSync(path.join(ROOT, rel), 'utf8'); } catch { continue; }
+      for (const m of txt.matchAll(/(?:references|bin|plugin)\/[A-Za-z0-9._\-\/]+\.(?:cjs|mjs|js|json|md|yml)/g)) cands.add(m[0]);
+      for (const m of txt.matchAll(/'(SKILL\.md|README\.md|CHANGELOG\.md|LICENSE)'/g)) cands.add(m[1]);
+    }
+    const problems = [];
+    for (const rel of cands) {
+      if (!fs.existsSync(path.join(ROOT, rel))) continue;                 // 只检查确实存在的引用
+      const top = rel.split('/')[0];
+      if (files.includes(top) || files.includes(rel)) continue;
+      problems.push(rel);
+    }
+    return problems.length === 0 || ('未入包清单: ' + problems.slice(0, 6).join(' · '));
+  });
+  check('必失败：files 漏掉某顶层目录必须被抓（不许静默少装）', () => {
+    const files = ['plugin', 'SKILL.md'];
+    const rel = 'references/pipeline.json';
+    const covered = files.includes(rel.split('/')[0]) || files.includes(rel);
+    return covered ? '未被抓到（本应报缺）' : true;
+  });
+
+  // ★ v3.2.4：合规门"契约项缺失"必须给出可执行的下一步（告诉作者包内已备好哪一份）
+  check('合规门：投稿包缺契约时，该软项的 label 必须指出包内可复制的契约文件', () => {
+    const os2 = require('os');
+    const tmp = fs.mkdtempSync(path.join(os2.tmpdir(), 'ps-contract-hint-'));
+    try {
+      fs.writeFileSync(path.join(tmp, 'manuscript.md'), '# T\n\nabstract\n');
+      const r = complianceScan(tmp);
+      const it = (r.items || []).find((x) => x.key === 'journal_contract');
+      if (!it) return '合规门里没有 journal_contract 这一项（判据前提不成立）';
+      if (it.state !== 'missing') return '该目录本不应有契约，却判成 ' + it.state;
+      return /包内(已备好|暂无契约模板)/.test(it.label) ? true : ('label 未给可执行提示：' + it.label);
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1785,7 +1845,14 @@ function complianceScan(dir) {
   add('cover_letter', 'hard', 'Cover Letter / 投稿信（单独文件）', pick(/cover[-_ ]?letter|投稿信/i));
   add('figures', 'soft', '图件文件（独立图件或 figures/ 目录）', pick(/\.(tif|tiff|png|eps|svg)$/i));
   add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i));
-  add('journal_contract', 'soft', '该刊契约 json（闸门依赖）', pick(/(contract|契约).*\.json$/i));
+  // ★ v3.2.4：契约项缺失时**直接告诉作者包内已备好哪一份**（此前只报 ✘，作者不知道去哪拿）。
+  //   纪律不变：这一项仍判 missing（投稿包里确实没有），只是把"可执行下一步"写进 label。
+  const CONTRACTS = (() => { try { return fs.readdirSync(path.join(ROOT, 'references', 'contracts')).filter((f) => /\.json$/.test(f)); } catch { return []; } })();
+  const jcHits = pick(/(contract|契约).*\.json$/i);
+  const jcLabel = '该刊契约 json（闸门依赖）' + (jcHits.length ? '' : (CONTRACTS.length
+    ? '｜包内已备好可复制：references/contracts/' + CONTRACTS.join(' · references/contracts/')
+    : '｜包内暂无契约模板，需向期刊页面取证后自建'));
+  add('journal_contract', 'soft', jcLabel, jcHits);
   const manu = pick(/\.md$/i, NOT_MANU)[0];
   // ★ v3.2.0 修正（自查出的假阴性）：声明段标题各家措辞不同，只认一种会误报缺件。
   //   BMC/Springer 用 Competing interests 与 Availability of data；IEEE 用 Conflicts of Interest；
