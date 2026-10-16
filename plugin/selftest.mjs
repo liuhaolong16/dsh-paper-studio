@@ -471,8 +471,15 @@ for (const [name, fn] of asyncChecks) {
 const filtered = results.filter((r) => !/占位/.test(r.name))
 
 const failed = filtered.filter((r) => !r.ok)
-for (const r of filtered) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`)
-console.log(`\n论文插件 V3 自检：${filtered.length - failed.length}/${filtered.length} 通过`)
-if (flakes.length) { console.log('\n⚠ 偶发（重试后通过，**如实显形**）：'); for (const f of flakes) console.log('  · ' + f) }
+// v3.1.9：机器可读计数出口（下游一律引用本命令，别手抄数字 —— 2026-10-16 日审抓到的漂移就是这么来的）
+if (process.argv.includes('--json')) {
+  let __ver = 'unknown'
+  try { __ver = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version } catch { /* 取不到就写 unknown，不猜 */ }
+  console.log(JSON.stringify({ suite: 'plugin', pass: filtered.length - failed.length, total: filtered.length, ok: failed.length === 0, version: __ver, failed: failed.map((r) => r.name), flakes }, null, 2))
+} else {
+  for (const r of filtered) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`)
+  console.log(`\n论文插件 V3 自检：${filtered.length - failed.length}/${filtered.length} 通过`)
+  if (flakes.length) { console.log('\n⚠ 偶发（重试通过，**如实显形**）：'); for (const f of flakes) console.log('  · ' + f) }
+}
 try { rmSync(tmpHub, { recursive: true, force: true }) } catch { /* 忽略 */ }
 process.exitCode = failed.length === 0 ? 0 : 1

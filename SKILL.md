@@ -37,6 +37,10 @@ metadata:
 ```bat
 cd /d E:\DeepSeek\skills\paper-studio
 node bin/studio.cjs route "给这篇稿子做投稿前体检"     :: 判类型 + 出链路 + 出必过门 + 出**期刊分类路由**（该读哪份资产 + 存在性 + 边界）
+node bin/studio.cjs selftest --json                        :: 机器可读计数（下游一律引用本命令，别手抄数字）
+node bin/studio.cjs hygiene                                :: 残留件门（备份/临时件不得留在技能树内）
+node bin/studio.cjs claims                                 :: 文档数字一致性门（文档写的 N/N 必须与实跑一致）
+node bin/studio.cjs coverage                               :: 自检覆盖门（bin/*.cjs 含自检者须在真源 selfchecks 登记）
 node bin/studio.cjs scaffold --out "<你的稿件目录>" --name "论文名"   :: **开一篇新稿：按 S0–S7 生成骨架 + 复制现成模板**
 node bin/studio.cjs draft --out "<你的稿件目录>" --name "论文名" --journal "目标刊" --lang en
                                                        :: ★ **从 0 写**：出「写作任务书 + 检索计划」并铺好骨架（不给材料 ⇒ 只出框架，不硬写正文）

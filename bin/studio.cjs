@@ -24,6 +24,12 @@ const zlib = require('zlib');   // docx 结构独立读数要用（ZIP 条目 in
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
+// v3.1.9：机器可读计数出口 + 文档数字一致性门 + 残留件门 + 自检覆盖门
+// 起因＝2026-10-16 生态日审抓出的三类问题：下游手抄自检数字导致漂移（登记表写 53/53 实为 61/61）、
+// 手写备份件留在技能树内被「残留文件」判据抓出、以及"脚本有自检却没人跑"。三条都做成插件自带的判据。
+let JSON_OUT = false;
+const VERSION = (() => { try { return require(path.join(ROOT, 'plugin', 'package.json')).version; } catch { return 'unknown'; } })();
+const SNAPSHOT_MARK = '<!-- claims: snapshot -->';
 const PIPELINE_PATH = path.join(ROOT, 'references', 'pipeline.json');
 
 function readPipeline(p = PIPELINE_PATH) {
@@ -969,6 +975,57 @@ function runSelftest() {
     return (r.assets.length === 1 && r.assets[0].exists === false) || '未显形：' + JSON.stringify(r.assets);
   });
 
+  // ★ v3.1.9（由 2026-10-16 生态日审的真实问题驱动）：三道新判据 + 机器可读出口
+  check('残留件门：当前技能树内不得有备份/临时件', () => {
+    const r = hygiene({});
+    return r.ok || ('发现 ' + r.files.length + ' 件：' + r.files.slice(0, 3).join(', '));
+  });
+  check('必失败：残留件门必须能抓出 .bak（不许静默通过）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-hyg-'));
+    fs.writeFileSync(path.join(tmp, 'x.md.bak-20260101'), 'x');
+    const r = hygiene({ roots: [tmp] });
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (!r.ok && r.files.length === 1) || ('未抓到：' + JSON.stringify(r));
+  });
+  // 说明：真实文档与实跑的对比交给 `node bin/studio.cjs claims` 这条命令（它会 spawn 探针取数）。
+  // 夹具这里只测**机制**并显式给 live，避免 selftest 内部再 spawn 探针造成递归。
+  check('文档数字一致性门（机制）：与给定实跑数一致时不得误报', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-claims-ok-'));
+    const f = path.join(tmp, 'doc.md');
+    fs.writeFileSync(f, '| 自检 | studio.cjs selftest | **67/67 通过** |\n');
+    const r = claims({ files: [f], live: [{ suite: 'studio', pass: 67, total: 67 }] });
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return r.ok || ('误报：' + JSON.stringify(r.mismatches));
+  });
+  check('必失败：实跑计数取不到时必须判失败（不许当通过）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-claims-na-'));
+    const f = path.join(tmp, 'doc.md');
+    fs.writeFileSync(f, '| 自检 | studio.cjs selftest | **67/67 通过** |\n');
+    const r = claims({ files: [f], live: [{ suite: 'studio', pass: -1, total: -1, err: '取不到' }] });
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (!r.ok && r.mismatches.some((m) => /取不到/.test(m))) || ('未显形：' + JSON.stringify(r));
+  });
+  check('必失败：文档数字一致性门必须能抓出错的 N/N', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-claims-'));
+    const f = path.join(tmp, 'doc.md');
+    fs.writeFileSync(f, '| 自检 | studio.cjs selftest | **9999/9999 通过** |\n');
+    const r = claims({ files: [f], live: [{ suite: 'studio', pass: 67, total: 67 }] });
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (!r.ok && r.mismatches.length === 1) || ('未抓到：' + JSON.stringify(r));
+  });
+  check('必失败：标了快照标记的文档跳过数字对拍（但必须留下快照记录）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ps-snap-'));
+    const f = path.join(tmp, 'snap.md');
+    fs.writeFileSync(f, SNAPSHOT_MARK + '\n| CLI 自检 | 21/21 通过 |\n');
+    const r = claims({ files: [f], live: [{ suite: 'studio', pass: 67, total: 67 }] });
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return (r.ok && r.snapshots.length === 1 && r.checked.length === 0) || ('未按快照处理：' + JSON.stringify(r));
+  });
+  check('自检覆盖门：bin/*.cjs 含自检者必须在真源 selfchecks 登记', () => {
+    const r = coverage(pipeline);
+    return r.ok || ('缺口：' + r.gaps.join(', '));
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1404,18 +1461,164 @@ function runSelftest() {
   });
 
   const failed = results.filter((r) => !r.ok);
-  for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
-  console.log(`\n自检：${results.length - failed.length}/${results.length} 通过`);
-  return failed.length === 0 ? 0 : 1;
+  if (!JSON_OUT) for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
+  const __pass = results.length - failed.length;
+  const __total = results.length;
+  if (JSON_OUT) {
+    console.log(JSON.stringify({ suite: 'studio', pass: __pass, total: __total, ok: __total === __pass, version: VERSION, failed: failed.map((f) => f.name) }, null, 2));
+  } else {
+    console.log(`\n自检：${__pass}/${__total} 通过`);
+  }
+  return __total === __pass ? 0 : 1;
 }
 
+
+// ── v3.1.9 三道新判据（都由 2026-10-16 生态日审的真实问题驱动）────────────
+const SKIP_DIRS = new Set(['.git', 'node_modules', '.dsh-project-memory', '_archive', '__pycache__']);
+
+function walkFiles(dir, out) {
+  out = out || [];
+  let ents = [];
+  try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of ents) {
+    if (SKIP_DIRS.has(e.name)) continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) walkFiles(full, out);
+    else out.push(full);
+  }
+  return out;
+}
+
+/** 判据一：残留件门 —— 备份/临时件不得留在技能树内（应归档到技能树之外）。
+ *  起因：2026-10-16 日审的「残留文件」判据抓到本插件 `refs.json.bak-*` 与 `投稿前检查表-论文B.md.bak-*`。 */
+function hygiene(opts) {
+  opts = opts || {};
+  const roots = opts.roots || [ROOT];
+  const bad = [];
+  const RE = /(\.bak(-|$)|~$|\.tmp$|\.orig$|\.rej$|__pycache__|\.DS_Store)/;
+  for (const r of roots) {
+    for (const f of walkFiles(r)) {
+      const rel = path.relative(ROOT, f);
+      if (RE.test(path.basename(f))) bad.push(rel);
+    }
+  }
+  return { ok: bad.length === 0, files: bad, roots: roots.map((r) => path.relative(ROOT, r) || '.') };
+}
+
+/** 判据二：文档数字一致性门 —— 文档里既然写了「N/N 通过」，就必须与**实跑**的数字一致。
+ *  起因：登记表写 53/53 而脚本实报 61/61，漂了一整版没人发现（下游只能手抄中文输出）。
+ *  做法：把两个主套件的实时计数取回来（`selftest --json`），逐条对拍文档里的 N/N。
+ *  例外：文档里标了 `<!-- claims: snapshot -->` 的视为**历史快照**，跳过（但仍必须与命令输出对得上才算快照豁免生效）。 */
+function claims(opts) {
+  opts = opts || {};
+  const live = opts.live || liveCounts();
+  const files = opts.files || walkFiles(ROOT).filter((f) => /\.md$/.test(f));
+  const unreadable = live.filter((x) => !(x.total > 0));
+  const liveSet = new Set(live.map((x) => `${x.pass}/${x.total}`));
+  const min = Math.min.apply(null, live.map((x) => x.total));
+  const mismatches = [];
+  const snapshots = [];
+  const checked = [];
+  for (const f of files) {
+    let txt = '';
+    try { txt = fs.readFileSync(f, 'utf8'); } catch { continue; }
+    const rel = path.relative(ROOT, f) || f;
+    const isSnap = txt.includes(SNAPSHOT_MARK);
+    const lines = txt.split(/\r?\n/);
+    lines.forEach((ln, i) => {
+      const m = ln.match(/(\d+)\s*\/\s*(\d+)\s*(?:通过|全过|pass)/i);
+      if (!m) return;
+      const pair = `${m[1]}/${m[2]}`;
+      const total = parseInt(m[2], 10);
+      if (total < 5) return;                       // 5 以下的像"4/5 条夹具"，不是套件计数
+      if (isSnap) { snapshots.push(`${rel}:${i + 1} ${pair}`); return; }
+      checked.push(`${rel}:${i + 1} ${pair}`);
+      if (!liveSet.has(pair)) mismatches.push(`${rel}:${i + 1} 写的是 ${pair}，实跑是 ${live.map((x) => `${x.suite} ${x.pass}/${x.total}`).join(' · ')}`);
+    });
+  }
+  if (unreadable.length) {
+    mismatches.push('实跑计数取不到（' + unreadable.map((x) => x.suite + ':' + (x.err || '?')).join(' · ') + '）⇒ 取不到不得判通过');
+  }
+  return { ok: mismatches.length === 0, checked, mismatches, snapshots, live };
+}
+
+/** 取两个主套件的实时计数（机器可读出口：`--json`）——下游应引用本命令而不是手抄数字。 */
+function liveCounts() {
+  const out = [];
+  // ★ 递归保护（写代码时自查出来的真实风险）：claims 会 spawn `selftest --json`，
+  //   而 selftest 的夹具若再去核真实文档就会再 spawn 一次 —— 无限自我调用。
+  //   处理：探针子进程带 PS_LIVE_PROBE=1，取数函数直接拒绝再取（**取不到就显形**，绝不判通过）。
+  if (process.env.PS_LIVE_PROBE === '1') {
+    return [{ suite: 'probe-guard', pass: -1, total: -1, err: '递归保护：探针内部不再取数' }];
+  }
+  const { spawnSync } = require('child_process');
+  const ENV = Object.assign({}, process.env, { PS_LIVE_PROBE: '1' });
+  const a = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'selftest', '--json'], { encoding: 'utf8', env: ENV });
+  try { const j = JSON.parse(a.stdout); out.push({ suite: j.suite, pass: j.pass, total: j.total }); } catch { out.push({ suite: 'studio', pass: -1, total: -1, err: '取不到（--json 输出不可解析）' }); }
+  const b = spawnSync(process.execPath, [path.join(ROOT, 'plugin', 'selftest.mjs'), '--json'], { encoding: 'utf8', env: ENV });
+  try { const j = JSON.parse(b.stdout); out.push({ suite: j.suite, pass: j.pass, total: j.total }); } catch { out.push({ suite: 'plugin', pass: -1, total: -1, err: '取不到（--json 输出不可解析）' }); }
+  return out;
+}
+
+/** 判据三：自检覆盖门 —— `bin/*.cjs` 里凡含自检的脚本，必须在真源 `pipeline.json.selfchecks` 里登记
+ *  （登记的是**取数命令**，不是冻结数字）；未登记的报缺口。
+ *  起因：同日 ai-workbench 的「门覆盖·前提」判据一次清出 4 个"自带自检却没人跑"的脚本——同一纪律本插件也要有。 */
+function coverage(pipeline) {
+  const reg = ((pipeline || readPipeline()).selfchecks) || {};
+  const dir = path.join(ROOT, 'bin');
+  const gaps = [];
+  const listed = [];
+  let files = [];
+  try { files = fs.readdirSync(dir).filter((f) => /\.cjs$/.test(f)); } catch { return { ok: false, gaps: ['读不到 bin/ 目录'], listed: [] }; }
+  for (const f of files) {
+    let txt = '';
+    try { txt = fs.readFileSync(path.join(dir, f), 'utf8'); } catch { continue; }
+    if (!/自检|selftest/i.test(txt)) continue;
+    if (reg[f]) listed.push(f);
+    else gaps.push(f);
+  }
+  return { ok: gaps.length === 0, gaps, listed, registered: Object.keys(reg).length };
+}
+
+
+function cmdHygiene() {
+  const r = hygiene({});
+  if (JSON_OUT) { console.log(JSON.stringify(r, null, 2)); return r.ok ? 0 : 1; }
+  if (r.ok) { console.log('残留件门：通过（技能树内无备份/临时件）'); return 0; }
+  console.log('残留件门：未通过 —— 以下文件不得留在技能树内（归档到树外，别删）：');
+  for (const f of r.files) console.log('  - ' + f);
+  return 1;
+}
+function cmdClaims() {
+  const r = claims({});
+  if (JSON_OUT) { console.log(JSON.stringify(r, null, 2)); return r.ok ? 0 : 1; }
+  console.log('实跑计数：' + r.live.map((x) => `${x.suite} ${x.pass}/${x.total}`).join(' · '));
+  console.log(`文档数字声明：核过 ${r.checked.length} 条 · 快照豁免 ${r.snapshots.length} 条`);
+  if (r.ok) { console.log('文档数字一致性门：通过'); return 0; }
+  console.log('文档数字一致性门：未通过 —— 文档与实跑不一致：');
+  for (const m of r.mismatches) console.log('  - ' + m);
+  return 1;
+}
+function cmdCoverage() {
+  const r = coverage();
+  if (JSON_OUT) { console.log(JSON.stringify(r, null, 2)); return r.ok ? 0 : 1; }
+  console.log(`自检覆盖门：登记 ${r.registered} 条 · 已覆盖 ${r.listed.length} 个脚本`);
+  if (r.ok) { console.log('自检覆盖门：通过（含自检的脚本都已在真源登记）'); return 0; }
+  console.log('自检覆盖门：未通过 —— 以下脚本含自检但未在 pipeline.json.selfchecks 登记：');
+  for (const g of r.gaps) console.log('  - ' + g);
+  return 1;
+}
 function main(argv) {
   const cmd = argv[0];
   const json = argv.includes('--json');
+  JSON_OUT = json;
   const args = argv.filter((a) => !a.startsWith('--'));
   try {
     if (!cmd || cmd === '--help' || cmd === '-h') {
-      console.log('用法：node bin/studio.cjs <route|gates|intake|lessons|method|scaffold|draft|genre|report|selftest> [参数] [--json]');
+      console.log('用法：node bin/studio.cjs <route|gates|intake|lessons|method|scaffold|draft|genre|report|selftest|hygiene|claims|coverage> [参数] [--json]');
+      console.log('  hygiene  ⇒ 残留件门（备份/临时件不得留在技能树内；应归档到树外）');
+      console.log('  claims   ⇒ 文档数字一致性门（文档里写的 N/N 必须与实跑一致）');
+      console.log('  coverage ⇒ 自检覆盖门（bin/*.cjs 含自检者必须在 pipeline.json.selfchecks 登记）');
       console.log('  report --task "<描述>" --draft <稿.md> [--docx <成品.docx>] [--anchors/--manifest/--contract]  ⇒ 带行号的待修项清单');
       return 0;
     }
@@ -1695,6 +1898,9 @@ function main(argv) {
       return cost.main(argv.slice(1));
     }
     if (cmd === 'selftest') return runSelftest();
+    if (cmd === 'hygiene') return cmdHygiene();
+    if (cmd === 'claims') return cmdClaims();
+    if (cmd === 'coverage') return cmdCoverage();
     console.error(`未知子命令：${cmd}`);
     return 2;
   } catch (e) {
