@@ -3,6 +3,24 @@
 
 # 变更记录
 
+## v3.2.66 —— 2026-10-16
+
+**面板化「外置 key 连接器」第 2 轮：客户端半体（面板）写完，并在**隔离环境**验证 20/20（尚未装进宿主）。**
+
+- **新增独立插件 `panel/`（`dsh-paper-keys`）** —— 故意**不塞进 paper-studio 本体**：本体保持「零面板」承诺（不注册任何客户端 Slot / 路由 / 前端资产 ⇒ 不会白屏），**卸载面板不影响论文能力**。
+  - `panel/lib/index.js`（宿主半体）：6 条同源路由 `/api/paper-keys/{list,set,enable,disable,remove,test}`；凭据读写走**唯一真源** `<paper-studio>/bin/keys-store.cjs`（与 CLI 同一份，不另写解析）；`test` 是**真调用**（失败如实报错）。
+  - `panel/lib/client.js`（客户端半体）：`window.__ModuleLoader__` 包壳 + **纯具名导出**（`apply`/`inject`），注册到 `settings.section`（id `paper-keys` · order 36 · label「论文插件外置 key 连接器」· **replaceRisk: none**）；面板只显示**掩码**，明文仅在用户敲入的那一次存在于组件内、提交即清空。
+  - `panel/cordis.patch.yml` + `panel/README.md`（安装、安全、同判说明）。
+- **★隔离验证器 `panel/_check-client.cjs` ⇒ 20/20 通过**（启用前先跑，不靠"看着没崩"）：
+  ① 加载面（包壳 id 同名 · 纯具名导出 · 无 default · 源码无 `document.write`/`eval`/`require(fs)`）
+  ② **敌意 ctx 面**：`{}` / `null` / `get` 抛错 / `slots` 半残 / `webServer` 半残 ⇒ `apply` **都不得抛**且要返回释放函数
+  ③ 正控：桩 slots 下**恰好注册一格** `settings.section`（id/order/label 逐项断言）；桩 webServer 下 6 条路由齐备且 `kind: exact`
+  ④ **必失败面 ×3**：把 `apply` 改成会抛的 / 去掉 `exports.apply` / 改掉节名 ⇒ 对应检查**必须判失败**（证明检查不是空转）
+  ⑤ 安全与诚实面：**跨源 403** · GET 打写接口 405 · 未知 provider 400 · **★列表与写入响应里都不得出现明文**（只许掩码）· 停用后凭据仍在（掩码还在）· 删除后回「未录入」· **所有候选路径都不存在时如实报"未接线"且不抛**（子进程 + 清空 HOME 的严格隔离）
+  ⑥ **★同判（跨实现锁）**：面板写入的 provider，CLI `studio model providers` 必须**看到同一份**并报「面板」来源；面板停用后 CLI 必须报「已停用」且**不再算已配置**
+- **本轮自曝的坑（第二次同款，已写进代码注释）**：夹具里"进程内"调用面板（`host.apply(...)`）时，只把 `DSH_PAPER_KEYS_FILE` 传给了**子进程** ⇒ 面板写的是另一个文件，于是"同判"夹具假失败。**规则：手写两半的测试里，凡进程内被调用的那一侧，必须同时改本进程 env。**
+- 尚未做（下一轮）：装进宿主（**先留配置快照可回滚**）→ 面板目视验证 → 源文件完整性/兼容性终校（随包清单 sha256、门副本逐字节、样式锁、干净安装自检、MCP 探针）。
+
 ## v3.2.65 —— 2026-10-16
 
 **面板化「外置 key 连接器」第 1 轮：先把数据层做对（面板下一轮接上，先让判据存在且可回归）。**

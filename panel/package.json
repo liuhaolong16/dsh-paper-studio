@@ -1,0 +1,48 @@
+{
+  "name": "dsh-paper-keys",
+  "version": "0.1.0",
+  "description": "论文插件外置 key 连接器（面板设置节）：录入 / 真连通性测试 / 查看 / 停用（保留）/ 删除 —— 凭据只写本机，面板只显示掩码",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots"
+      ]
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "_check-client.cjs"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "paper-studio",
+    "credentials",
+    "settings"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  }
+}
