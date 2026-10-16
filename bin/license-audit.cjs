@@ -140,16 +140,55 @@ function auditAssets(root, opts) {
   return out;
 }
 
+
+/** 归属一致性校验（v3.2.97）：把「须署名」与「仅致意」分开，并机器防两类错——
+    ① **漏署**：使用了其表达（uses-expression）却没写进 NOTICE 的「须署名」区；
+    ② **虚标**：只吸收了思想（adopted-as-idea）却把自己写成"须署名来源"，或反过来把该署名的降级掉。
+    另：两栏标记缺失 ⇒ **无法判定**，记 FAIL（不许当通过）。 */
+function auditAttribution(root) {
+  const rows = [];
+  const saPath = path.join(root, 'references', 'source-attribution.json');
+  if (!fs.existsSync(saPath)) return { rows, note: '读不到 references/source-attribution.json ⇒ 归属面**未核对**（不是通过）' };
+  let sa = null; try { sa = JSON.parse(fs.readFileSync(saPath, 'utf8')); } catch (e) { return { rows, note: 'source-attribution.json 解析失败：' + String((e && e.message) || e) }; }
+  const notice = (() => { try { return fs.readFileSync(path.join(root, 'NOTICE.md'), 'utf8'); } catch (e) { return ''; } })();
+  const zone = (name) => {
+    const m = new RegExp('<!-- ' + name + ':start -->([\\s\\S]*?)<!-- ' + name + ':end -->').exec(notice);
+    return m ? m[1] : null;
+  };
+  const req = zone('ATTR-REQUIRED');
+  const cour = zone('ATTR-COURTESY');
+  if (req === null || cour === null) {
+    rows.push({ source: '（NOTICE.md 分区标记）', status: '-', verdict: 'FAIL', reason: '缺少 ATTR-REQUIRED / ATTR-COURTESY 标记 ⇒ 归属面无法判定（不许当通过）' });
+    return { rows, required_zone: !!req, courtesy_zone: !!cour, note: '两栏标记必须都在 NOTICE.md 里' };
+  }
+  for (const s of (sa.sources || [])) {
+    const names = String(s.source || '').split('/').map((x) => x.trim()).filter(Boolean);
+    const inReq = names.some((n) => req.indexOf(n) >= 0);
+    if (s.status === 'uses-expression') {
+      rows.push({ source: s.source, status: s.status, verdict: inReq ? 'OK' : 'FAIL',
+        reason: inReq ? '已在「须署名」区' : '使用了其表达却未出现在「须署名」区 ⇒ 漏署（许可与署名是法定义务）' });
+    } else if (s.status === 'adopted-as-idea') {
+      rows.push({ source: s.source, status: s.status, verdict: inReq ? 'FAIL' : 'OK',
+        reason: inReq ? '只吸收了思想却写进「须署名」区 ⇒ 虚标（会让真须署名的项失去区分度）' : '自有表达、无许可义务（可自愿注记在致意区）' });
+    } else {
+      rows.push({ source: s.source, status: String(s.status), verdict: 'WARN', reason: 'status 取值未识别（只认 uses-expression / adopted-as-idea）' });
+    }
+  }
+  return { rows, required_zone: true, courtesy_zone: true, sources: (sa.sources || []).length,
+    note: '降级判据（uses-expression → adopted-as-idea 三条齐备）：① license-scan 对该源命中 0 ② 人工复核无措辞/结构照搬 ③ 未把其文件当依赖或资产分发。' };
+}
+
 function audit(root, opts) {
   const deps = auditDependencies(root, opts);
   const assets = auditAssets(root, opts);
-  const fails = deps.rows.filter((r) => r.verdict === 'FAIL').concat(assets.rows.filter((r) => r.verdict === 'FAIL'));
-  const warns = deps.rows.filter((r) => r.verdict === 'WARN').concat(assets.rows.filter((r) => r.verdict === 'WARN'));
+  const attribution = auditAttribution(root);
+  const fails = deps.rows.filter((r) => r.verdict === 'FAIL').concat(assets.rows.filter((r) => r.verdict === 'FAIL'), attribution.rows.filter((r) => r.verdict === 'FAIL'));
+  const warns = deps.rows.filter((r) => r.verdict === 'WARN').concat(assets.rows.filter((r) => r.verdict === 'WARN'), attribution.rows.filter((r) => r.verdict === 'WARN'));
   const skips = deps.rows.filter((r) => r.verdict === 'SKIP');
   let status = fails.length ? 'FAIL' : (warns.length ? 'WARN' : 'PASS');
   if (!deps.rows.length && !assets.rows.length) status = 'SKIP';
   return {
-    status, deps, assets, fails: fails.length, warns: warns.length, skips: skips.length,
+    status, deps, assets, attribution, fails: fails.length, warns: warns.length, skips: skips.length,
     note: '★ 本工具只核**可机检的那部分**（依赖许可分类、随包分发、资产登记与哈希、署名是否出现）；许可兼容性的法律判断仍需人定。',
   };
 }
@@ -261,7 +300,47 @@ function selftest() {
     return r.rows[0].verdict === 'FAIL' ? true : ('应 FAIL：' + JSON.stringify(r.rows[0]));
   });
 
-  ck('实盘自证：本仓必须 PASS（依赖面 + 资产面都无 FAIL，允许 INFO/WARN）', () => {
+  ck('★归属·必失败面：只吸思想却写进「须署名」区 ⇒ 虚标（FAIL）', () => {
+    const d = tmp();
+    fs.mkdirSync(path.join(d, 'references'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'references', 'source-attribution.json'), JSON.stringify({ sources: [{ source: 'idea-src', license: 'AGPL-3.0', status: 'adopted-as-idea' }] }), 'utf8');
+    fs.writeFileSync(path.join(d, 'NOTICE.md'), '<!-- ATTR-REQUIRED:start -->\n- idea-src\n<!-- ATTR-REQUIRED:end -->\n<!-- ATTR-COURTESY:start -->\n<!-- ATTR-COURTESY:end -->', 'utf8');
+    const r = auditAttribution(d);
+    fs.rmSync(d, { recursive: true, force: true });
+    return (r.rows[0].verdict === 'FAIL' && /虚标/.test(r.rows[0].reason)) ? true : ('应 FAIL+虚标：' + JSON.stringify(r.rows[0]));
+  });
+
+  ck('★归属·必失败面：用了其表达却没写进「须署名」区 ⇒ 漏署（FAIL）', () => {
+    const d = tmp();
+    fs.mkdirSync(path.join(d, 'references'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'references', 'source-attribution.json'), JSON.stringify({ sources: [{ source: 'copied-src', license: 'CC-BY', status: 'uses-expression' }] }), 'utf8');
+    fs.writeFileSync(path.join(d, 'NOTICE.md'), '<!-- ATTR-REQUIRED:start -->\n（空）\n<!-- ATTR-REQUIRED:end -->\n<!-- ATTR-COURTESY:start -->\n<!-- ATTR-COURTESY:end -->', 'utf8');
+    const r = auditAttribution(d);
+    fs.rmSync(d, { recursive: true, force: true });
+    return (r.rows[0].verdict === 'FAIL' && /漏署/.test(r.rows[0].reason)) ? true : ('应 FAIL+漏署：' + JSON.stringify(r.rows[0]));
+  });
+
+  ck('★归属·必失败面：NOTICE 缺分区标记 ⇒ 记 FAIL（无法判定不算通过）', () => {
+    const d = tmp();
+    fs.mkdirSync(path.join(d, 'references'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'references', 'source-attribution.json'), JSON.stringify({ sources: [] }), 'utf8');
+    fs.writeFileSync(path.join(d, 'NOTICE.md'), '（没有任何标记）', 'utf8');
+    const r = auditAttribution(d);
+    fs.rmSync(d, { recursive: true, force: true });
+    return (r.rows[0] && r.rows[0].verdict === 'FAIL' && /无法判定/.test(r.rows[0].reason)) ? true : JSON.stringify(r);
+  });
+
+  ck('★归属·正控：idea 源在致意区、表达源在须署名区 ⇒ 全 OK', () => {
+    const d = tmp();
+    fs.mkdirSync(path.join(d, 'references'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'references', 'source-attribution.json'), JSON.stringify({ sources: [{ source: 'a-src', status: 'uses-expression' }, { source: 'b-src', status: 'adopted-as-idea' }] }), 'utf8');
+    fs.writeFileSync(path.join(d, 'NOTICE.md'), '<!-- ATTR-REQUIRED:start -->\n- a-src\n<!-- ATTR-REQUIRED:end -->\n<!-- ATTR-COURTESY:start -->\n- b-src\n<!-- ATTR-COURTESY:end -->', 'utf8');
+    const r = auditAttribution(d);
+    fs.rmSync(d, { recursive: true, force: true });
+    return r.rows.every((x) => x.verdict === 'OK') ? true : JSON.stringify(r.rows);
+  });
+
+  ck('实盘自证：本仓必须 PASS（依赖面 + 资产面 + 归属面都无 FAIL，允许 INFO/WARN）', () => {
     const r = audit(ROOT, {});
     if (r.status === 'FAIL') return '本仓竟 FAIL：' + JSON.stringify(r.fails, null, 0).slice(0, 200);
     return true;
@@ -284,9 +363,12 @@ function main(argv) {
   console.log('  资产面（assets/ 随包分发的第三方文件）：');
   for (const a of r.assets.rows) console.log('    [' + a.verdict + '] ' + a.file + ' ⇒ ' + a.reason);
   if (r.assets.note) console.log('    ' + r.assets.note);
+  console.log('  归属面（须署名 / 仅致意 分栏）：');
+  if (r.attribution && r.attribution.rows) { for (const a of r.attribution.rows) console.log('    [' + a.verdict + '] ' + a.source + ' ⇒ ' + a.reason); }
+  if (r.attribution && r.attribution.note) console.log('    ' + r.attribution.note);
   console.log('  ' + r.note);
   return r.status === 'FAIL' ? 1 : 0;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { audit, auditDependencies, auditAssets, classifyLicense, initProvenance, main, selftest, PROV };
+module.exports = { audit, auditDependencies, auditAssets, auditAttribution, classifyLicense, initProvenance, main, selftest, PROV };

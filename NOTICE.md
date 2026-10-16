@@ -55,3 +55,32 @@
 > ★ 机器核：`node bin/license-scan.cjs --scan "<扫描件目录>"` —— 我方文本 × **受限源**（NC/传染性/无许可）做 13 词窗口重合比对，命中即 FAIL。
 > 真扫描（2026-10-17）：受限源 8 个 · 我方 121 文件 / 131,205 指纹 / **命中 0**。
 > ★ 该工具的边界已写明：只能抓逐字与近似逐字，**改写/换词/翻译抓不到** —— 地板线，不是免罪符。
+
+## 归属分栏（**机器校验**：`bin/license-audit.cjs` 的归属一致性）
+
+> 分栏口径：**使用了其表达**（正文/提示词/代码/清单措辞）⇒ 许可与署名是**法定义务**，不得删除；**只吸收思想/方法/结构**、产出为自有表达 ⇒ **无许可义务**，此处注记属**自愿致意**，对外可省略。
+> 降级判据（从"须署名"降为"仅致意"，三条须齐备）：① `bin/license-scan.cjs` 对该源长片段命中 0 ② 人工复核无措辞/结构照搬 ③ 未把其文件当依赖或资产分发。
+
+### A. 须署名（法定义务 · 不得删除）
+
+<!-- ATTR-REQUIRED:start -->
+- **CSL 样式 ×3**（`vancouver.csl` · `china-national-standard-gb-t-7714-2025-numeric.csl` · `china-national-standard-gb-t-7714-2025-author-date.csl`）—— **CC-BY-SA 3.0**，来自 CSL 官方样式库（Zotero Style Repository），未改动内容；署名与来源见 `assets/csl/PROVENANCE.md`（此三项**真的用了其内容**，不可降级）。
+- **依赖如实登记**（非署名义务，但必须写明）：`citeproc` = **CPAL-1.0 OR AGPL-1.0**，仅作依赖、未修改、未随包分发；`citeproc-locales` = MIT。
+<!-- ATTR-REQUIRED:end -->
+
+### B. 受其思路影响（自有表达 · 无许可义务 · 此处为自愿致意）
+
+<!-- ATTR-COURTESY:start -->
+- `lifecycle-skills`（Apache-2.0）：槽位→预算 · problem-first 配比 · claim 式标题 · 置信加权与 champion 规则 · 严重度×成本分诊 —— 落点 `bin/talk.cjs` · `bin/reviewers.cjs`
+- `kalaris-skills`（MIT）：技能目录按「何时用」切分、可被按需加载 —— 落点 `skills/*/SKILL.md`
+- `auto-empirical-research-skills`（CC-BY）：实证流程阶段划分（仅参照）
+- `dsh-sci-fault-diag-paper`（木兰宽松许可证第 2 版）：插件打包体例 · 严格 JSON Schema 教训 · 风格档案与教训分级
+- `ARIS`（MIT）：验收门认识论 · 保证级别轴 · 复核独立性 · 注入卫生 · 输出版本化
+- `research-paper-playbook`：11 维判据 · 机器门 · 投稿前检查表（同源本机资产）
+- `paperdebugger`（AGPL-3.0）：多智能体与编辑器内集成的**架构观察**（未采纳任何代码）
+- `academic-research-skills`（CC-BY-NC）：agent 角色分解的分类方式（仅参照，未复制内容）
+- `awesome-ai-research-writing`（无 License）：写作生命周期清单分类（仅参照）
+- `dsh-lit-search/@ai4paper-dsh-ipaper/@ggboy123-dsh-paper-reader`（无 License）：同赛道功能面与产品形态观察（仅参照）
+<!-- ATTR-COURTESY:end -->
+
+> 机器核：`node bin/license-audit.cjs` —— **漏署**（表达源不在须署名区）与**虚标**（思想源被写进须署名区）都会 **FAIL**；NOTICE 缺分区标记同样 FAIL（无法判定 ≠ 通过）。

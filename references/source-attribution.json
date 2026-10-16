@@ -1,0 +1,93 @@
+{
+  "note": "来源归属分类表（机器校验的对象）。分两类，**不得混标**：uses-expression＝我们使用了它的**表达**（正文/提示词/代码/清单措辞）⇒ 许可与署名是**法定义务**，必须落在 NOTICE.md 的「须署名」区内；adopted-as-idea＝我们**只吸收思想/方法/结构**、产出为自有表达（经 license-scan 长片段比对为 0）⇒ **无许可义务**，可自愿注记在「致意」区，**不得**放进须署名区（放进去就是虚标）。降级判据：① license-scan 对该源命中 0 ② 人工复核无措辞/结构照搬 ③ 未把其文件当依赖或资产分发 —— 三条齐备才可从 uses-expression 降为 adopted-as-idea。",
+  "sources": [
+    {
+      "source": "lifecycle-skills",
+      "license": "Apache-2.0",
+      "status": "adopted-as-idea",
+      "what": "槽位→预算（1 张/内容分钟、硬上限 1.25×）· problem-first 分节配比 · claim 式标题 · 单页 >100 词即过载 · 复盘/呈现与审稿的流程骨架 · 置信加权均值与 champion 规则 · 严重度×成本分诊",
+      "landing": "bin/talk.cjs · bin/reviewers.cjs · studio review（严重度分诊）",
+      "verified_by": "license-scan 命中 0（2026-10-17）"
+    },
+    {
+      "source": "kalaris-skills",
+      "license": "MIT",
+      "status": "adopted-as-idea",
+      "what": "技能目录的组织形态（按「何时用」切分、可被按需加载）",
+      "landing": "skills/*/SKILL.md（模块化技能包）",
+      "verified_by": "license-scan 命中 0"
+    },
+    {
+      "source": "auto-empirical-research-skills",
+      "license": "CC-BY",
+      "status": "adopted-as-idea",
+      "what": "实证研究流程的阶段划分（仅作方法参照，未采纳具体内容）",
+      "landing": "references/absorption-matrix-20261017.md",
+      "verified_by": "license-scan 命中 0"
+    },
+    {
+      "source": "dsh-sci-fault-diag-paper",
+      "license": "木兰宽松许可证 第 2 版（其 package.json 写 MIT 属标注不准确）",
+      "status": "adopted-as-idea",
+      "what": "插件打包体例（dsh.bundle.patch + cordis.patch.yml）· 严格 JSON Schema 教训 · 风格档案与教训分级范式",
+      "landing": "plugin/* · references/pipeline.json",
+      "verified_by": "license-scan 命中 0"
+    },
+    {
+      "source": "ARIS",
+      "license": "MIT",
+      "status": "adopted-as-idea",
+      "what": "验收门认识论 · 保证级别轴 · 复核独立性 · 注入卫生 · 可续跑 · 输出版本化",
+      "landing": "references/aris-read-report.md（16 条逐条映射）",
+      "verified_by": "license-scan 命中 0"
+    },
+    {
+      "source": "research-paper-playbook",
+      "license": "自有/同源",
+      "status": "adopted-as-idea",
+      "what": "11 维判据 · 机器门 · 投稿前检查表 · 模板",
+      "landing": "references/pipeline.json · templates.json（只登记真源路径）",
+      "verified_by": "同源资产，非第三方"
+    },
+    {
+      "source": "paperdebugger",
+      "license": "AGPL-3.0",
+      "status": "adopted-as-idea",
+      "what": "多智能体 + 编辑器内集成 + MCP 形态的**架构观察**（明确不采纳代码）",
+      "landing": "references/absorption-matrix-20261017.md（仅记录）",
+      "verified_by": "未搬任何代码；license-scan 命中 0"
+    },
+    {
+      "source": "academic-research-skills",
+      "license": "CC-BY-NC",
+      "status": "adopted-as-idea",
+      "what": "agent 角色分解的分类方式（仅参照，不复制内容）",
+      "landing": "references/absorption-matrix-20261017.md（仅记录）",
+      "verified_by": "未搬任何内容；license-scan 命中 0"
+    },
+    {
+      "source": "awesome-ai-research-writing",
+      "license": "无 License（默认保留全部权利）",
+      "status": "adopted-as-idea",
+      "what": "写作全生命周期 prompt 的清单分类（仅参照）",
+      "landing": "references/market-parity.md",
+      "verified_by": "未搬任何内容"
+    },
+    {
+      "source": "dsh-lit-search/@ai4paper-dsh-ipaper/@ggboy123-dsh-paper-reader",
+      "license": "无 License",
+      "status": "adopted-as-idea",
+      "what": "同赛道的功能面与产品形态观察（仅参照）",
+      "landing": "references/ecosystem-scan-2026-10-16.md",
+      "verified_by": "未搬任何内容"
+    }
+  ],
+  "assets_attribution": {
+    "note": "随包分发的**第三方资产**另走资产面（references/asset-provenance.json + assets/csl/PROVENANCE.md）：那些是**真的用了其内容**（CC-BY-SA 3.0 的三个 CSL 样式）⇒ 署名与许可是法定义务，不得降级或删除。",
+    "required": [
+      "assets/csl/china-national-standard-gb-t-7714-2025-author-date.csl",
+      "assets/csl/china-national-standard-gb-t-7714-2025-numeric.csl",
+      "assets/csl/vancouver.csl"
+    ]
+  }
+}
