@@ -96,7 +96,23 @@ function buildArgs(gate, inputs) {
     const v = inputs[key];
     if (v && fs.existsSync(v)) pushTpl(opt.args || []);
   }
-  return { argv: out, missing };
+  /* ★ v3.2.53 **输入侧 canary**（同伴对拍项目）：两件事此前都没人做 ——
+     (a) `required_placeholders` 声明了"这扇门需要哪些输入"，但**没有读取点**（实测只有夹具里出现过一次）
+         ⇒ 若某扇门的 args 里漏用了某个必需输入，它会**带着缺料静默跑完**（reduced input set），
+            任何断言层都看不见。声明即契约：声明的输入没到达 ⇒ 记缺输入。
+     (b) argv 里若还剩**字面占位符**（模板写错、或占位符不在白名单里），子进程会拿着 `{draf}` 这种字符串跑
+         ⇒ 同样是降级执行、且看起来"有值"。这里显式检出，由调用方判前提层失败。 */
+  for (const ph of (gate.required_placeholders || [])) {
+    const key = String(ph).slice(1, -1);
+    const v = inputs[key];
+    if (!v || !fs.existsSync(v)) missing.push(ph);
+  }
+  const unresolved = [];
+  for (const a of out) {
+    const m = String(a).match(/\{[A-Za-z_][A-Za-z0-9_]*\}/g);
+    if (m) for (const x of m) if (unresolved.indexOf(x) < 0) unresolved.push(x);
+  }
+  return { argv: out, missing, unresolved };
 }
 
 function interpreterFor(runtime, pipeline) {
@@ -149,6 +165,12 @@ function runOneGate(gate, inputs, pipeline, opts) {
     rec.argv = [exe, script, ...built.argv];
     rec.verdict = 'precondition_fail';
     rec.note = `判据数据缺失：${preMissing.join(', ')} ⇒ 前提层失败（不是"没问题"）`;
+    return rec;
+  }
+  if (built.unresolved && built.unresolved.length) {
+    rec.argv = [exe, script, ...built.argv];
+    rec.verdict = 'precondition_fail';
+    rec.note = `占位符未解析：${[...new Set(built.unresolved)].join(', ')} ⇒ argv 里会带着字面占位符跑（**降级执行**）⇒ 前提层失败`;
     return rec;
   }
   if (built.missing.length) {
@@ -370,6 +392,23 @@ function runSelftest() {
     return (r.verdict === 'precondition_fail' && r.rc === 2 && r.stdout_empty === false) ? true : `verdict=${r.verdict} rc=${r.rc} empty=${r.stdout_empty}`;
   });
 
+  /* ★ v3.2.53 输入侧 canary（同伴对拍项目）：声明了输入但没到达 ⇒ 绝不放行；模板写错 ⇒ 前提层失败 */
+  check('v3.2.53·输入侧·必失败面：门声明的 required_placeholders 没到达 ⇒ skipped_missing_input（此前会静默跑完）', () => {
+    /* 这扇门 args 只用 {draft}，但**声明**它还需要 {docx}；不给 docx 时必须判缺输入 —— 修前它是 pass。 */
+    const p = fakePipeline([g('need2', 'fx-exit0.cjs', 'node', { args: ['--draft', '{draft}'], required_placeholders: ['{docx}'] })]);
+    const r = runOneGate(p.gates[0], { draft: fx('fx-exit0.cjs') }, p);
+    return (r.verdict === 'skipped_missing_input' && String(r.note).indexOf('{docx}') >= 0) ? true : `verdict=${r.verdict} note=${r.note}`;
+  });
+  check('v3.2.53·输入侧·正控：声明的输入都给到 ⇒ 正常跑完（不得因新判据误伤）', () => {
+    const p = fakePipeline([g('need3', 'fx-exit0.cjs', 'node', { args: ['--draft', '{draft}', '--docx', '{docx}'], required_placeholders: ['{draft}', '{docx}'] })]);
+    const r = runOneGate(p.gates[0], { draft: fx('fx-exit0.cjs'), docx: fx('fx-exit0.cjs') }, p);
+    return r.verdict === 'pass' ? true : `verdict=${r.verdict} note=${r.note}`;
+  });
+  check('v3.2.53·输入侧·必失败面：argv 里剩字面占位符（模板写错，如 {draf}）⇒ precondition_fail，不得当通过', () => {
+    const p = fakePipeline([g('typo', 'fx-exit0.cjs', 'node', { args: ['--draft', '{draft}', '--x', '{draf}'] })]);
+    const r = runOneGate(p.gates[0], { draft: fx('fx-exit0.cjs') }, p);
+    return (r.verdict === 'precondition_fail' && /未解析/.test(String(r.note))) ? true : `verdict=${r.verdict} note=${r.note}`;
+  });
   check('必失败夹具：缺输入 ⇒ skipped_missing_input（绝不算通过）', () => {
     const p = fakePipeline([g('need', 'fx-exit0.cjs', 'node', { args: ['--draft', '{draft}'], required_placeholders: ['{draft}'] })]);
     const r = runOneGate(p.gates[0], {}, p);
