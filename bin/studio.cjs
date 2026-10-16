@@ -557,6 +557,7 @@ const SUBCOMMANDS = [
   'reports',
   'refs',
   'model',
+  'anonymize',
   'submission-fields',
   'route',
   'gates',
@@ -2780,6 +2781,66 @@ function runSelftest() {
       return (r.status === 0 && /成立/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 120));
     });
   })();
+  /* ★ v3.2.63 夹具：anonymize（抹除可复核 + 不许漏抹 + 未检查要明说） */
+  (() => {
+    check('v3.2.63·anonymize·正控：作者/单位/邮箱/基金/致谢五类都抹掉，且清单逐条记了原文与替换', () => {
+      const src = [
+        '# Title of the paper', '',
+        'Authors: Zhang San, Li Si', '',
+        'School of Energy Science, Tsinghua University, Beijing 100084, China', '',
+        'Corresponding author: zhang.san@example.edu.cn', '',
+        '## Funding', '',
+        'This work was supported by National Natural Science Foundation of China (No. 52177123).', '',
+        '## Acknowledgments', '',
+        'We thank Prof. Wang Wu for the help with experiments. 我们之前的研究 [3] 也讨论过该问题。', '',
+        '## References', '', '[1] x', ''].join('\n');
+      const r = anonymizeText(src, { roster: ['Zhang San', 'Li Si'] });
+      const kinds = new Set(r.items.map((x) => x.kind));
+      const need = ['author', 'affiliation', 'email', 'funding-id', 'acknowledgements-section'];
+      const miss = need.filter((k) => !kinds.has(k));
+      if (miss.length) return '没抹到：' + miss.join(', ');
+      if (r.residual.length) return '名单里的人还有残留：' + JSON.stringify(r.residual);
+      if (!/\[作者已隐藏\]/.test(r.out) || /zhang\.san@example/.test(r.out)) return '替换不完整';
+      const notRecorded = r.items.filter((x) => !x.original || !x.replacement);
+      return notRecorded.length === 0 ? true : ('清单里有条目缺 original/replacement：' + notRecorded.length);
+    });
+    check('v3.2.63·anonymize·★必失败面：名单里的人**换了写法**留在正文 ⇒ 必须报残留（不许静默算干净）', () => {
+      const src = 'Authors: Zhang San\n\nAcknowledgments: thanks to Zhang  San for help.\n';
+      const r = anonymizeText(src, { roster: ['Zhang San', 'Zhang  San'] });
+      return (r.residual.length > 0 || r.out.indexOf('Zhang') < 0) ? true : '换了写法的人名被静默漏掉了';
+    });
+    check('v3.2.63·anonymize·诚实面：既没名单也没作者行 ⇒ 必须列「未检查」并退 1（不能算已匿名）', () => {
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'anon-'));
+      const f = path.join(tmpD, 'noAuthor.md');
+      fs.writeFileSync(f, '# A study\n\nBody text without any author block.\n', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'anonymize', '--draft', f, '--json'], { encoding: 'utf8', timeout: 60000 });
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      let j = null; try { j = JSON.parse(String(r.stdout || '')); } catch (e) {}
+      return (r.status === 1 && j && j.unchecked && j.unchecked.length > 0) ? true : ('status=' + r.status + ' stdout=' + String(r.stdout || '').slice(0, 90));
+    });
+    check('v3.2.63·anonymize·自引与仓库链接：只提醒、不擅自改语义（须列出位置）', () => {
+      const r = anonymizeText('Text with in our previous work [2].\n\nCode: https://github.com/someone/paper-code\n', { roster: [] });
+      const ks = new Set(r.warns.map((w) => w.kind));
+      return (ks.has('self-citation') && ks.has('identifying-repo-url') && r.out.indexOf('in our previous work') >= 0) ? true : JSON.stringify(r.warns);
+    });
+    check('v3.2.63·anonymize·清单可还原：审计里的原文必须在**抹除后的正文里找不到**（分离两件事）', () => {
+      const src = 'Authors: Qian Qi\n\nEmail: qian.qi@example.com\n';
+      const r = anonymizeText(src, { roster: ['Qian Qi'] });
+      const auditHas = r.items.some((x) => /Qian Qi/.test(x.original)) && r.items.some((x) => /qian\.qi@example\.com/.test(x.original));
+      const masked = !/Qian Qi/.test(r.out) && !/qian\.qi@example\.com/.test(r.out);
+      return (auditHas && masked) ? true : ('auditHas=' + auditHas + ' masked=' + masked);
+    });
+    check('v3.2.63·anonymize·端到端：真跑一遍并写清单文件（清单存在、正文里没有原文）', () => {
+      const tmpD = fs.mkdtempSync(path.join(os.tmpdir(), 'anon2-'));
+      const f = path.join(tmpD, 'm.md'); const o = path.join(tmpD, 'm-anon.md'); const a = path.join(tmpD, 'audit.json');
+      fs.writeFileSync(f, '# T\n\nAuthors: Sun Ba\n\nDept. of Physics, Some University\n\n## References\n\n[1] x\n', 'utf8');
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'anonymize', '--draft', f, '--authors', 'Sun Ba', '--out', o, '--audit', a, '--json'], { encoding: 'utf8', timeout: 60000 });
+      const okOut = fs.existsSync(o) && !/Sun Ba/.test(fs.readFileSync(o, 'utf8'));
+      const okAudit = fs.existsSync(a) && /Sun Ba/.test(fs.readFileSync(a, 'utf8'));
+      fs.rmSync(tmpD, { recursive: true, force: true });
+      return (r.status === 0 && okOut && okAudit) ? true : ('status=' + r.status + ' out=' + okOut + ' audit=' + okAudit);
+    });
+  })();
   check('方法论索引：11 维条目齐全（缺文件只报不崩）', () => listMethod().length >= 11 ? true : '维数不足');
 
   check('模板清单：计划里的目标文件名不得重复（防同一件东西两个名字）', () => {
@@ -4224,6 +4285,113 @@ async function cmdModel(args, argv) {
   console.error('前提层失败：model 的子命令是 providers / ping / run / check（收到「' + sub + '」）');
   return 2;
 }
+/* ★ v3.2.63 `anonymize`：双盲投稿的匿名化 —— **抹除必须可复核**。
+   为什么要有审计清单：匿名化最怕两种事故 —— **漏抹**（名单里有人但正文里还有痕迹）与 **抹错**（把要保留的也抹了）。
+   所以本命令做三件事：① 逐条替换并**记录 original → replacement + 行号**（清单给您复核与还原，清单不写进正文）；
+   ② 把"看起来能识别的残留"单独列出来（自引表述、仓库链接、致谢里的具名致谢）—— **只提醒，不擅自改语义**；
+   ③ 若既没给作者名单、也识别不到作者行 ⇒ 明确报「未检查（不算通过）」，不假装抹干净了。 */
+function anonymizeRoster(nameArg, fileArg) {
+  const out = [];
+  if (nameArg) for (const s of String(nameArg).split(/[;,，；\n]/)) { const t = s.trim(); if (t) out.push(t); }
+  if (fileArg && fs.existsSync(path.resolve(fileArg))) {
+    const t = fs.readFileSync(path.resolve(fileArg), 'utf8');
+    for (const line of t.split('\n')) {
+      const s = line.replace(/^[\s#>*\-–—\d.、]+/, '').trim();
+      if (s && !/^#/.test(s)) out.push(s);
+    }
+  }
+  return [...new Set(out)];
+}
+function anonymizeText(text, opts) {
+  const o = opts || {};
+  const lines = text.split('\n');
+  const items = [];
+  const warns = [];
+  const unchecked = [];
+  const MASK_AUTHOR = '[作者已隐藏]';
+  const MASK_AFFIL = '[单位已隐藏]';
+  let out = text;
+
+  /* ① 作者名单（给了就必须**全文**抹掉，且事后要复查残留） */
+  const roster = o.roster || [];
+  for (const name of roster) {
+    const esc = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(esc, 'g');
+    const hit = out.match(re);
+    if (hit) {
+      out.split('\n').forEach((ln, i) => { if (re.test(ln)) items.push({ kind: 'author', line: i + 1, original: name, replacement: MASK_AUTHOR }); re.lastIndex = 0; });
+      out = out.replace(re, MASK_AUTHOR);
+    }
+  }
+  /* ② 作者行 / 作者块（没有名单时按行首标记识别） */
+  const authorLineRe = /^(\s*(?:#+\s*)?(?:Authors?|Author list|By|作者|作者名单|作者信息)\s*[:：]\s*)(.+)$/gim;
+  out = out.replace(authorLineRe, (m, p1, p2) => { items.push({ kind: 'author-line', line: 0, original: p2.trim(), replacement: p1.trim() + ' ' + MASK_AUTHOR }); return p1 + MASK_AUTHOR; });
+  if (!roster.length) {
+    const stillAuthors = /^(\s*(?:#+\s*)?(?:Authors?|作者)\s*[:：]\s*)(.+)$/gim.test(out);
+    if (!stillAuthors) unchecked.push('未提供作者名单（--authors / --authors-file），也没识别到"Authors:/作者："行 ⇒ **作者名这一项未检查**（不能算已匿名）');
+  }
+  /* ③ 单位 / 机构 */
+  const affilRe = /^.*(?:University|Universität|Institute|Laboratory|Department|College|Academy|School of|大学|学院|研究院|研究所|实验室|国家重点实验室|附属医院).*$/gim;
+  out = out.replace(affilRe, (m) => { const t = m.trim(); if (!t || /\[单位已隐藏\]/.test(t) || /^#/.test(t)) return m; items.push({ kind: 'affiliation', line: 0, original: t.slice(0, 90), replacement: MASK_AFFIL }); return MASK_AFFIL; });
+  /* ④ 邮箱 / ORCID / 电话 */
+  out = out.replace(/([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, (m) => { items.push({ kind: 'email', line: 0, original: m, replacement: '[邮箱已隐藏]' }); return '[邮箱已隐藏]'; });
+  out = out.replace(/\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b/g, (m) => { items.push({ kind: 'orcid', line: 0, original: m, replacement: '[ORCID已隐藏]' }); return '[ORCID已隐藏]'; });
+  out = out.replace(/(?:\+?86[-\s]?)?1[3-9]\d{9}\b/g, (m) => { items.push({ kind: 'phone', line: 0, original: m, replacement: '[电话已隐藏]' }); return '[电话已隐藏]'; });
+  /* ⑤ 基金 / 项目号（含中文基金名与批准号） */
+  out = out.replace(/((?:National Natural Science Foundation|Natural Science Foundation|Fund(?:ed|ing)? by|基金|资助项目|批准号|项目编号|Grant)\s*(?:of China)?[^\n]{0,60}?(?:No\.?|编号|批准号|Grant)?\s*[:：]?\s*)([A-Za-z0-9][A-Za-z0-9\-_.\/]{3,})/gi,
+    (m, p1, p2) => { items.push({ kind: 'funding-id', line: 0, original: (p1 + p2).trim().slice(0, 90), replacement: p1.trim() + ' [基金号已隐藏]' }); return p1 + '[基金号已隐藏]'; });
+  /* ⑥ 致谢整节（致谢里常出现具名致谢与项目号） */
+  out = out.replace(/^(#{1,6}\s*(?:Acknowledg(?:e?ments?|ements)|致谢|基金项目|资助声明)\s*)\n([\s\S]*?)(?=^#{1,6}\s|\Z)/gim,
+    (m, head, body) => { if (!body.trim()) return m; items.push({ kind: 'acknowledgements-section', line: 0, original: body.trim().slice(0, 120), replacement: '[致谢内容已隐藏]' }); return head + '\n[致谢内容已隐藏]\n\n'; });
+  /* ⑦ 只提醒、不擅改语义的项 */
+  const selfCiteRe = /(our (?:previous|earlier|prior) (?:work|stud(y|ies)|papers?|research|reports?)|in our (?:earlier|previous)|我们(?:之前|先前|过去)的(?:研究|工作|论文|报告|结果)|本课题组|我课题组)/gi;
+  const repoRe = /https?:\/\/(?:github|gitlab|gitee)\.com\/[A-Za-z0-9_.\-]+/g;
+  const nameInBody = [];
+  out.split('\n').forEach((ln, i) => {
+    if (selfCiteRe.test(ln)) { warns.push({ kind: 'self-citation', line: i + 1, text: ln.trim().slice(0, 80) }); selfCiteRe.lastIndex = 0; }
+    if (repoRe.test(ln)) { warns.push({ kind: 'identifying-repo-url', line: i + 1, text: ln.trim().slice(0, 80) }); repoRe.lastIndex = 0; }
+  });
+  /* ⑧ 残留复查：名单里的名字若还在正文里 ⇒ 单独列（这正是不许静默的那种漏抹） */
+  for (const name of roster) {
+    const esc = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hit = out.match(new RegExp(esc, 'g'));
+    if (hit) nameInBody.push({ name, count: hit.length });
+  }
+  return { out, items, warns, unchecked, residual: nameInBody };
+}
+function cmdAnonymize(args, argv) {
+  const A = (argv || []).filter((x, i) => !(i === 0 && x === 'anonymize'));
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const json = A.includes('--json');
+  const inFile = val('draft') || val('in');
+  if (!inFile || !fs.existsSync(path.resolve(inFile))) { console.error('前提层失败：anonymize 需要 --draft/--in 一个存在的稿件文件'); return 2; }
+  const roster = anonymizeRoster(val('authors'), val('authors-file'));
+  const text = fs.readFileSync(path.resolve(inFile), 'utf8');
+  const r = anonymizeText(text, { roster });
+  const outPath = val('out');
+  const auditPath = val('audit');
+  const base = path.basename(path.resolve(inFile));
+  if (outPath) fs.writeFileSync(path.resolve(outPath), r.out, 'utf8');
+  const report = { tool: 'paper-studio', version: toolVersion(), at: new Date().toISOString(), input: path.resolve(inFile),
+    masked_out: outPath ? path.resolve(outPath) : '(未写文件，仅 stdout)', roster_size: roster.length,
+    items: r.items, warnings: r.warns, unchecked: r.unchecked, residual: r.residual };
+  if (auditPath) fs.writeFileSync(path.resolve(auditPath), JSON.stringify(report, null, 2) + '\n', 'utf8');
+  if (json) console.log(JSON.stringify(report, null, 2));
+  else {
+    console.log('匿名化：' + base + ' ⇒ ' + (outPath ? path.resolve(outPath) : '(未写文件)'));
+    console.log('  已抹除 ' + r.items.length + ' 处：');
+    const byKind = {};
+    for (const it of r.items) byKind[it.kind] = (byKind[it.kind] || 0) + 1;
+    for (const k of Object.keys(byKind)) console.log('    - ' + k.padEnd(26) + byKind[k] + ' 处');
+    if (r.residual.length) console.log('  ★残留（须处理）：' + JSON.stringify(r.residual));
+    if (r.unchecked.length) for (const u of r.unchecked) console.log('  ▲未检查：' + u);
+    if (r.warns.length) { console.log('  ▲只提醒（本工具**不擅自改语义**，请您判断）：' + r.warns.length + ' 处'); for (const w of r.warns.slice(0, 6)) console.log('    - L' + w.line + ' ' + w.kind + '：' + w.text); }
+    console.log('  ★清单：' + (auditPath ? path.resolve(auditPath) : '（未写 --audit；建议写出以便复核与还原）'));
+    console.log('  边界（如实）：**文档属性里的作者**（docx/PDF 元数据）与**图内水印/照片**不在此命令覆盖范围 ⇒ 需人工核对。');
+  }
+  const bad = r.residual.length > 0 || r.unchecked.length > 0;
+  return bad ? 1 : 0;
+}
 function cmdReports(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -5552,6 +5720,7 @@ function main(argv) {
   if (cmd === 'reports') return cmdReports(args, argv);
     if (cmd === 'refs') return cmdRefs(args, argv);
     if (cmd === 'model') return cmdModel(args, argv);
+    if (cmd === 'anonymize') return cmdAnonymize(args, argv);
     if (cmd === 'submission-fields') return cmdSubmissionFields(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
