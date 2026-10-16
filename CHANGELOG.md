@@ -8,7 +8,7 @@
 **backlog 收敛第 3 项：引用版本核验 `canonical-instance`（预印本 vs 正式版 / 报告 vs 论文）。**
 
 - **缺口来源（对拍实测）**：对手 `check_bibtex.py` 明确写着 —— *an entry can resolve to the wrong **instance** of a named work（a later RFC/tech-report instead of the venue paper the field actually cites）*，并会给替代项**带上引用数**。我方此前只有"这条 DOI 是否存在"，没有"是否引了**该引的那个版本**"。
-- **★落代码（`refs-verify.cjs`，自检 7/7 → **10/10**）**：新增 `--canonical`：
+- **★落代码（`refs-verify.cjs`，自检 7/7 → **11/11**）**：新增 `--canonical`：
   - 按标题在 OpenAlex 检索**同名**作品；比较**引用数**与**类型**；
   - 存在更权威实例（引用 ≥2 倍且差值 ≥10，**或**当前条目是 `preprint/report/dissertation` 而另有 `article`）⇒ **`WARN / CANONICAL_INSTANCE`**，回执列出替代项的**年份 · 类型 · 引用数 · DOI**，并明确写 **「只提醒，不自动改」**；
   - **查过但无替代 ⇒ `INFO / CANONICAL_OK`** —— **先证过程真的跑了**（否则读者分不清"查了没问题"与"没跑"）；
