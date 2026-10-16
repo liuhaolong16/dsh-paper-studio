@@ -3,6 +3,22 @@
 
 # 变更记录
 
+## v3.2.62 —— 2026-10-16
+
+**外部素材吸收第三件（R4）：`model` —— **可选**装载模型能力（API + MCP），零 key 时一切本地判据照旧。**
+
+- **支持四家**（`references/model-providers.json` 是真源，只放**非机密**信息）：**DeepSeek**（api.deepseek.com）· **OpenAI 兼容**（自定义 `base_url`：vLLM / Ollama / 自建网关）· **智谱 GLM** · **通义千问 Qwen**（DashScope 兼容模式）。统一走 OpenAI 兼容的 `/chat/completions`。
+- **子命令**：`model providers`（列 provider / 是否已配置 / 默认模型 / 环境变量名 / MCP 暴露方式）· `model ping --provider <p>`（**真连通性**）· `model run --task <t> --in <文件> [--out]`（`abstract-polish` / `reviewer-sim`，模板在 `references/model-tasks.json`）· `model check`（边界自检）。
+- **★四条纪律（都由坑换来）**：
+  ① **凭据只从环境变量读**（或 `--key-file` 指定**外部**文件；本工具**从不写凭据**、从不打印值——只打印 `sk-***ab（长度 N）`）；
+  ② **没有 key ⇒ 明确报「未配置 ⇒ 未检查（不算通过）」并退 2**，绝不静默成功；
+  ③ **撤掉 key 后本地判据必须仍全绿** —— `model check` 用**洗过的环境**（删掉全部 provider 环境变量）复跑本地命令来**证明**这件事，不是嘴上说；
+  ④ 模型产物一律带 PROVENANCE，并**标明「模型生成，非本地判据」** —— 模型输出不得冒充门判定；`reviewer-sim` 明确只提可回答的问题、不给接收/拒绝结论。
+- **★凭据卫生自带扫描器**：`scanForSecrets()` 扫仓库里的配置/文档，找形如 key 的串；**夹具里种一枚假 key 必须被抓到**（证明扫描器不是空转）。★**这一条还顺手教会我自己一件事**：假 key 在夹具源码里必须**运行时拼接**，否则我自己的扫描器（正确地）会把夹具当泄漏。
+- **MCP 侧**：模型能力通过插件自带 MCP 服务端暴露（`paper_studio` 工具的 `action=model`，子动作 providers/ping/run/check）—— 别的宿主不需要转发 key，只需要它自己的环境里有对应变量。
+- 实测（无 key 环境）：`model providers` ⇒ 4 个 provider 全「未配置」退 0；`model ping` ⇒ 退 2 + 未检查；`model check` ⇒ **成立**（洗掉 7 个环境变量后本地 `route` 仍 rc=0 有输出；凭据扫描 0 命中）。
+- 自检：studio **174 → 181/181**（+7 夹具：四家齐全 / 无 key 未检查 / **端点不可达必须非零** / run 无 key 诚实提示 / 凭据卫生 / **植入假 key 必被抓** / 洗环境后本地仍成立）。
+
 ## v3.2.61 —— 2026-10-16
 
 **外部素材吸收第二件（R3）：图件的「另一半」机检（对拍上游 `paper-figure-validator` v1.0.0 / MIT）。**

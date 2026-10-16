@@ -53,6 +53,7 @@ node bin/studio.cjs response --letter <回复信.md> --comments <审稿意见.md
 node bin/studio.cjs report-check --report <报告.md> [--draft <稿> --contract <契约> --package <包> --anchors <表> --cover <信> --letter <信> --comments <意见>]   :: **报告陈旧检测**（报告自带的运行指纹 vs 现在手上的输入；无指纹 ⇒ exit 2，未比对/已变 ⇒ exit 1）
 node bin/studio.cjs reports --scan <目录> [--all]   :: **零参数陈旧巡检**：按报告里记录的路径重算指纹，一次看清哪份结论还成立（FRESH / STALE / MISSING / 无指纹 ⇒ 任一不成立 exit 1）
 node bin/studio.cjs refs --format <样式> --refs <CSL-JSON> [--out <文件>] [--json]   :: **按 CSL 样式格式化参考文献**（零 key、离线）：样式名支持 `gb-t-7714-2025-numeric`（中文刊顺序编码制）/ `gb-t-7714-2025-author-date` / `vancouver`；样式文件在 `assets/csl/`（第三方，CC-BY-SA 3.0，见同目录 PROVENANCE.md），**sha256 锁**在 `references/csl-lock.json` —— `refs --check` 核样式是否被无声替换；取不到样式/引擎一律报错并算未通过
+node bin/studio.cjs model providers|ping|run|check   :: **可选装载模型能力**（DeepSeek / OpenAI 兼容 / GLM / Qwen）：凭据**只从环境变量或 --key-file 读**，本工具从不写凭据；**零 key 时全部本地判据照旧**（`model check` 会洗掉所有 provider 环境变量再复跑本地命令来证明这一点）；无 key 时模型类命令明确报「未配置 ⇒ 未检查（不算通过）」（退 2），`model run` 的产物带 PROVENANCE 并标明「模型生成，非本地判据」
 node bin/studio.cjs submission-fields --draft <稿> [--package <包>] [--contract <契约>] [--out <填写单.md>]   :: **投稿门户填写单**：逐字段抽出要粘的元数据（题名/短标题/摘要/关键词/Highlights/作者/五类声明）+ 契约限额对照；**每个值必须在来源里逐字存在**（缺失/非逐字/超限 ⇒ exit 1） ｜ `--proposal <建议书.md>`：**改动建议书**（逐字引用 + 明确改法；**不代选、不代填、不改稿**）
 node bin/studio.cjs retract-check <稿件或参考文献文件>          :: 引用撤稿检查（OpenAlex is_retracted；撤稿须显式说明；取不到≠通过）
 node bin/criteria-abcd.cjs --check <报告> | --scan-only <文本> | --selftest   :: 证据纪律四条 A/B/C/D（可达性 / 未检查显形 / 失败分型 / 结论带位置+对外扫描）

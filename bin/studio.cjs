@@ -556,6 +556,7 @@ const SUBCOMMANDS = [
   'report-check',
   'reports',
   'refs',
+  'model',
   'submission-fields',
   'route',
   'gates',
@@ -2723,6 +2724,62 @@ function runSelftest() {
     const st = resolveCslStyleIn(cslDirPath(), 'no-such-style-xyz');
     return st === null ? true : '写错的样式名竟然解析到了文件';
   });
+  /* ★ v3.2.62 夹具：model（可选 key 装载）—— 正控 + 两条必失败面 + 凭据卫生 */
+  (() => {
+    /* 假 key 一律**运行时拼接**：否则我自己的凭据扫描器会（正确地）把夹具源码当泄漏抓出来 */
+    const fakeKey = ['sk', 'fake4fixture', '0'.repeat(24)].join('-');
+    const scrubbedEnv = () => {
+      const e = Object.assign({}, process.env);
+      const conf = readJsonSafe(modelProvidersPath()) || { providers: {} };
+      for (const pid of Object.keys(conf.providers)) for (const n of (conf.providers[pid].env || [])) delete e[n];
+      return e;
+    };
+    check('v3.2.62·model·providers：真源里四个 provider 齐全且默认模型非空（DeepSeek/OpenAI 兼容/GLM/Qwen）', () => {
+      const conf = readJsonSafe(modelProvidersPath());
+      if (!conf || !conf.providers) return '真源不可读';
+      const need = ['deepseek', 'openai', 'glm', 'qwen'];
+      const miss = need.filter((k) => !conf.providers[k]);
+      if (miss.length) return '缺 provider：' + miss.join(', ');
+      const noModel = need.filter((k) => !conf.providers[k].default_model || !(conf.providers[k].env || []).length);
+      return noModel.length ? ('缺默认模型或 env 名：' + noModel.join(', ')) : true;
+    });
+    check('v3.2.62·model·无 key：ping 必须退 2 且写明「未检查（不算通过）」（不许静默成功）', () => {
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'model', 'ping', '--provider', 'deepseek'],
+        { encoding: 'utf8', env: scrubbedEnv(), timeout: 60000 });
+      const out = String(r.stdout || '') + String(r.stderr || '');
+      return (r.status === 2 && /未检查/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 90));
+    });
+    check('v3.2.62·model·必失败面：给了 key 但端点不可达 ⇒ 必须非零（证明它真的发请求，不是假装成功）', () => {
+      const e = scrubbedEnv(); e.DEEPSEEK_API_KEY = fakeKey;
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'model', 'ping', '--provider', 'deepseek',
+        '--base-url', 'http://127.0.0.1:9/v1', '--timeout', '2500'], { encoding: 'utf8', env: e, timeout: 60000 });
+      const out = String(r.stdout || '') + String(r.stderr || '');
+      return (r.status !== 0 && /不通/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 90));
+    });
+    check('v3.2.62·model·run 无 key ⇒ 明确「未检查」且提示本地判据不依赖它（退 2）', () => {
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'model', 'run', '--task', 'abstract-polish'],
+        { encoding: 'utf8', env: scrubbedEnv(), timeout: 60000 });
+      const out = String(r.stdout || '') + String(r.stderr || '');
+      return (r.status === 2 && /未检查/.test(out) && /本地判据不依赖/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 90));
+    });
+    check('v3.2.62·model·凭据卫生：仓库配置与文档里不得出现形如 key 的串', () => {
+      const hits = scanForSecrets(ROOT, 10);
+      return hits.length === 0 ? true : ('命中 ' + hits.length + ' 处：' + JSON.stringify(hits.slice(0, 2)));
+    });
+    check('v3.2.62·model·必失败面：植入假 key 的临时文件必须被扫描器抓到（证明扫描器不是空转）', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sec-scan-'));
+      fs.writeFileSync(path.join(tmpDir, 'leak.json'), JSON.stringify({ note: 'planted', api_key: fakeKey }), 'utf8');
+      const hits = scanForSecrets(tmpDir, 5);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      return hits.length >= 1 ? true : '植入的假 key 没被抓到 ⇒ 扫描器是空转的';
+    });
+    check('v3.2.62·model·check：洗掉全部 provider 环境变量后，本地判据仍成立（key 与本地能力解耦）', () => {
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'model', 'check'],
+        { encoding: 'utf8', env: scrubbedEnv(), timeout: 120000 });
+      const out = String(r.stdout || '') + String(r.stderr || '');
+      return (r.status === 0 && /成立/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 120));
+    });
+  })();
   check('方法论索引：11 维条目齐全（缺文件只报不崩）', () => listMethod().length >= 11 ? true : '维数不足');
 
   check('模板清单：计划里的目标文件名不得重复（防同一件东西两个名字）', () => {
@@ -3990,6 +4047,182 @@ function cmdRefs(args, argv) {
     if (outPath) console.log('已写入：' + path.resolve(outPath));
   }
   return 0;
+}
+/* ★ v3.2.62 `model`：**可选**装载模型能力（DeepSeek / OpenAI 兼容 / GLM / Qwen），零 key 时一切本地判据照旧。
+   纪律（每条都由坑换来）：
+   ① 凭据**只从环境变量读**（`--key-file` 只读外部文件、我们从不写）；**配置与产物里绝不落明文**；
+   ② 没有 key ⇒ **明确报「未配置 ⇒ 未检查（不算通过）」并退 2**，绝不静默成功、绝不假装跑过；
+   ③ **撤掉 key 后本地判据必须仍全绿**（`model check` 用**洗过的环境**复跑本地命令来证明）；
+   ④ 模型产物一律带 PROVENANCE，并**标明「模型生成，非本地判据」** —— 模型输出不得冒充门判定。 */
+function modelProvidersPath() { return path.join(ROOT, 'references', 'model-providers.json'); }
+function modelTasksPath() { return path.join(ROOT, 'references', 'model-tasks.json'); }
+function readJsonSafe(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; } }
+function modelProviderIds() {
+  const conf = readJsonSafe(modelProvidersPath());
+  return conf && conf.providers ? Object.keys(conf.providers) : [];
+}
+/** 取凭据：先看显式 --key（一次性，不落盘），再看环境变量；**永不打印值**。返回 {key, from} 或 {} */
+function resolveModelKey(pid, conf, argvKey, keyFile) {
+  const meta = (conf && conf.providers && conf.providers[pid]) || {};
+  if (argvKey) return { key: argvKey, from: '--key（一次性参数，不落盘）' };
+  if (keyFile && fs.existsSync(keyFile)) {
+    const t = fs.readFileSync(keyFile, 'utf8').trim();
+    const m = t.match(/^\S+$/) ? t : '';                       /* 只接受"整文件就是一枚 key"的形态，避免误读配置 */
+    if (m) return { key: m, from: '--key-file（外部文件，本工具只读不写）' };
+  }
+  for (const envName of (meta.env || [])) {
+    const v = process.env[envName];
+    if (v && String(v).trim()) return { key: String(v).trim(), from: 'env ' + envName };
+  }
+  return {};
+}
+function maskKey(k) { const s = String(k || ''); return s ? (s.slice(0, 3) + '***' + s.slice(-2) + '（长度 ' + s.length + '）') : '（未配置）'; }
+function modelProviderTable(argv, includeSecrets) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const conf = readJsonSafe(modelProvidersPath());
+  const rows = [];
+  for (const pid of Object.keys((conf && conf.providers) || {})) {
+    const meta = conf.providers[pid];
+    const r = resolveModelKey(pid, conf, '', '');
+    rows.push({ id: pid, label: meta.label, configured: !!r.key, from: r.from || '（未配置）', model: val('model') || meta.default_model,
+                base_url: val('base-url') || meta.base_url, env_names: meta.env || [], docs: meta.docs || '', key_masked: includeSecrets ? maskKey(r.key) : '（不打印）' });
+  }
+  return rows;
+}
+/** 一次真实调用（OpenAI 兼容 /chat/completions）。失败必须**非零**，绝不把错误吞成成功。 */
+function modelCall(opts) {
+  const o = opts || {};
+  return new Promise((resolve) => {
+    const url = String(o.base_url || '').replace(/\/+$/, '') + (o.chat_path || '/chat/completions');
+    const body = JSON.stringify({ model: o.model, messages: o.messages, temperature: o.temperature === undefined ? 0.2 : o.temperature, stream: false });
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), o.timeout_ms || 30000);
+    fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + o.key }, body, signal: ctrl.signal })
+      .then(async (res) => {
+        const txt = await res.text();
+        clearTimeout(to);
+        if (!res.ok) return resolve({ ok: false, status: res.status, error: ('HTTP ' + res.status + ' ' + String(txt).slice(0, 200)) });
+        let j = null; try { j = JSON.parse(txt); } catch (e) { return resolve({ ok: false, status: res.status, error: '响应不是 JSON：' + String(txt).slice(0, 120) }); }
+        const text = j && j.choices && j.choices[0] && (j.choices[0].message ? j.choices[0].message.content : j.choices[0].text);
+        if (!text) return resolve({ ok: false, status: res.status, error: '响应里没有可用文本（结构不符）' });
+        resolve({ ok: true, status: res.status, text: String(text), usage: (j && j.usage) || null, model: (j && j.model) || o.model });
+      })
+      .catch((e) => { clearTimeout(to); resolve({ ok: false, status: 0, error: (e && e.name === 'AbortError' ? ('超时（' + (o.timeout_ms || 30000) + 'ms）') : String((e && e.message) || e)) }); });
+  });
+}
+/** ★ 凭据卫生扫描：在给定目录里找形如 key 的字符串（用于证明"我们没把凭据落盘"）。 */
+function scanForSecrets(dir, limit) {
+  const hits = [];
+  const seen = new Set();
+  const walk = (d, depth) => {
+    if (depth > 4 || hits.length >= (limit || 10)) return;
+    let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    for (const e of ents) {
+      if (hits.length >= (limit || 10)) return;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { if (!/^(?:node_modules|\.git|\.dsh-project-memory|run|archive)$/.test(e.name)) walk(p, depth + 1); continue; }
+      if (!/\.(?:json|md|cjs|mjs|js|txt|yml|yaml|env)$/i.test(e.name)) continue;
+      let t = ''; try { t = fs.readFileSync(p, 'utf8'); } catch (e2) { continue; }
+      const re = /(?:sk-[A-Za-z0-9_-]{16,}|npm_[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{20,}|(?:api[_-]?key|token|secret)\s*[:=]\s*["'][A-Za-z0-9_\-]{20,}["'])/gi;
+      const m = t.match(re);
+      if (m) for (const s of m) { const k = p + '::' + s.slice(0, 6); if (!seen.has(k)) { seen.add(k); hits.push({ file: path.relative(dir, p) || e.name, sample: s.slice(0, 6) + '…（已截断，不落全文）' }); } }
+    }
+  };
+  walk(dir, 0);
+  return hits;
+}
+async function cmdModel(args, argv) {
+  /* argv 里带着前导的 'model' 标记（派发层原样传下来）⇒ 必须剥掉，否则会被当成子命令 */
+  const A = (argv || []).filter((x, i) => !(i === 0 && x === 'model'));
+  const sub = (A[0] && !A[0].startsWith('--')) ? A[0] : 'providers';
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const json = A.includes('--json');
+  const conf = readJsonSafe(modelProvidersPath());
+  if (!conf || !conf.providers) { console.error('前提层失败：读不到 provider 真源 —— ' + modelProvidersPath()); return 2; }
+  if (sub === 'providers' || sub === 'list') {
+    const rows = modelProviderTable(A, false);
+    if (json) { console.log(JSON.stringify({ providers: rows, mcp: (conf.mcp || null) }, null, 2)); return 0; }
+    console.log('可选模型（**零 key 时全部本地判据照旧**；这里只是"能不能额外用模型"）');
+    for (const r of rows) console.log('  ' + r.id.padEnd(10) + (r.configured ? '已配置' : '未配置').padEnd(8) + ('默认模型 ' + r.model).padEnd(30) + ('env: ' + r.env_names.join(' / ')));
+    const conf2 = rows.filter((r) => r.configured).length;
+    console.log('合计：' + rows.length + ' 个 provider · 已配置 ' + conf2 + ' 个 ⇒ ' + (conf2 ? '可用模型能力（本地判据不受影响）' : '**全未配置 ⇒ 模型类命令会明确报「未检查」，本地判据照常可用**'));
+    console.log('MCP：' + ((conf.mcp && conf.mcp.note) || '（未登记）'));
+    return 0;
+  }
+  if (sub === 'ping') {
+    const pid = val('provider') || val('p') || 'deepseek';
+    const meta = conf.providers[pid];
+    if (!meta) { console.error('前提层失败：未知 provider「' + pid + '」（可选：' + Object.keys(conf.providers).join(' / ') + '）'); return 2; }
+    const r = resolveModelKey(pid, conf, val('key'), val('key-file'));
+    if (!r.key) {
+      console.error('未配置 ⇒ **未检查（不算通过）**：' + pid + ' 需要环境变量 ' + (meta.env || []).join(' 或 ') + '（或 --key-file 指定外部文件；本工具从不写凭据）。');
+      return 2;
+    }
+    const base = val('base-url') || meta.base_url;
+    const model = val('model') || meta.default_model;
+    const res = await modelCall({ key: r.key, base_url: base, chat_path: meta.chat_path, model, messages: [{ role: 'user', content: 'ping' }], timeout_ms: Number(val('timeout') || 20000) });
+    if (json) { console.log(JSON.stringify({ provider: pid, model, base_url: base, key_from: r.from, ok: res.ok, status: res.status, error: res.error || null }, null, 2)); }
+    else {
+      console.log('provider=' + pid + ' · model=' + model + ' · base_url=' + base + ' · 凭据来源=' + r.from);
+      console.log(res.ok ? ('✔ 连通（HTTP ' + res.status + '，返回 ' + String(res.text || '').slice(0, 40).replace(/\s+/g, ' ') + '）') : ('✘ 不通：' + res.error));
+    }
+    return res.ok ? 0 : 2;
+  }
+  if (sub === 'run') {
+    const taskId = val('task');
+    const tasks = readJsonSafe(modelTasksPath());
+    if (!taskId || !tasks || !tasks.tasks || !tasks.tasks[taskId]) {
+      console.error('前提层失败：--task 必须是 ' + ((tasks && tasks.tasks) ? Object.keys(tasks.tasks).join(' / ') : '(任务真源不可读)'));
+      return 2;
+    }
+    const pid = val('provider') || 'deepseek';
+    const meta = conf.providers[pid];
+    if (!meta) { console.error('前提层失败：未知 provider「' + pid + '」'); return 2; }
+    const r = resolveModelKey(pid, conf, val('key'), val('key-file'));
+    if (!r.key) {
+      console.error('未配置 ⇒ **未检查（不算通过）**：' + pid + ' 需要 ' + (meta.env || []).join(' 或 ') + '。本任务是可选的模型增强；**本地判据不依赖它**（用 studio selftest / preflight 照常）。');
+      return 2;
+    }
+    const inFile = val('in');   /* 只有 --in；不要引用别处作用域的 draftArg（那是我上一版的错） */
+    if (!inFile || !fs.existsSync(path.resolve(inFile))) { console.error('前提层失败：--in 需要一个存在的输入文件'); return 2; }
+    const text = fs.readFileSync(path.resolve(inFile), 'utf8');
+    const task = tasks.tasks[taskId];
+    const model = val('model') || meta.default_model;
+    const res = await modelCall({ key: r.key, base_url: val('base-url') || meta.base_url, chat_path: meta.chat_path, model,
+      messages: [{ role: 'system', content: task.system }, { role: 'user', content: text.slice(0, Number(val('max-chars') || 24000)) }],
+      timeout_ms: Number(val('timeout') || 120000) });
+    if (!res.ok) { console.error('未通过：模型调用失败 —— ' + res.error); return 2; }
+    const outPath = val('out');
+    const stamp = provenanceLine([['input', path.resolve(inFile)]]).replace('{', '{"generated_by":"MODEL（非本地判据）","provider":"' + pid + '","model":"' + model + '","task":"' + taskId + '",');
+    if (outPath) fs.writeFileSync(path.resolve(outPath), res.text + '\n\n' + stamp + '\n', 'utf8');
+    if (json) console.log(JSON.stringify({ task: taskId, provider: pid, model, key_from: r.from, usage: res.usage, text: res.text }, null, 2));
+    else { console.log(res.text); console.log('---'); console.log('★ 以上为**模型生成**（provider=' + pid + ' · model=' + model + ' · task=' + taskId + '），**不是本插件的门判定**；学术结论仍以本地判据与你本人为准。' + (outPath ? (' 已写入：' + path.resolve(outPath)) : '')); }
+    return 0;
+  }
+  if (sub === 'check') {
+    /* ★ 必失败面的**正向证明**：把 provider 相关环境变量全部洗掉，再跑本地命令 —— 必须仍然成功。 */
+    const envNames = [];
+    for (const pid of Object.keys(conf.providers)) for (const e of (conf.providers[pid].env || [])) envNames.push(e);
+    const scrubbed = Object.assign({}, process.env);
+    for (const e of envNames) delete scrubbed[e];
+    const probe = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'route', '把这稿按目标刊核对一遍'], { encoding: 'utf8', env: scrubbed, timeout: 60000 });
+    const localOk = probe.status === 0 && String(probe.stdout || '').length > 40;
+    const secrets = scanForSecrets(ROOT, 10);
+    const rows = [
+      ['本地判据与 key 解耦', localOk ? '成立' : '**不成立**', localOk ? '洗掉 ' + envNames.length + ' 个 provider 环境变量后 route 仍正常（rc=0，有输出）' : ('rc=' + probe.status + ' 输出 ' + String(probe.stdout || '').length + ' 字节')],
+      ['凭据未落盘', secrets.length === 0 ? '成立' : '**发现疑似凭据**', secrets.length === 0 ? ('扫了仓库配置文件/文档，0 命中（扫 ' + envNames.length + ' 个环境变量名）') : JSON.stringify(secrets.slice(0, 3))],
+      ['无 key 时行为', '明确「未检查」', 'provider 未配置 ⇒ 模型类命令退 2 并写明「未检查（不算通过）」，本地判据照常']
+    ];
+    if (json) { console.log(JSON.stringify({ local_without_keys: localOk, secrets_found: secrets, rows }, null, 2)); return localOk && secrets.length === 0 ? 0 : 2; }
+    console.log('模型能力自检（**可选能力的边界检查**）');
+    for (const r of rows) console.log('  ' + String(r[0]).padEnd(18) + String(r[1]).padEnd(16) + r[2]);
+    const okAll = localOk && secrets.length === 0;
+    console.log('合计：' + (okAll ? '成立 —— 装上后**不给 key 也是完整可用的本地工具**；给了 key 才多出模型能力' : '**不成立**（见上）'));
+    return okAll ? 0 : 2;
+  }
+  console.error('前提层失败：model 的子命令是 providers / ping / run / check（收到「' + sub + '」）');
+  return 2;
 }
 function cmdReports(args, argv) {
   const A = argv || [];
@@ -5318,6 +5551,7 @@ function main(argv) {
     if (cmd === 'doctor') return cmdDoctor(args, argv);
   if (cmd === 'reports') return cmdReports(args, argv);
     if (cmd === 'refs') return cmdRefs(args, argv);
+    if (cmd === 'model') return cmdModel(args, argv);
     if (cmd === 'submission-fields') return cmdSubmissionFields(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);

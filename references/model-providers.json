@@ -1,0 +1,63 @@
+{
+  "_note": "provider 真源：只放**非机密**信息（端点、环境变量名、默认模型）。凭据一律从环境变量读，本文件与任何配置都不得落明文。",
+  "providers": {
+    "deepseek": {
+      "label": "DeepSeek（官方）",
+      "base_url": "https://api.deepseek.com/v1",
+      "env": [
+        "DEEPSEEK_API_KEY"
+      ],
+      "default_model": "deepseek-chat",
+      "docs": "https://platform.deepseek.com/api-docs",
+      "chat_path": "/chat/completions",
+      "openai_compatible": true
+    },
+    "openai": {
+      "label": "OpenAI 兼容（自定义 base_url：vLLM / Ollama / 自建网关）",
+      "base_url": "https://api.openai.com/v1",
+      "env": [
+        "OPENAI_API_KEY",
+        "DSH_OPENAI_API_KEY"
+      ],
+      "default_model": "gpt-4o-mini",
+      "docs": "https://platform.openai.com/docs/api-reference",
+      "chat_path": "/chat/completions",
+      "openai_compatible": true
+    },
+    "glm": {
+      "label": "智谱 GLM",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "env": [
+        "GLM_API_KEY",
+        "ZHIPUAI_API_KEY"
+      ],
+      "default_model": "glm-4-flash",
+      "docs": "https://open.bigmodel.cn/dev/api",
+      "chat_path": "/chat/completions",
+      "openai_compatible": true
+    },
+    "qwen": {
+      "label": "通义千问 Qwen（DashScope 兼容模式）",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "env": [
+        "DASHSCOPE_API_KEY",
+        "QWEN_API_KEY"
+      ],
+      "default_model": "qwen-plus",
+      "docs": "https://help.aliyun.com/zh/model-studio/",
+      "chat_path": "/chat/completions",
+      "openai_compatible": true
+    }
+  },
+  "mcp": {
+    "note": "本条走**插件自带 MCP 服务端**：不需要额外 key 转发 —— 模型能力通过 paper_studio 工具的 action=model 暴露给任意 MCP 宿主。",
+    "tool": "paper_studio",
+    "action": "model",
+    "subactions": [
+      "providers",
+      "ping",
+      "run",
+      "check"
+    ]
+  }
+}

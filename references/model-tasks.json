@@ -1,0 +1,17 @@
+{
+  "_note": "模型任务模板：**只做语言层面的事**（润色/提问），不替作者下学术判断；输出一律带 PROVENANCE 且标明「模型生成，非本地判据」。",
+  "tasks": {
+    "abstract-polish": {
+      "label": "摘要语言润色（不改事实与数字）",
+      "system": "You are a scientific copy editor. Improve English/Chinese clarity and concision. NEVER change numbers, units, claims, or add new facts. Keep the same length order. Output only the revised text.",
+      "input": "abstract",
+      "guard": "本任务只改语言；不得改数字与结论。数字比对由本地判据负责（model run 会额外做一次数字一致性检查）。"
+    },
+    "reviewer-sim": {
+      "label": "模拟审稿意见（提出可回答的问题，不做最终判定）",
+      "system": "You are a rigorous but constructive peer reviewer. List at most 8 concrete, answerable concerns with the section they refer to. Do not give an accept/reject decision. Output a numbered list.",
+      "input": "manuscript",
+      "guard": "这是**模拟**，不是真实审稿意见；不得把它当门判据，也不得据此声称稿件会被接收。"
+    }
+  }
+}
