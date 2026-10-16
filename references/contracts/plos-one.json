@@ -38,7 +38,8 @@
       "Symbol"
     ],
     "figure_caption_max_words": 15,
-    "si_file_max_mb": 20
+    "si_file_max_mb": 20,
+    "abstract_no_citations": true
   },
   "structure": {
     "file_formats": [
@@ -135,5 +136,16 @@
     "存在数据可用性声明"
   ],
   "discipline": "凡本契约未覆盖或本机取不到的项，门必须显形跳过并写明「未被检查 ≠ 通过」。",
-  "exemption_window": "官方明确：图件格式要求在\"暂定编辑接收（provisional Editorial Accept）\"之前一律放宽 —— 首投不必为图件规格卡住，但结构/参考/声明该改仍要改。"
+  "exemption_window": "官方明确：图件格式要求在\"暂定编辑接收（provisional Editorial Accept）\"之前一律放宽 —— 首投不必为图件规格卡住，但结构/参考/声明该改仍要改。",
+  "checkable_ids": [
+    "abstract_max_words",
+    "abstract_no_citations",
+    "title_max_chars",
+    "short_title",
+    "heading_levels_max",
+    "figures_not_embedded",
+    "funding_not_in_manuscript",
+    "checkable_ids_covered"
+  ],
+  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。"
 }

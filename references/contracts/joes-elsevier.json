@@ -45,5 +45,22 @@
   },
   "ported_from": "D:\\DeepSeek\\research-paper-playbook\\_refs/journal-contract-joes.json",
   "ported_at": "2026-10-16",
-  "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。"
+  "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。",
+  "checkable_ids": [
+    "abstract_max_words",
+    "highlights_count",
+    "highlights_chars",
+    "manuscript_max_words",
+    "figures_tables_range",
+    "appendix_not_supplementary",
+    "references_numbered_in_order",
+    "reference_entries_complete",
+    "keywords_present",
+    "credit_present",
+    "acknowledgements_before_references",
+    "ai_declaration_present",
+    "ai_declaration_before_references",
+    "checkable_ids_covered"
+  ],
+  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。"
 }

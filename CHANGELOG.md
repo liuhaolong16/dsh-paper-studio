@@ -10,6 +10,19 @@
 
 
 
+
+## v3.2.8 —— 2026-10-16
+
+**把外部门的两次升级接回插件（v3.2.7 → 本版之间，门升了两轮），并补上"声明与执行对账"。**
+
+- **外部门 `_journal-contract.cjs` 升级**（论文仓，非本包文件）：
+  - **`--package <投稿包目录>`**：Highlights / CRediT / AI 声明等**包级要件**改为可在目录内取证据（文件名或**标题行**），输出写明证据来源；未给 `--package` 时打印**显式警告**（包级要件可能被误报）；新增 `package_dir` 判据（目录不存在即 FAIL）。
+  - **`--selftest`（12/12）**：缺输入⇒2 · 契约缺 `verified_at`⇒2 · 契约 JSON 坏⇒2 且不抛栈 · 单文件下包级要件必 FAIL · 包级模式必通过且写证据 · 摘要超限必 FAIL · **待办行不得冒充声明** · 包级目录不存在必 FAIL · 六条新检查的必失败面 · 对账必失败面 · 否定式资助记 WARN。
+  - **六条契约驱动的新检查**（契约不声明则不受影响）：`title_max_chars` · `short_title` · `heading_levels_max` · `abstract_no_citations` · `figures_not_embedded` · `funding_not_in_manuscript`（区分"资助披露"=FAIL 与"无资助陈述"=WARN，避免把否定句当披露）。
+  - **`checkable_ids` 对账**：契约可声明"本刊有哪些可机检项"，门会核对**每一项是否真的执行了**，未执行即 FAIL（**登记过≠可机检**，本条由 PLOS 契约"声明 12 条、实际只跑 2 项"这一真缺陷驱动）。
+- **实测效果**：同一份当前投稿稿（`13-英文投稿稿-v1.md`）——**PLOS 契约覆盖面 2 → 9 项**（通过 6 · FAIL 2：缺短标题、正文内嵌 4 图；WARN 1：无资助陈述）；**JoES 契约 通过 13 · FAIL 1（CRediT）· WARN 1（图表 7 vs Ideally 8–10）**。
+- 插件侧登记：`pipeline.json` 的 `journal-contract` 门补 `note`（说明 `--package`/`--selftest`/`checkable_ids`），`assets` 增 `journal_contract_gate`。
+
 ## v3.2.7 —— 2026-10-16
 
 **新能力：引用撤稿检查 `retract-check`（素材来自 OpenAlex，只查询不复制数据）+ 修一处措辞。**
