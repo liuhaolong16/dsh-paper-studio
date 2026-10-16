@@ -301,9 +301,12 @@ function auditPackage(dir, draftText) {
   /* ③ 题注检查 */
   const caps = [];
   if (draftText) {
-    const capRe = new RegExp('^\\s*(?:\\*\\*)?(?:Fig(?:ure)?)\\.?\\s*(\\d+)\\.?(?:\\*\\*)?[:.]?\\s*(.+)$', 'gim');
-    let m;
-    while ((m = capRe.exec(draftText)) !== null) caps.push({ n: m[1], text: m[2].trim() });
+    /* ★ v3.9.0b：**行式解析**（先剥行首的 * / # / 空白，再匹配）—— 比单条复杂正则稳，夹具实测过 */
+    for (const raw of draftText.split('\n')) {
+      const line = raw.replace(/^[\s*#>]+/, '').trim();
+      const mm = /^(?:Figure|Fig)\.?\s*(\d+)[.:]?\s*(.+)$/i.exec(line);
+      if (mm) caps.push({ n: mm[1], text: mm[2].trim() });
+    }
     for (const c of caps) {
       if (!/[.。]$/.test(c.text)) issues.push({ level: 'WARN', msg: '题注 Fig. ' + c.n + ' 结尾缺句号' });
       if (c.text.length < 40) issues.push({ level: 'WARN', msg: '题注 Fig. ' + c.n + ' 过短（' + c.text.length + ' 字）⇒ 可能不自足' });
