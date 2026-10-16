@@ -14,6 +14,8 @@
  */
 'use strict';
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 /* Okabe–Ito 色盲安全色板（+ 灰阶）——判据只认这些 */
 const SAFE = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#F0E442', '#000000', '#FFFFFF', '#666666', '#999999', '#CCCCCC', '#333333'];
@@ -187,15 +189,227 @@ function selftest() {
     return build('panels', { panels: 6, title: 'T' }) === build('panels', { panels: 6, title: 'T' }) ? true : '两次生成不一致';
   });
 
+  ck('v3.9.0·audit·★必失败面：正文引用 Fig. 5 但无该文件 ⇒ ERROR；孤儿图与无 DPI 的 PNG ⇒ WARN', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'psfig-'));
+    fs.mkdirSync(path.join(tmp, 'figures'));
+    /* 造一个合法 PNG（1x1 · 无 pHYs）与一个假 PDF */
+    const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000a49444154789c6360000002000100ffff03000006000557bfabd40000000049454e44ae426082', 'hex');
+    fs.writeFileSync(path.join(tmp, 'figures', 'fig1_a.png'), png);
+    fs.writeFileSync(path.join(tmp, 'figures', 'fig9_orphan.pdf'), '%PDF-1.4\n');
+    const draft = path.join(tmp, 'draft.md');
+    fs.writeFileSync(draft, 'As shown in Fig. 1, curves track. The ablation is in Fig. 5. **Figure 1.** Curves for all protocols\n', 'utf8');
+    const r = auditPackage(tmp, fs.readFileSync(draft, 'utf8'));
+    const kinds = r.issues.map((x) => x.level + ':' + x.msg);
+    if (!kinds.some((x) => x.startsWith('ERROR:') && x.indexOf('Fig. 5') >= 0)) return '未报缺图：' + JSON.stringify(kinds);
+    if (!kinds.some((x) => x.startsWith('WARN:') && x.indexOf('孤儿图') >= 0)) return '未报孤儿图：' + JSON.stringify(kinds);
+    if (!kinds.some((x) => x.indexOf('无 DPI') >= 0)) return '未报无 DPI：' + JSON.stringify(kinds);
+    if (!kinds.some((x) => x.indexOf('缺句号') >= 0)) return '未报题注缺句号：' + JSON.stringify(kinds);
+    return true;
+  });
+
+  ck('v3.9.0·cvd·★必失败面：**灰阶不可分**必须被抓（实测证据：Okabe-Ito 的 #D55E00 ↔ #009E73 灰阶 L* 仅 3.6）', () => {
+    /* 取证纪律：本条臂的选色来自**实跑读数**，不是"红绿一定不行"的想当然 ——
+       全饱和 #FF0000 ↔ #00FF00 在红绿色盲仿真下 ΔE 仍有 26（>12），并不触发 CVD 判据；
+       真正在 Okabe-Ito 上被本工具抓到的是**灰阶分离**：3/10 对在黑白打印下不可分（D55E00↔009E73 L*3.6 · D55E00↔CC79A7 L*6.9 · 009E73↔CC79A7 L*3.3）。 */
+    const bad = cvdCheck(['#D55E00', '#009E73']);
+    if (bad.status !== 'FAIL') return '灰阶不可分应判 FAIL：' + JSON.stringify(bad.pairs);
+    if (!bad.issues.some((x) => /灰阶分离/.test(x))) return '未指出灰阶原因：' + JSON.stringify(bad.issues);
+    const ok = cvdCheck(['#000000', '#FFFFFF'], { minDE: 12 });
+    if (ok.status !== 'PASS') return '黑白应 PASS：' + JSON.stringify(ok.issues);
+    /* 全饱和红绿：CVD 下仍可分（ΔE 26）⇒ 本工具**不**报它，这是如实行为，不是漏报 */
+    const rg = cvdCheck(['#FF0000', '#00FF00'], { minGray: 0 });
+    if (rg.status !== 'PASS') return '全饱和红绿在 ΔE 判据下应 PASS（灰阶置 0）：' + JSON.stringify(rg.issues);
+    return true;
+  });
+
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.n + (c.ok ? '' : '  ← ' + c.d));
   console.log('\nfigures-kit 自检：' + (cases.length - bad.length) + '/' + cases.length + ' 通过');
   return bad.length ? 1 : 0;
 }
 
+
+/* ═══════════ v3.9.0：Task F 对拍产物（① 包级审计 ② CVD 安全判定）═══════════ */
+
+/** PNG 头部信息：像素尺寸 + 是否有 pHYs（DPI 元数据）。纯 stdlib 读二进制。 */
+function pngInfo(file) {
+  const b = fs.readFileSync(file);
+  if (b.length < 24 || b[0] !== 0x89 || b[1] !== 0x50) return { kind: 'not-png' };
+  const w = b.readUInt32BE(16), h = b.readUInt32BE(20);
+  const hasPhys = b.indexOf(Buffer.from('pHYs')) >= 0;
+  let dpi = null;
+  if (hasPhys) {
+    const i = b.indexOf(Buffer.from('pHYs'));
+    if (i + 13 <= b.length) {
+      const ppmX = b.readUInt32BE(i + 4);
+      dpi = Math.round(ppmX * 0.0254);
+    }
+  }
+  return { kind: 'png', w, h, hasPhys, dpi };
+}
+
+const FIG_REF_RE = new RegExp('(?:Fig(?:ure)?s?\\.?)\\s*(\\d+)', 'gi');
+
+/** 包级审计：题注 ↔ 文件 ↔ 格式 */
+function auditPackage(dir, draftText) {
+  const issues = [];
+  const d = path.resolve(dir);
+  if (!fs.existsSync(d)) return { status: 'FAIL', issues: ['包目录不存在：' + d], files: [] };
+  const all = [];
+  (function walk(p) {
+    for (const e of fs.readdirSync(p, { withFileTypes: true })) {
+      const q = path.join(p, e.name);
+      if (e.isDirectory()) walk(q); else all.push(q);
+    }
+  })(d);
+  const figs = all.filter((f) => /\.(png|jpe?g|pdf|svg|eps|tiff?)$/i.test(f));
+  if (!figs.length) return { status: 'SKIP', issues: ['包内没有图文件 ⇒ 未核对（不得当通过）'], files: [] };
+  const bases = {};
+  for (const f of figs) {
+    const base = path.basename(f).replace(/\.[^.]+$/, '');
+    bases[base] = bases[base] || { files: [] };
+    bases[base].files.push(f);
+  }
+  /* ① 文中引用 vs 文件 */
+  const refs = {};
+  if (draftText) {
+    let m; const re = new RegExp(FIG_REF_RE.source, 'gi');
+    while ((m = re.exec(draftText)) !== null) refs[m[1]] = (refs[m[1]] || 0) + 1;
+  }
+  const baseHasNum = (n) => Object.keys(bases).some((b) => new RegExp('(?:^|[^0-9])0*' + n + '(?:[^0-9]|$)').test(b));
+  for (const n of Object.keys(refs)) {
+    if (!baseHasNum(n)) issues.push({ level: 'ERROR', msg: '正文引用 Fig. ' + n + '，但包内没有编号 ' + n + ' 的图文件' });
+  }
+  for (const b of Object.keys(bases)) {
+    const num = (b.match(/\d+/) || [])[0];
+    if (draftText && num && !refs[String(Number(num))]) issues.push({ level: 'WARN', msg: '孤儿图（正文未引用）：' + b });
+  }
+  /* ② 矢量/位图配对 + PNG 解析 */
+  const readings = [];
+  for (const b of Object.keys(bases)) {
+    const hasVector = bases[b].files.some((f) => /\.(pdf|svg|eps)$/i.test(f));
+    const rasters = bases[b].files.filter((f) => /\.(png|jpe?g|tiff?)$/i.test(f));
+    if (rasters.length && !hasVector) issues.push({ level: 'WARN', msg: '只有位图、无矢量源（期刊多要求矢量或 ≥300dpi 位图）：' + b });
+    for (const f of rasters) {
+      const info = pngInfo(f);
+      if (info.kind !== 'png') { readings.push({ file: path.basename(f), note: '非 PNG（未读取分辨率）' }); continue; }
+      readings.push({ file: path.basename(f), w: info.w, h: info.h, hasPhys: info.hasPhys, dpi: info.dpi });
+      if (!info.hasPhys) issues.push({ level: 'WARN', msg: 'PNG 无 DPI 元数据（pHYs）：' + path.basename(f) + ' ⇒ 排版端会按 72dpi 处理，须显式设 300dpi' });
+      else if (info.dpi && info.dpi < 300) issues.push({ level: 'WARN', msg: 'PNG DPI ' + info.dpi + ' < 300：' + path.basename(f) });
+    }
+  }
+  /* ③ 题注检查 */
+  const caps = [];
+  if (draftText) {
+    const capRe = new RegExp('^\\s*(?:\\*\\*)?(?:Fig(?:ure)?)\\.?\\s*(\\d+)\\.?(?:\\*\\*)?[:.]?\\s*(.+)$', 'gim');
+    let m;
+    while ((m = capRe.exec(draftText)) !== null) caps.push({ n: m[1], text: m[2].trim() });
+    for (const c of caps) {
+      if (!/[.。]$/.test(c.text)) issues.push({ level: 'WARN', msg: '题注 Fig. ' + c.n + ' 结尾缺句号' });
+      if (c.text.length < 40) issues.push({ level: 'WARN', msg: '题注 Fig. ' + c.n + ' 过短（' + c.text.length + ' 字）⇒ 可能不自足' });
+    }
+    /* 面板字母自足性：SVG 里有 A/B 面板，题注必须提到 */
+    for (const b of Object.keys(bases)) {
+      const svg = bases[b].files.find((f) => /\.svg$/i.test(f));
+      if (!svg) continue;
+      const s = fs.readFileSync(svg, 'utf8');
+      const panels = (s.match(/data-panel="([A-D])"/g) || []).map((x) => x.replace(/\D/g, ''));
+      if (!panels.length) continue;
+      const num = (b.match(/\d+/) || [])[0];
+      const cap = caps.find((c) => String(Number(c.n)) === String(Number(num)));
+      if (cap) {
+        for (const pl of panels) {
+          if (!new RegExp('\\b' + pl + '\\b').test(cap.text)) issues.push({ level: 'WARN', msg: '题注 Fig. ' + num + ' 未定义面板 ' + pl + '（图里有该面板）' });
+        }
+      }
+    }
+  }
+  const errs = issues.filter((x) => x.level === 'ERROR').length;
+  return { status: errs ? 'FAIL' : 'PASS', issues, files: Object.keys(bases), readings, captions: caps.length, refs: Object.keys(refs) };
+}
+
+/* ── CVD 安全判定：Machado 2009（severity 1.0）+ CIE76 ΔE ── */
+const CVD_MATRICES = {
+  protanopia: [0.152286, 1.052583, -0.204868, 0.114503, 0.786281, 0.099216, -0.003882, -0.048116, 1.051998],
+  deuteranopia: [0.367322, 0.860646, -0.227968, 0.280085, 0.672501, 0.047413, -0.011820, 0.042940, 0.968881],
+  tritanopia: [1.255528, -0.076749, -0.178779, -0.078411, 0.930809, 0.147602, 0.004733, 0.691367, 0.303900],
+};
+const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+function hexToRgb(h) {
+  const s = String(h).replace('#', '').trim();
+  if (!/^[0-9a-f]{6}$/i.test(s)) return null;
+  return [parseInt(s.slice(0, 2), 16) / 255, parseInt(s.slice(2, 4), 16) / 255, parseInt(s.slice(4, 6), 16) / 255];
+}
+const linearToXyz = (r, g, b) => [0.4124 * r + 0.3576 * g + 0.1805 * b, 0.2126 * r + 0.7152 * g + 0.0722 * b, 0.0193 * r + 0.1192 * g + 0.9505 * b];
+function xyzToLab(x, y, z) {
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const fx = f(x / 0.95047), fy = f(y / 1.0), fz = f(z / 1.08883);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+const labOf = (rgb, matrix) => {
+  const lin = rgb.map(srgbToLinear);
+  const v = matrix ? [
+    matrix[0] * lin[0] + matrix[1] * lin[1] + matrix[2] * lin[2],
+    matrix[3] * lin[0] + matrix[4] * lin[1] + matrix[5] * lin[2],
+    matrix[6] * lin[0] + matrix[7] * lin[1] + matrix[8] * lin[2],
+  ] : lin;
+  const xyz = linearToXyz(v[0], v[1], v[2]);
+  return { lab: xyzToLab(xyz[0], xyz[1], xyz[2]), L: xyzToLab(xyz[0], xyz[1], xyz[2])[0], Y: xyz[1] };
+};
+const dE76 = (a, b) => Math.round(Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) * 10) / 10;
+
+/** 对一组颜色做 CVD + 灰阶安全判定（阈值可调，默认 ΔE ≥ 12 且灰阶 L* 差 ≥ 8） */
+function cvdCheck(hexes, opts) {
+  const o = opts || {};
+  const minDE = o.minDE || 12, minGray = o.minGray || 8;
+  const cols = [];
+  for (const h of hexes) { const rgb = hexToRgb(h); if (!rgb) return { status: 'FAIL', issues: ['颜色格式不合法（需 #RRGGBB）：' + h], pairs: [] }; cols.push({ hex: h, rgb }); }
+  if (cols.length < 2) return { status: 'FAIL', issues: ['至少给两个颜色才能判两两可分性'], pairs: [] };
+  const rows = [];
+  let bad = 0;
+  for (let i = 0; i < cols.length; i++) {
+    for (let j = i + 1; j < cols.length; j++) {
+      const pair = { a: cols[i].hex, b: cols[j].hex, normal: dE76(labOf(cols[i].rgb).lab, labOf(cols[j].rgb).lab), cvd: {}, gray: Math.round(Math.abs(labOf(cols[i].rgb).L - labOf(cols[j].rgb).L) * 10) / 10 };
+      for (const k of Object.keys(CVD_MATRICES)) pair.cvd[k] = dE76(labOf(cols[i].rgb, CVD_MATRICES[k]).lab, labOf(cols[j].rgb, CVD_MATRICES[k]).lab);
+      const worst = Math.min(pair.normal, ...Object.keys(pair.cvd).map((k) => pair.cvd[k]));
+      pair.worst = worst;
+      pair.ok = worst >= minDE && pair.gray >= minGray;
+      if (!pair.ok) bad++;
+      rows.push(pair);
+    }
+  }
+  const issues = rows.filter((r) => !r.ok).map((r) => {
+    const why = [];
+    if (r.worst < minDE) why.push('色盲仿真下 ΔE 仅 ' + r.worst + '（<' + minDE + '）');
+    if (r.gray < minGray) why.push('灰阶分离 L* 仅 ' + r.gray + '（<' + minGray + '）');
+    return r.a + ' ↔ ' + r.b + '：' + why.join('；');
+  });
+  return { status: bad ? 'FAIL' : 'PASS', issues, pairs: rows, minDE, minGray };
+}
+
 function main(argv) {
   if (argv.includes('--selftest')) return selftest();
   const val = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : ''; };
+  if (argv.includes('--audit')) {
+    const dir = val('--audit');
+    const draft = val('--draft');
+    let dt = null;
+    if (draft) { if (!fs.existsSync(path.resolve(draft))) { console.error('读不到 --draft 文件：' + draft + '（未核对，不得当通过）'); return 2; } dt = fs.readFileSync(path.resolve(draft), 'utf8'); }
+    const r = auditPackage(dir, dt);
+    console.log('图表包审计：' + r.status + '（文件 ' + (r.files || []).length + ' 组 · 题注 ' + (r.captions || 0) + ' 条' + (dt ? '' : ' · 未给 --draft ⇒ 引用/题注项未检查') + '）');
+    for (const x of r.issues) console.log('  ' + (x.level === 'ERROR' ? '✘' : '·') + ' [' + x.level + '] ' + x.msg);
+    for (const q of (r.readings || [])) console.log('  · ' + q.file + (q.w ? ' ' + q.w + 'x' + q.h + (q.dpi ? ' · ' + q.dpi + 'dpi' : ' · 无 DPI') : ' ' + q.note));
+    if (r.status === 'SKIP') return 2;
+    return r.status === 'FAIL' ? 1 : 0;
+  }
+  if (argv.includes('--cvd')) {
+    const list = String(val('--cvd') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const r = cvdCheck(list, { minDE: Number(val('--min-de')) || 12, minGray: Number(val('--min-gray')) || 8 });
+    console.log('色盲/灰阶安全判定：' + r.status + '（' + r.pairs.length + ' 对 · 阈值 ΔE≥' + r.minDE + ' · 灰阶 L*≥' + r.minGray + '）');
+    for (const p of r.pairs) console.log('  ' + (p.ok ? '✔' : '✘') + ' ' + p.a + ' ↔ ' + p.b + ' · 正常 ΔE ' + p.normal + ' · 红绿色盲 ' + p.cvd.protanopia + '/' + p.cvd.deuteranopia + ' · 蓝黄色盲 ' + p.cvd.tritanopia + ' · 灰阶 ' + p.gray);
+    for (const i of r.issues) console.log('  ✘ ' + i);
+    return r.status === 'FAIL' ? 1 : 0;
+  }
   if (argv.includes('--list')) { console.log('可生成的图型：'); for (const k of KINDS) console.log('  ' + k.padEnd(9) + KINDS_ZH[k]); return 0; }
   if (argv.includes('--check')) {
     const f = val('--check'); if (!f || !fs.existsSync(f)) { console.error('读不到文件：' + f + '（未核对，不得当通过）'); return 2; }

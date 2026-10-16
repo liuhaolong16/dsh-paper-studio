@@ -3,6 +3,20 @@
 
 # 变更记录
 
+## v3.9.0 —— 2026-10-17
+
+**真对拍 Task F（图表题注与规格）完成 —— 六个任务全跑完；本轮新增两项能力，并在论文 A 的**真实投稿包**里查出真缺陷。**
+
+- **对手能力（实测）**：`lifecycle-skills` 的 `polish-tables-figures` 有 `captions-crossrefs.md` / `color-accessibility.md` / `figures.md` + **可跑 `palettes.py`（323 行）**；
+  `academic-research-skills` 有 `vlm_figure_verification.md`；`paper-figure-validator-1.0.0` **未能定位可跑入口**（关键字 0 命中，如实记）；`dsh-sci` 有 119 张第三方图库（**决定不随包**）。
+- **★新增 `figures-kit --audit <包> [--draft <md>]`**（对手**没有**检查器）：题注 ↔ 文件 ↔ 格式一致性 —— 引用缺图（ERROR）· 孤儿图 · 只有位图无矢量 · PNG 读 IHDR/pHYs 得尺寸与 DPI（缺 DPI 或 <300 ⇒ WARN）· 题注缺句号/过短/未定义面板字母。
+- **★新增 `figures-kit --cvd "#hex,…"`**（**吸收其方法论**）：Machado, Oliveira & Fernandes (2009) 严重度 1.0 三矩阵（protan/deutan/tritan）→ 线性 sRGB → XYZ(D65) → Lab → **CIE76 ΔE** 两两判定 + **灰阶 L\* 分离**；阈值可调（默认 ΔE ≥ 12 · ΔL\* ≥ 8）。
+- **★在论文 A 真实包上的实测发现**：`--audit` 报出 **`fig1`–`fig4` 的 PNG 只有 200 dpi**（多数期刊要求 ≥300，只有 graphical abstract 是 300）—— 这是**此前只靠自检分数看不见的真缺陷**。
+- **★方法论修正（我原先想当然，已按实测改）**：**全饱和 `#FF0000 ↔ #00FF00` 在红绿色盲仿真下 ΔE 仍有 26（>12）⇒ 不触发 CVD 判据**；真正被抓到的是**灰阶分离** —— 实测 **Okabe–Ito 5 色有 3/10 对灰阶不可分**（`#D55E00↔#009E73` ΔL\* 仅 **3.6**）。可复用结论：**"色盲安全"≠"黑白打印可分"**。
+- **自检**：`figures-kit` 补 2 条（audit 必失败面：缺图 ERROR + 孤儿图 + 无 DPI + 缺句号 · CVD 必失败面按实测取证）。
+- **★跨任务总强弱表已成文**：`run/bakeoff/SUMMARY.md`（六个任务的**能说/不能说**、逐项实测结论、六轮落进插件的改进、以及**六轮里我方自己被抓出的 7 类缺陷**）。
+- 报告：`run/bakeoff/task-f-figures/REPORT.md`。
+
 ## v3.8.0 —— 2026-10-17
 
 **真对拍 Task E（返修回复）：抓出并修掉我方一处 13/13 假阴性；新增对手脚本侧没有的 `claim-drift` 机检。**

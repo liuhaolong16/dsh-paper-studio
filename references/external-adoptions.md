@@ -126,3 +126,11 @@
 - **修我方（已落代码）**：`splitComments` 支持小数点编号 · 过滤非意见块（评分/标题行）· 覆盖判定改 **id 优先 → 引文 → 关键词兜底（标低置信）**。
 - **新增（对手脚本侧未见）**：`response --manuscript <改后稿>` 机械核对**声称改了 vs 实际改了** ⇒ `claim-drift` / `claim-not-found` / `unverifiable`（对应对手 heldout 的 `revision_claim_drift`）。
 - **未吸收（backlog）**：分诊分类法（误解/真缺陷/要求补充实验/澄清/分歧 + severity × effort 矩阵）· venue 格式预算合规 · rehearse-qa · simulate-reviewers。
+
+## lifecycle-skills · 图表对拍（2026-10-17 · Task F）—— 吸收其 CVD 方法论，补包级审计
+
+- **对手**：`polish-tables-figures`（参考文档 + 可跑 `palettes.py` 323 行）；`academic-research-skills` 有 `vlm_figure_verification.md`；`paper-figure-validator` 未能定位可跑入口。
+- **吸收（已落代码 `bin/figures-kit.cjs --cvd`）**：Machado 2009 严重度 1.0 三矩阵 + 线性 sRGB + XYZ(D65) + Lab + **CIE76 ΔE** + **灰阶分离**（原先我方只做"是否属于 Okabe-Ito 集合"的成员判定）。
+- **我方新增（对手无）**：`--audit` 包级「题注 ↔ 文件 ↔ 格式」审计（引用缺图 · 孤儿图 · 位图无矢量 · PNG DPI · 题注句号/长度/面板字母）。
+- **实测产出**：论文 A 真包 4 张图只有 **200 dpi**（期刊多要求 ≥300）—— 由对拍顺带查出。
+- **方法论修正**：全饱和红/绿在红绿色盲下 ΔE 仍 26 ⇒ 不触发 CVD 判据；真正被抓的是灰阶分离（**Okabe-Ito 3/10 对灰阶不可分**）。**"色盲安全" ≠ "黑白打印可分"。**
