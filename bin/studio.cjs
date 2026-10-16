@@ -1439,6 +1439,39 @@ function runSelftest() {
      报出「6 条 / 上限 5」的**假超限**，而契约门一直算的是 5 —— **同一目录里两套实现，我没对拍**。 */
   /* ★★ v3.2.41：**第三处行为对拍** —— `anchors` 命令报的 HIGH/LOW 必须等于「把同一份锚点表直接交给门」的结果。
      加上这条的直接原因：`anchors` 此前**从不透传锚点表** ⇒ 门按无锚点判 ⇒ 报 HIGH 23，而带表直跑是 HIGH 0 —— 错报持续了多轮。 */
+  /* ★ v3.2.44：**候选原句**（`anchors --quote-hints`）—— 离线夹具，fetcher 注入 stub（不联网）。
+     三条不变量：逐字来自来源 / 标证据层级 / 取不到就列"须人工读原文"。 */
+  check('v3.2.44·原句候选：候选句必须**逐字**来自抓取到的来源（去标签后仍原样），且按词重叠排序', () => {
+    const src = 'Unrelated sentence about other topics entirely here. Battery state of health prediction degrades across temperatures in our dataset substantially.';
+    const xml = '<article><body><p>Unrelated sentence about other topics entirely here.</p><p>Battery state of health prediction degrades across temperatures in our dataset substantially.</p></body></article>';
+    const j = JSON.stringify({ resultList: { result: [{ id: '1', pmcid: 'PMC1', isOpenAccess: 'Y', title: 'Stub', abstractText: 'abs' }] } });
+    const stub = (url) => (url.indexOf('fullTextXML') >= 0 ? xml : j);
+    const got = epmcLookup('10.1000/x', stub);
+    if (got.state !== 'fulltext') return 'state=' + got.state;
+    /* 逐字：每个候选句必须是来源文本的子串（去标签只发生在抓取阶段）。 */
+    const sents = sentencesOf(got.text, 40);
+    const bad = sents.filter((s) => src.indexOf(s) < 0);
+    if (bad.length) return '非逐字候选：' + JSON.stringify(bad.slice(0, 1));
+    const claim = ['Battery state of health prediction degrades across temperatures [1].'];
+    const hints = rankHints(claim, sents, 3);
+    if (!hints.length) return '没排出候选';
+    if (hints[0].text.indexOf('degrades across temperatures') < 0) return '排序不对：' + hints[0].text;
+    if (hints.some((h) => h.text.indexOf('Unrelated sentence') >= 0)) return '把无重叠句也排进来了';
+    return true;
+  });
+  check('v3.2.44·原句候选·诚实面：取不到 ⇒ 记 not-retrieved，**不得**编候选', () => {
+    const empty = JSON.stringify({ resultList: { result: [] } });
+    const a = epmcLookup('10.1000/none', () => empty);
+    const b = epmcLookup('', () => empty);
+    const c = epmcLookup('10.1000/y', () => JSON.stringify({ resultList: { result: [{ id: '2', isOpenAccess: 'N', abstractText: '' }] } }));
+    const ok = a.state === 'not-retrieved' && b.state === 'no-doi' && c.state === 'not-retrieved';
+    return ok ? true : ('a=' + a.state + ' b=' + b.state + ' c=' + c.state);
+  });
+  check('v3.2.44·原句候选·不代填措辞：产物里必须写明"候选须你确认 / 本工具不代填"（防工具悄悄替人填）', () => {
+    const src = fs.readFileSync(__filename, 'utf8');
+    const has = /本工具不代填/.test(src) && /候选原句（按与主张句的词重叠排序，\*\*须你确认\*\*）/.test(src);
+    return has ? true : '产物模板缺少"不代填/须你确认"措辞';
+  });
   check('★锚点·行为对拍：studio anchors（带 --anchors）与门直接跑，HIGH/LOW 必须同值', () => {
     const { spawnSync } = require('node:child_process');
     const os2 = require('node:os');
@@ -2730,6 +2763,69 @@ function oaLookup(dois, fetcher, opts) {
   }
   return { byDoi: out, log };
 }
+/* ═══ v3.2.44 引用原句候选（`anchors --quote-hints`）═══════════════════════════════════════
+ *  为什么：锚点表要求 `locator.kind=page-quote`（页号 + ≥30 字**原句**）才算"人已复核"，而这步的瓶颈
+ *  是"得先把原文读出来"。免 key 的 Europe PMC 就能给出全文/摘要 ⇒ 工具可以**把候选原句摆到人眼前**，
+ *  但**绝不代填**：页号与原句必须由人核对（排版差异、版本差异都可能让"逐字"不成立）。
+ *  三条不变量：① 候选句**逐字来自抓取到的来源**（只去 XML 标签，不压空格、不改标点）；
+ *  ② 每条候选都标**证据层级**（全文 / 摘要）与来源 ID；③ 抓不到的一律进"**须人工读原文**"清单，不假装有。
+ *  联网只在 `--quote-hints` 下发生（curl，免 key），且 fetcher 可注入 ⇒ 夹具离线可测。
+ * ═══════════════════════════════════════════════════════════════════════════════════════ */
+function epmcCurlFetcher() {
+  const { spawnSync } = require('child_process');
+  return (url) => {
+    const r = spawnSync('curl', ['-sS', '--max-time', '40', '-H', 'User-Agent: paper-studio/3.2.44 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+    if (r.error) throw new Error('curl 不可用：' + r.error.message);
+    if (r.status !== 0) throw new Error('curl 退出码 ' + r.status);
+    return r.stdout || '';
+  };
+}
+/** 句切分：只按句末标点切，**不重排、不压缩**（候选要给原句）。 */
+function sentencesOf(text, minLen) {
+  const flat = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!flat) return [];
+  return flat.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter((s) => s.length >= (minLen || 40));
+}
+const HINT_STOP = new Set(['this', 'that', 'with', 'from', 'were', 'which', 'have', 'been', 'their', 'there', 'these', 'those', 'than', 'then', 'also', 'such', 'using', 'used', 'into', 'more', 'most', 'between', 'during', 'after', 'before', 'however', 'whereas', 'while', 'about', 'under', 'over', 'both', 'each', 'than']);
+function contentWords(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !HINT_STOP.has(w));
+}
+/** 按"与主张句的词重叠"排序（确定性；同分按出现顺序 ⇒ 可复现）。 */
+function rankHints(claimSentences, candidates, n) {
+  const cw = new Set();
+  for (const s of claimSentences) for (const w of contentWords(s)) cw.add(w);
+  return candidates.map((c, i) => {
+    const ws = contentWords(c);
+    const hit = new Set(ws.filter((w) => cw.has(w)));
+    return { text: c, score: hit.size, overlap: Array.from(hit).sort(), idx: i };
+  }).filter((x) => x.score > 0).sort((a, b) => (b.score - a.score) || (a.idx - b.idx)).slice(0, n || 3);
+}
+/** 取一篇来源的正文：EPMC 全文（OA）优先，其次摘要；取不到就说取不到。 */
+function epmcLookup(doi, f) {
+  const clean = String(doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+  if (!clean) return { state: 'no-doi' };
+  let j = null;
+  try {
+    const u = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:%22' + encodeURIComponent(clean) + '%22&resultType=core&format=json&pageSize=1';
+    j = JSON.parse(f(u));
+  } catch (e) { return { state: 'not-retrieved', why: '检索失败：' + String((e && e.message) || e) }; }
+  const rec = (((j || {}).resultList || {}).result || [])[0];
+  if (!rec) return { state: 'not-retrieved', why: 'Europe PMC 未收录该 DOI' };
+  const out = { state: 'not-retrieved', title: rec.title || '', pmcid: rec.pmcid || '', id: rec.id || '' };
+  if (rec.pmcid && String(rec.isOpenAccess || '').toUpperCase() === 'Y') {
+    try {
+      const xml = f('https://www.ebi.ac.uk/europepmc/webservices/rest/' + rec.pmcid + '/fullTextXML');
+      /* 只去标签；段落之间以空格相接（**不压内部空格**）。 */
+      const body = (xml.match(/<body[\s\S]*?<\/body>/i) || [''])[0] || xml;
+      const paras = (body.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || []).map((p) => p.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')).join(' ');
+      const text = paras.trim();
+      if (text) return Object.assign(out, { state: 'fulltext', text, source: 'Europe PMC ' + rec.pmcid + ' · 全文' });
+      return Object.assign(out, { state: 'not-retrieved', why: '有 PMCID 但抽不到正文段落' });
+    } catch (e) { return Object.assign(out, { state: 'not-retrieved', why: '全文抓取失败：' + String((e && e.message) || e) }); }
+  }
+  if (rec.abstractText) return Object.assign(out, { state: 'abstract', text: String(rec.abstractText), source: 'Europe PMC ' + (rec.id || rec.pmcid) + ' · **摘要（证据层级较弱，仅可作延伸阅读线索）**' });
+  return Object.assign(out, { state: 'not-retrieved', why: '非开放获取且无摘要' });
+}
 function cmdAnchorsOA(args, argv, draftAbs, val, has) {
   const inPath = val('in') || val('anchors') || path.join(path.dirname(draftAbs), 'anchors-已解析.json');
   if (!fs.existsSync(inPath)) {
@@ -3242,6 +3338,114 @@ function cmdSubmissionFields(args, argv) {
   if (JSON_OUT) console.log(JSON.stringify({ draft: dAbs, fields_code: code, rows, limits, missing, absent_optional: absent, nonverbatim: nonVerbatim.map((r) => r.field), over_limit: over.map((x) => x.key) }, null, 2));
   return bad ? 1 : 0;
 }
+/** v3.2.44：`anchors --quote-hints` —— 把"得先读原文"这一步从人身上挪到工具身上，但**只给候选**。 */
+/** OpenAlex 倒排摘要重建（免 key）。★ 重要：倒排索引**只有词与位置、没有标点** ⇒ 重建文本
+ *   **不能当"逐字原句"**（≥30 字原句要求逐字，标点与句界都必须保留）⇒ 只能作"对读线索"。 */
+function openalexLookup(doi, f) {
+  const clean = String(doi || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+  if (!clean) return { state: 'no-doi' };
+  let j = null;
+  try {
+    const u = 'https://api.openalex.org/works/doi:' + encodeURIComponent(clean) + '?select=id,title,abstract_inverted_index';
+    j = JSON.parse(f(u));
+  } catch (e) { return { state: 'not-retrieved', why: 'OpenAlex 检索失败：' + String((e && e.message) || e) }; }
+  const inv = (j || {}).abstract_inverted_index;
+  if (!inv || typeof inv !== 'object') return { state: 'not-retrieved', why: 'OpenAlex 无摘要（该条目可能未收录或无 abstract）' };
+  const slots = [];
+  for (const w of Object.keys(inv)) for (const pos of (inv[w] || [])) slots[pos] = w;
+  const text = slots.filter(Boolean).join(' ').trim();
+  if (!text) return { state: 'not-retrieved', why: 'OpenAlex 摘要倒排为空' };
+  return { state: 'abstract-recon', text, title: (j && j.title) || '', source: 'OpenAlex ' + ((j && j.id) || '') + ' · **摘要（倒排索引重建：无标点 ⇒ 不可作原句引用，仅作对读线索）**' };
+}
+function cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has) {
+  const inPath = val('in') || val('anchors') || (() => {
+    const cand = [path.join(path.dirname(draftAbs), 'anchors-已解析.json'), path.join(path.dirname(path.dirname(draftAbs)), 'anchors-已解析.json')];
+    return cand.find((p) => fs.existsSync(p)) || path.join(path.dirname(draftAbs), 'anchors-已解析.json');
+  })();
+  if (!fs.existsSync(inPath)) { console.error('前提层失败：找不到锚点表 —— ' + path.resolve(inPath) + '（先跑 anchors --resolve 生成）'); return 2; }
+  let doc; try { doc = JSON.parse(fs.readFileSync(inPath, 'utf8')); } catch (e) { console.error('前提层失败：锚点表不是 JSON —— ' + String((e && e.message) || e)); return 2; }
+  const anchors = doc.anchors || [];
+  const limit = Number(val('limit')) > 0 ? Number(val('limit')) : 3;
+  const f = (typeof globalThis.__STUDIO_HINT_FETCHER__ === 'function') ? globalThis.__STUDIO_HINT_FETCHER__ : epmcCurlFetcher();
+  const rows = [];
+  for (const a of anchors) {
+    const key = String(a.marker || '');
+    const claim = (hits.get(key) || {}).sentences || [];
+    const doi = ((a.identifier || {}).doi) || '';
+    let got = epmcLookup(doi, f);
+    let hints = [];
+    const clues = [];
+    if (got.state === 'fulltext' || got.state === 'abstract') {
+      hints = rankHints(claim, sentencesOf(got.text, 40), limit);
+    }
+    /* ★ v3.2.44 退路：EPMC 是**生物医学**语料 —— 能源/工程/arXiv 的 DOI 常"未收录"。
+       退到 OpenAlex 倒排摘要，但只作**对读线索**（重建无标点 ⇒ 不能当逐字原句）。 */
+    if (!hints.length) {
+      const oa = openalexLookup(doi, f);
+      if (oa.state === 'abstract-recon') {
+        const ws = oa.text.split(/\s+/);
+        const cw2 = new Set();
+        for (const s of claim) for (const w of contentWords(s)) cw2.add(w);
+        const hitAt = (i) => cw2.has(String(ws[i] || '').toLowerCase().replace(/[^a-z0-9-]/g, ''));
+        let best = 0, bestN = -1;
+        for (let i = 0; i < ws.length; i++) { const sc = (hitAt(i) ? 1 : 0) + (i > 0 && hitAt(i - 1) ? 1 : 0); if (sc > bestN) { bestN = sc; best = i; } }
+        const from = Math.max(0, best - 20), to = Math.min(ws.length, best + 40);
+        clues.push({ window: ws.slice(from, to).join(' '), at: from + '-' + to + '/' + ws.length, n: ws.length });
+        got = oa;
+      } else if (got.state === 'not-retrieved') {
+        got = { state: got.state, why: (got.why || '') + '；' + (oa.why || ''), source: '', title: got.title || oa.title || '' };
+      }
+    }
+    rows.push({ key, doi, state: got.state, source: got.source || '', why: got.why || '', title: got.title || '', claim, hints, clues });
+  }
+  const withHints = rows.filter((r) => r.hints.length);
+  const withClues = rows.filter((r) => !r.hints.length && (r.clues || []).length);
+  const mustRead = rows.filter((r) => !r.hints.length && !(r.clues || []).length);
+  const L = [];
+  L.push('# 引用原句候选（供人工核对）· ' + path.basename(draftAbs));
+  L.push('');
+  L.push('> 用途：把 `locator.kind=page-quote`（页号 + ≥30 字**原句**）这一步的"先读原文"交给工具，**但只给候选**。');
+  L.push('> **本工具不代填** —— 页号与原句必须你核对（排版/版本差异都可能让"逐字"不成立）；候选句**逐字来自抓取到的来源**。');
+  L.push('> 数据源：Europe PMC（免 key，按 DOI 检索；OA 取全文，否则取摘要）。**取不到就列在最后一节，不假装有。**');
+  L.push('');
+  L.push('- 锚点表：`' + path.resolve(inPath) + '`');
+  L.push('- **逐字候选**（可作 page-quote 用）：**' + withHints.length + '** 条 · **对读线索**（非逐字，须回原文取原句）：**' + withClues.length + '** 条 · **须人工读原文**：**' + mustRead.length + '** 条 / 共 ' + rows.length + ' 条');
+  L.push('');
+  for (const r of withHints) {
+    L.push('## `[' + r.key + ']`　' + (r.source || r.state));
+    L.push('');
+    if (r.title) L.push('- 来源题名：' + r.title);
+    if (r.claim.length) { L.push('- 正文里引用它的句子（**逐字**）：'); for (const s of r.claim) L.push('  - ' + s); }
+    L.push('- 候选原句（按与主张句的词重叠排序，**须你确认**）：');
+    r.hints.forEach((h, i) => { L.push('  ' + (i + 1) + '. [' + h.score + ' 词重叠：' + h.overlap.slice(0, 6).join(', ') + '] ' + h.text); });
+    L.push('');
+  }
+  if (withClues.length) {
+    L.push('## 对读线索（**非逐字** —— 倒排索引重建无标点，只能帮你判断"这篇是否支持该主张"；原句仍须回原文取）');
+    L.push('');
+    for (const r of withClues) {
+      L.push('### `[' + r.key + ']`　' + (r.source || r.state));
+      L.push('');
+      if (r.title) L.push('- 来源题名：' + r.title);
+      for (const c of r.clues) L.push('- 词窗（位置 ' + c.at + '，共 ' + c.n + ' 词）：' + c.window);
+      L.push('- 【须回原文取 ≥30 字原句，本工具不代取】');
+      L.push('');
+    }
+  }
+  if (mustRead.length) {
+    L.push('## 须人工读原文（工具取不到 ⇒ 不假装有）');
+    L.push('');
+    for (const r of mustRead) L.push('- `[' + r.key + ']`　' + r.doi + '　' + (r.state === 'no-doi' ? '**无 DOI**（先在锚点表里补 identifier）' : r.state + (r.why ? '：' + r.why : '')));
+    L.push('');
+  }
+  const outPath = val('out') || path.join(reportHome(draftAbs), '_原句候选-' + new Date().toISOString().slice(0, 10) + '.md');
+  fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
+  if (JSON_OUT) { console.log(JSON.stringify({ draft: draftAbs, table: path.resolve(inPath), rows }, null, 2)); return 0; }
+  console.log('引用原句候选 · ' + path.basename(draftAbs));
+  console.log('  逐字候选 ' + withHints.length + ' 条 · 对读线索 ' + withClues.length + ' 条 · 须人工读原文 ' + mustRead.length + ' 条（共 ' + rows.length + '）');
+  console.log('  工作单：' + outPath + '（**候选须你确认；本工具不代填**）');
+  return 0;
+}
 function cmdReports(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -3577,6 +3781,8 @@ function cmdAnchors(args, argv) {
   if (has('resolve')) return cmdResolve(args, argv, draftAbs, keys, hits);
   /* --oa：查引用文献的**开放获取可达性**（OpenAlex，免 key 批量）⇒ 决定"补页号原句"从哪几篇开始 */
   if (has('oa')) return cmdAnchorsOA(args, argv, draftAbs, val, has);
+  /* ★ v3.2.44：`--quote-hints` —— 从免 key 全文/摘要里给出**候选原句**（不代填）。 */
+  if (has('quote-hints')) return cmdQuoteHints(args, argv, draftAbs, keys, hits, val, has);
 
   const L = [];
   L.push('# 引用锚点表工作单 · ' + path.basename(draftAbs));

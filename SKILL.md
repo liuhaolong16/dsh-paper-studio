@@ -46,7 +46,7 @@ node bin/studio.cjs compliance <投稿包目录>                  :: 合规门�
 node bin/studio.cjs credit <稿件或声明文件>                    :: CRediT 官方 14 角色核对（非官方写法＝失败；缺 CRediT 段＝未通过；依据 references/credit-roles.json）
 node bin/studio.cjs formats [--detect <你的.tex>]   :: 投稿格式模板表（CTAN/GitHub 一手核实）+ 检测 .tex 用的类文件是否命中官方模板
 node bin/studio.cjs preflight --draft <稿.md> [--package <投稿包>] [--contract <契约.json>] [--out <报告.md>]   :: **投稿前一条命令总检**（汇总门执行器/契约门/合规门；只汇总不判定，"未检查"≠通过）
-node bin/studio.cjs anchors --draft <稿.md> [--out <工作单.md>] [--json <骨架.json>]   :: **引用锚点表工作单**（键集+行号来自扫描；骨架字段留空不预填；第 14 道门的判定权仍在门）
+node bin/studio.cjs anchors --draft <稿.md> [--out <工作单.md>] [--json <骨架.json>]   :: **引用锚点表工作单**（键集+行号来自扫描；骨架字段留空不预填；第 14 道门的判定权仍在门） ｜ `--quote-hints`：**引用原句候选**（免 key 取全文/摘要，按词重叠排序；**只给候选、不代填**；EPMC 未收录则退 OpenAlex 作**对读线索**）
 node bin/studio.cjs anchors --draft <稿.md> --resolve [--online] [--out <anchors.json>]   :: **从稿件题录解析 DOI/URL 生成草稿锚点表**（有则采、无则留空并标 `_unresolved`；`--online` 用 Crossref 兜底且须过相似度阈值）
 node bin/studio.cjs anchors --draft <稿.md> --oa [--in <anchors.json>]   :: **查引用的开放获取可达性**（OpenAlex 免 key 批量）⇒ 得到"补页号原句"的起点清单（可免费读的带 PDF 直链）
 node bin/studio.cjs response --letter <回复信.md> --comments <审稿意见.md>   :: **返修回复信逐条核对**（覆盖/实质回应/**改动位置**；只核可机械判定的部分） ｜ `--comments <意见> --scaffold <骨架.md>`：**生成逐条待填骨架**（带「待填」哨兵 ⇒ 未填写前通不过核对）
