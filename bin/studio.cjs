@@ -38,11 +38,22 @@ const PIPELINE_PATH = path.join(ROOT, 'references', 'pipeline.json');
    （对外文本不得含路径分隔符）。改法：真源里只放 **__LOCAL__/<key> 占位符**，
    真实值放 **git 忽略** 的 references/local-paths.json（可用环境变量 DSH_PAPER_LOCAL_PATHS 换位置）。
    ★ 取不到就**保留占位符**（不静默变成空串）——空串会让下游"看起来配好了"，是最坏的失败态。 */
-const LOCAL_PATHS_FILE = path.join(ROOT, 'references', 'local-paths.json');
+/* 本地路径表的位置（v3.2.18 修正）：**默认放用户主目录**，不放包内。
+   原因（实测）：npm 打包时 `files` 字段**优先于** .npmignore ⇒ 放在 references/ 下的本机表
+   **排除不掉、会随包发给别人**（用户装上就继承别人的绝对路径）。放主目录则既不会被 git 跟踪、
+   也不会被打包。包内 references/local-paths.json 仅作**向后兼容**的最后一档。 */
+const HOME_PATHS_FILE = path.join(require('os').homedir(), '.dsh', 'paper-studio', 'local-paths.json');
+const LEGACY_PATHS_FILE = path.join(ROOT, 'references', 'local-paths.json');
 function localPaths() {
-  const f = process.env.DSH_PAPER_LOCAL_PATHS || LOCAL_PATHS_FILE;
-  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return {}; }
+  const list = [process.env.DSH_PAPER_LOCAL_PATHS, HOME_PATHS_FILE, LEGACY_PATHS_FILE].filter(Boolean);
+  for (const f of list) {
+    try { const d = JSON.parse(fs.readFileSync(f, 'utf8')); if (d && typeof d === 'object') return d; } catch {}
+  }
+  return {};
 }
+/** 未解析占位符 ⇒ 可操作指引（命令侧与门侧统一措辞） */
+const LOCAL_HINT = '（该值是未解析的本机路径占位符 ⇒ 把 references/local-paths.example.json 复制成 '
+  + '~/.dsh/paper-studio/local-paths.json（或设 DSH_PAPER_LOCAL_PATHS 指向你的表）并填真实路径）';
 function resolveLocals(node, table) {
   if (typeof node === 'string') {
     const m = /^__LOCAL__\/(.+)$/.exec(node);
@@ -65,10 +76,7 @@ function resolveLocals(node, table) {
 
 /* 占位符未解析 ⇒ 给出**可操作**的修复指引（而不是让下游报一句没头没尾的缺文件） */
 function localPathHint(v) {
-  return String(v || '').indexOf('__LOCAL__') === 0
-    ? '（该值是未解析的本机路径占位符 ⇒ 复制 references/local-paths.example.json 为 references/local-paths.json 并填真实路径，'
-      + '或用环境变量 DSH_PAPER_LOCAL_PATHS 指向你的路径表）'
-    : '';
+  return String(v || '').indexOf('__LOCAL__') === 0 ? LOCAL_HINT : '';
 }
 
 function readPipeline(p = PIPELINE_PATH) {

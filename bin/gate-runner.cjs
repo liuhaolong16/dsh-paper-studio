@@ -18,6 +18,11 @@
 'use strict';
 
 const fs = require('fs');
+
+/* 未解析的 __LOCAL__ 占位符 ⇒ 给**可操作**指引（v3.2.18：此前只有两处命令给了提示，门执行路径只打印占位符） */
+const PLACEHOLDER_HINT = '（未解析的本机路径占位符 ⇒ 把 references/local-paths.example.json 复制成 '
+  + '~/.dsh/paper-studio/local-paths.json 并填真实路径，或设 DSH_PAPER_LOCAL_PATHS 指向你的表）';
+const hintIfLocal = (v) => (String(v == null ? '' : v).indexOf('__LOCAL__') === 0 ? PLACEHOLDER_HINT : '');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
@@ -125,7 +130,7 @@ function runOneGate(gate, inputs, pipeline, opts) {
   const exe = interpreterFor(gate.runtime, pipeline);
   if (!exe) {
     rec.verdict = 'precondition_fail';
-    rec.note = `运行时不可用（${gate.runtime}）；已试 python_exe=${JSON.stringify((pipeline.assets || {}).python_exe || [])}`;
+    rec.note = `运行时不可用（${gate.runtime}）；已试 python_exe=${JSON.stringify((pipeline.assets || {}).python_exe || [])}${hintIfLocal(((pipeline.assets || {}).python_exe || [])[0])}`;
     return rec;
   }
   const built = buildArgs(gate, inputs);

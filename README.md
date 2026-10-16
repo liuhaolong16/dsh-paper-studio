@@ -96,12 +96,15 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 ## 机器本地路径（装包后**必做一步**）
 
 真源 `references/pipeline.json` / `references/templates.json` 里**不含任何本机绝对路径**，只放 `__LOCAL__/<key>` 占位符
-（证据纪律：对外文本不得含路径分隔符）。真值放在 **git 忽略**的 `references/local-paths.json`：
+（证据纪律：对外文本不得含路径分隔符）。真值放在**用户主目录**（既不入 git 也不进 npm 包）：
 
 ```bash
-cp references/local-paths.example.json references/local-paths.json   # 然后按你的机器填
+mkdir -p ~/.dsh/paper-studio
+cp references/local-paths.example.json ~/.dsh/paper-studio/local-paths.json   # 然后按你的机器填
 # 或：export DSH_PAPER_LOCAL_PATHS=/path/to/your/local-paths.json
 ```
+
+> 为什么放主目录而不是包内：npm 打包时 `files` 字段**优先于 `.npmignore`**，放在包内的本机表**排除不掉、会随包发给别人**（装上就继承别人的绝对路径）。
 
 需要填的 key：`playbook_root` · `playbook_skill` · `writer_skill` · `polish_skill` · `python_exe` · `phrase_bank`。
 **取不到时不会静默变成空串**——运行时会明确提示"该值是未解析的本机路径占位符"，并给出上面这一步。

@@ -1,5 +1,5 @@
 {
-  "_note": "把本机真实路径填进 references/local-paths.json（该文件被 .gitignore 忽略，不入公开仓）。真源里用 __LOCAL__/<key> 占位符引用这里；取不到时**保留占位符**，不会静默变空。",
+  "_note": "把本机真实路径填进 **~/.dsh/paper-studio/local-paths.json**（用户主目录，既不入 git 也不进 npm 包），或用环境变量 DSH_PAPER_LOCAL_PATHS 指向你的表。真源里用 __LOCAL__/<key> 占位符引用这里；取不到时**保留占位符**（不静默变空），运行时会给出上面这条指引。★ 不要把这份表放进包内 references/ —— npm 的 files 字段优先于 .npmignore，包内的表会被打包发给别人。",
   "playbook_root": "<你的 research-paper-playbook 仓路径>",
   "playbook_skill": "<该仓的 skill 副本路径（可留空）>",
   "writer_skill": "<paper-writer 技能路径（可留空）>",

@@ -1,0 +1,11 @@
+# `files` 字段会把整个 references/ 带进包，但**机器本地**的文件必须在发布时排除
+# （证据纪律 D 同理：本机路径不入对外产物；否则用户装上会继承别人的绝对路径）
+references/local-paths.json
+# 本地索引/状态与测试产物（不该随包走）
+.dsh-project-memory/
+.dsh-memory/
+.paper-studio/
+run/
+*.tgz
+*.log
+*.tmp

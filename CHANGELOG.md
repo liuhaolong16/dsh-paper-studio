@@ -3,6 +3,16 @@
 
 # 变更记录
 
+## v3.2.18 —— 2026-10-16
+
+**端到端验证"别人装完就有全部能力"（真打包 + 干净目录从零跑）⇒ 抓到两处真缺陷并修正。**
+
+- **① 本机路径表曾被打进包**：`npm pack` 实测 `references/local-paths.json` **在 tarball 里**（含本机绝对路径 ⇒ 用户装上会继承别人的路径，正好把"占位符 + 本地表"的设计废掉）。
+  **两个原因叠加**：`.gitignore` 不影响 `npm pack`；而 **`files` 字段优先于 `.npmignore`**（实测加 `.npmignore` 后该文件**仍在包里**）。
+  最终修法：**把本机表移出包** ⇒ 默认位置改为 **`~/.dsh/paper-studio/local-paths.json`**（用户主目录，既不入 git 也不进包），解析顺序＝`DSH_PAPER_LOCAL_PATHS` → 主目录 → 包内（仅向后兼容）；包内那份已删除；`local-paths.example.json` 与 README 都写明"**别放包内**"及原因。
+- **② 上一版"可操作报错"的声明过宽（更正）**：v3.2.15 我只把提示接到两处命令，**门执行路径**（`bin/gate-runner.cjs`）在未配本地表时只打印 `__LOCAL__/...` 与"脚本不存在"，**没说该做什么**。已接入统一措辞的提示（"把 `references/local-paths.example.json` 复制成 `~/.dsh/paper-studio/local-paths.json` …"）。**这是更正，不是新功能。**
+- **干净目录从零跑（本机实测）**：`formats` ✅ 直接可用（不依赖本机路径）· `criteria-abcd --selftest` ✅ 20/20 · 未配本地表时 `gates` **响亮失败并给出下一步** · 放入本地表后门脚本路径**正常解析**（`python D:\...\_gate-author-material.py [可用]`）。
+
 ## v3.2.17 —— 2026-10-16
 
 **中文刊再进一步：机检"书写顺序"，并给出一份**只收跨刊共性**的通用契约。**
