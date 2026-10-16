@@ -1,0 +1,32 @@
+{
+  "_warning": "★ 这是**模板与字段说明**：`_example` 里的值全部是**占位/格式示例**，不可直接用于投稿。真实来源必须由人取到原文后填写（DOI 必须真实可解析；locator 的 quote 必须≥30 字的原文原句）。",
+  "_consumer": "第 14 道门 `_gate-claim-anchor.cjs`（claim ↔ reference alignment）。用 `node bin/studio.cjs preflight --anchors <本文件> ...` 复跑。",
+  "_how": "先 `node bin/studio.cjs anchors --draft <稿.md> --json anchors.json` 生成**留空骨架**（键集来自扫描），再逐条填 identifier / locator 等字段。",
+  "_fields": {
+    "citation_key / marker / slug": "三选一或都给：门用 citation_key（小写比较）、marker（去掉方括号，如 '1'）、slug 建索引匹配正文引用。",
+    "identifier": "{ doi | pmid | url } 至少一项且**格式可解析**；三者皆无效 ⇒ HIGH-1 fabricated-reference（P0）。",
+    "anchor_kind": "不得为 'none'；配合 locator 非空，否则 HIGH-2 anchorless（P0）。",
+    "locator": "{ kind, value, quote }。kind='page-quote' + value=页号 + quote≥30 字原文 ⇒ 才算「人已复核过」（retrieval_method 须为 fulltext-read）。",
+    "evidence_layer": "默认 author_statement；**`inference` / `unconfirmed` 不得当引文使用**（HIGH-3）。",
+    "status": "published（默认）/ preprint / retracted —— 后两者所在句**必须有对冲词**（预印本、初步等），否则 HIGH-4。",
+    "verdict": "SUPPORTED / PARTIAL / UNSUPPORTED / AMBIGUOUS / RETRIEVAL_FAILED。PARTIAL 必须给 `sub_claim_breakdown`（≥2 项且含正反两向），否则 HIGH-3。",
+    "retrieval_method": "fulltext-read（人已读全文）/ not_found（HIGH-3：来源不存在）/ failed | paywall（HIGH-3：永久不可得）/ audit_tool_failure | timeout | transient（LOW：暂时失败，重试即可，不计缺陷率）。",
+    "scope.supports_strength": "**仅当**引用句含强度词且原文确实支持时置 true；否则 HIGH-3。含对冲词（almost/nearly/…）的量化让步不算强度断言。",
+    "negative_constraints / claims": "可选：由 manifest 提供禁用表述与主张清单（`--manifest <json>`）。"
+  },
+  "anchors": [
+    {
+      "citation_key": "ref-1",
+      "marker": "1",
+      "slug": "ref-1",
+      "identifier": { "doi": "10.0000/EXAMPLE-NOT-REAL", "pmid": "", "url": "" },
+      "anchor_kind": "primary",
+      "locator": { "kind": "page-quote", "value": "EXAMPLE p.3", "quote": "EXAMPLE —— 此处必须替换为≥30 字的原文原句，占位文本不可用于投稿。" },
+      "evidence_layer": "author_statement",
+      "status": "published",
+      "verdict": "SUPPORTED",
+      "retrieval_method": "fulltext-read",
+      "scope": { "supports_strength": false }
+    }
+  ]
+}

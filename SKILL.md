@@ -46,6 +46,7 @@ node bin/studio.cjs compliance <投稿包目录>                  :: 合规门�
 node bin/studio.cjs credit <稿件或声明文件>                    :: CRediT 官方 14 角色核对（非官方写法＝失败；缺 CRediT 段＝未通过；依据 references/credit-roles.json）
 node bin/studio.cjs formats [--detect <你的.tex>]   :: 投稿格式模板表（CTAN/GitHub 一手核实）+ 检测 .tex 用的类文件是否命中官方模板
 node bin/studio.cjs preflight --draft <稿.md> [--package <投稿包>] [--contract <契约.json>] [--out <报告.md>]   :: **投稿前一条命令总检**（汇总门执行器/契约门/合规门；只汇总不判定，"未检查"≠通过）
+node bin/studio.cjs anchors --draft <稿.md> [--out <工作单.md>] [--json <骨架.json>]   :: **引用锚点表工作单**（键集+行号来自扫描；骨架字段留空不预填；第 14 道门的判定权仍在门）
 node bin/studio.cjs retract-check <稿件或参考文献文件>          :: 引用撤稿检查（OpenAlex is_retracted；撤稿须显式说明；取不到≠通过）
 node bin/criteria-abcd.cjs --check <报告> | --scan-only <文本> | --selftest   :: 证据纪律四条 A/B/C/D（可达性 / 未检查显形 / 失败分型 / 结论带位置+对外扫描）
                                                            ::  依据=references/compliance-checklist.md（含 Elsevier 在先发表一手原文 2026-10-16 取证）

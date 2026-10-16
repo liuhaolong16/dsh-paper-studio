@@ -495,6 +495,7 @@ const SUBCOMMANDS = [
   'credit',
   'formats',
   'preflight',
+  'anchors',
   'route',
   'gates',
   'intake',
@@ -1255,6 +1256,47 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'preflight'], { encoding: 'utf8' });
     return (r.status === 2 && /需要 --draft/.test(String(r.stderr || ''))) || ('exit=' + r.status);
   });
+  check('anchors·正控：工作单列出全部引用键与行号，且骨架字段留空（不预填来源）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'anch-'));
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nWords [1].\n\nThe method follows [2] and [3–4].\n\n## References\n\n[1] A. [2] B. [3] C.\n');
+    const out = path.join(tmp, 'w.md'); const sk = path.join(tmp, 'sk.json');
+    const r = spawnSync(process.execPath, [__filename, 'anchors', '--draft', d, '--out', out, '--json', sk], { encoding: 'utf8' });
+    let txt = '', J = null;
+    try { txt = fs.readFileSync(out, 'utf8'); } catch {}
+    try { J = JSON.parse(fs.readFileSync(sk, 'utf8')); } catch {}
+    const keysOk = ['1', '2', '3', '4'].every((k) => new RegExp('### `\\[' + k + '\\]`').test(txt));
+    const blank = J && Array.isArray(J.anchors) && J.anchors.length === 4
+      && J.anchors.every((a) => a.identifier && a.identifier.doi === '' && a.locator && a.locator.quote === '');
+    const noPrefill = !/10\.\d{4}\//.test(JSON.stringify(J || {}));
+    return (r.status === 0 && keysOk && blank && noPrefill && /第 14 道门/.test(txt))
+      || ('exit=' + r.status + ' keys=' + keysOk + ' blank=' + blank);
+  });
+  check('anchors·必失败面：无引用标记时须明说"未发现"，且骨架为空数组（不得编出条目）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'anch2-'));
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n\nNo citations here at all.\n');
+    const out = path.join(tmp, 'w.md'); const sk = path.join(tmp, 'sk.json');
+    const r = spawnSync(process.execPath, [__filename, 'anchors', '--draft', d, '--out', out, '--json', sk], { encoding: 'utf8' });
+    let txt = '', J = null;
+    try { txt = fs.readFileSync(out, 'utf8'); } catch {}
+    try { J = JSON.parse(fs.readFileSync(sk, 'utf8')); } catch {}
+    return (r.status === 0 && /未发现引用标记/.test(txt) && J && J.anchors.length === 0) || ('exit=' + r.status);
+  });
+  check('preflight·透传：报告头必须写明是否给了锚点表（未给时明说 claim-anchor 按无锚点判）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pf3-'));
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nWords [1].\n');
+    const out = path.join(tmp, 'pf.md');
+    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--out', out], { encoding: 'utf8' });
+    let txt = '';
+    try { txt = fs.readFileSync(out, 'utf8'); } catch {}
+    return (r.status !== 2 && /- 引用锚点表：\*\*未给\*\*/.test(txt)) || ('exit=' + r.status);
+  });
+
   check('接口面：分派支持的命令必须都在 SUBCOMMANDS 登记（不许加了命令忘登记）', () => {
     const r = subcommandGaps(fs.readFileSync(__filename, 'utf8'), SUBCOMMANDS);
     return (r.missing.length === 0 && r.phantom.length === 0) || ('未登记: ' + r.missing.join(',') + ' ｜ 幽灵登记: ' + r.phantom.join(','));
@@ -1983,6 +2025,149 @@ function resolveGateScript(gate, pipeline) {
   if (!rel || String(rel).indexOf('__LOCAL__') === 0) return { script: '', why: '本机路径未解析（' + LOCAL_HINT + '）' };
   return { script: path.join(rel, gate.entry), why: '' };
 }
+/** 引用锚点表工作单（v3.2.21）
+ *  为什么：第 14 道门（claim-anchor）要求"正文引用"在**锚点表**里有条目，否则判 fabricated-reference（P0 阻断）。
+ *  但"锚点表长什么样"此前只存在于门脚本的实现里 —— 作者无从下手。本命令把它变成**可填的工件**：
+ *  ① 扫描稿件里的引用标记 → 完整的键集（**这是工作单抽取器，不是判定者**）
+ *  ② 跑门拿它自己的理由与行号（**门才是判定者**；门不可用则明说"未取到门的结论"）
+ *  ③ 产出 Markdown 工作单 + 可直接填的 JSON 骨架（字段取自门的真实 schema：citation_key / marker /
+ *     identifier{doi,pmid,url} / locator{kind,value,quote} / evidence_layer / status / verdict /
+ *     retrieval_method / scope.supports_strength / sub_claim_breakdown）
+ *  ★ 纪律：骨架里**一律留空**（identifier 为空、locator 为空），绝不预填任何来源信息 —— 预填就等于编造。 */
+const ANCHOR_SKELETON = (key) => ({
+  citation_key: 'ref-' + key,
+  marker: String(key),
+  slug: 'ref-' + key,
+  identifier: { doi: '', pmid: '', url: '' },
+  anchor_kind: 'primary',
+  locator: { kind: 'page-quote', value: '', quote: '' },
+  evidence_layer: 'author_statement',
+  status: 'published',
+  verdict: '',
+  retrieval_method: 'fulltext-read',
+  scope: { supports_strength: false },
+});
+function extractCitations(text) {
+  const hits = new Map();
+  const lines = String(text || '').split('\n');
+  const add = (key, line, sentence) => {
+    if (!hits.has(key)) hits.set(key, { key, lines: [], sentences: [] });
+    const h = hits.get(key);
+    if (h.lines.indexOf(line) < 0) h.lines.push(line);
+    if (h.sentences.length < 3) h.sentences.push(sentence.trim().slice(0, 200));
+  };
+  lines.forEach((L, i) => {
+    if (/^\s*#{1,6}\s/.test(L) && /References|参考文献/i.test(L)) return;
+    const sent = L.split(/(?<=[.!?。！？])\s+/);
+    for (const m of L.matchAll(/\[(\d+(?:\s*[–\-,、]\s*\d+)*)\]/g)) {
+      const parts = m[1].split(/[–\-,、]/).map((x) => parseInt(x.trim(), 10)).filter((n) => !isNaN(n));
+      if (parts.length === 2 && /[–\-]/.test(m[1]) && parts[1] > parts[0] && parts[1] - parts[0] < 30) {
+        for (let n = parts[0]; n <= parts[1]; n++) add(String(n), i + 1, sent[0] || L);
+      } else {
+        for (const n of parts) add(String(n), i + 1, sent[0] || L);
+      }
+    }
+    for (const m of L.matchAll(/\(([A-Z][A-Za-z\-]+(?:\s+(?:et al\.?|&|and)\s+[A-Za-z\-]+)*),\s*(\d{4}[a-z]?)\)/g)) {
+      add((m[1] + ' ' + m[2]).toLowerCase(), i + 1, sent[0] || L);
+    }
+  });
+  return hits;
+}
+function cmdAnchors(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const has = (k) => A.indexOf('--' + k) >= 0;
+  const draft = val('draft');
+  if (!draft) { console.error('前提层失败：anchors 需要 --draft <稿.md> [--out <工作单.md>] [--json <骨架.json>]'); return 2; }
+  const draftAbs = path.resolve(draft);
+  if (!fs.existsSync(draftAbs)) { console.error('前提层失败：稿件不存在 —— ' + draftAbs); return 2; }
+  const text = fs.readFileSync(draftAbs, 'utf8');
+  const hits = extractCitations(text);
+  const keys = Array.from(hits.keys());
+
+  /* 门的结论（门才是判定者；取不到就明说） */
+  let gate = null, gateWhy = '';
+  try {
+    const pipeline = readPipeline();
+    const g = (pipeline.gates || []).find((x) => x.id === 'claim-anchor');
+    if (!g) gateWhy = '真源里没有 claim-anchor 门定义';
+    else {
+      const { script, why } = resolveGateScript(g, pipeline);
+      if (!script || !fs.existsSync(script)) gateWhy = why || ('门脚本不可用：' + script);
+      else {
+        const { spawnSync } = require('child_process');
+        const r = spawnSync(process.execPath, [script, '--draft', draftAbs, '--json'], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+        const o = String(r.stdout || '').trim();
+        const i = o.indexOf('{');
+        if (i >= 0) { try { gate = JSON.parse(o.slice(i)); } catch { gateWhy = '门输出无法解析为 JSON'; } }
+        else gateWhy = '门未输出 JSON（退出码 ' + r.status + '）';
+      }
+    }
+  } catch (e) { gateWhy = String((e && e.message) || e); }
+  const byKey = new Map();
+  if (gate) for (const h of (gate.HIGH || []).concat(gate.LOW || [])) if (!byKey.has(String(h.key))) byKey.set(String(h.key), h);
+
+  const L = [];
+  L.push('# 引用锚点表工作单 · ' + path.basename(draftAbs));
+  L.push('');
+  L.push('> 第 14 道门（claim-anchor）要求**正文每条引用**在锚点表里有条目，否则判 `HIGH-1 fabricated-reference`（P0 阻断）。');
+  L.push('> 本工作单：**键集与行号由本工具扫描得到**（工作单抽取器），**判定权在门**；骨架字段取自门的真实 schema，');
+  L.push('> 且**一律留空** —— 来源、页号、原句必须由人填写，工具不预填（预填就等于编造）。');
+  L.push('');
+  L.push('- 稿件：`' + draftAbs + '`');
+  L.push('- 扫描到的引用键：**' + keys.length + '** 个' + (keys.length ? '（' + keys.join(', ') + '）' : ''));
+  L.push('- 门的结论：' + (gate ? ('HIGH **' + (gate.HIGH || []).length + '** · LOW ' + (gate.LOW || []).length + ' · 判定 `' + (gate.verdict || '') + '`')
+    : '**未取到**（' + gateWhy + '）⇒ 本工作单只含扫描结果，**不得当作"门已通过"**'));
+  L.push('');
+  if (!keys.length) {
+    L.push('**未发现引用标记**（`[n]` 或 `(Author, YYYY)`）。若稿件确有引用，请检查标记写法。');
+  } else {
+    L.push('## 逐条待填（每条引用一节）');
+    L.push('');
+    for (const k of keys) {
+      const h = hits.get(k); const gh = byKey.get(k);
+      L.push('### `[' + k + ']`' + (gh ? '　门报：`' + gh.id + ' ' + gh.stage + '` L' + gh.line + ' —— ' + gh.why : ''));
+      L.push('');
+      L.push('- 稿件行号：' + h.lines.join(', '));
+      L.push('- 引用它的句子：');
+      for (const s of h.sentences) L.push('  - ' + (s || '（该行为标记本身）'));
+      L.push('- 待填（来源侧，必须**取到原文**再填）：');
+      L.push('  - `identifier.doi` / `pmid` / `url`（三者至少一项，且格式可解析）');
+      L.push('  - `locator`：`{ kind: "page-quote", value: "<页号>", quote: "<≥30 字的原文原句>" }` ⇒ 三者齐备才算"人已复核过"');
+      L.push('  - `evidence_layer`：默认 `author_statement`；**`inference` / `unconfirmed` 不得当引文**');
+      L.push('  - `scope.supports_strength: true`：**仅当**该句含强度词且原文确实支持时');
+      L.push('  - `status`：`published` / `preprint` / `retracted`（后两者所在句必须有对冲词）');
+      L.push('  - `verdict`：`SUPPORTED` / `PARTIAL`（PARTIAL 须给 `sub_claim_breakdown` 且含正反两向）');
+      L.push('');
+    }
+  }
+  L.push('## 用法');
+  L.push('');
+  L.push('```text');
+  L.push('node bin/studio.cjs anchors --draft "' + draftAbs + '" --json anchors.json   # 生成骨架后逐条填');
+  L.push('node bin/studio.cjs preflight --draft "' + draftAbs + '" --anchors anchors.json   # 带锚点表复跑第 14 道门');
+  L.push('```');
+  const outPath = val('out') || path.join(path.dirname(draftAbs), '_锚点表工作单-' + new Date().toISOString().slice(0, 10) + '.md');
+  fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
+  const jsonPath = val('json');
+  if (jsonPath) {
+    const skel = { _warning: '★ 以下字段全部留空：来源信息必须由人取到原文后填写；工具不预填（预填等于编造）。',
+      _schema: { note: '字段语义见 references/anchor-table.example.json 与第 14 道门 _gate-claim-anchor.cjs 的实现' },
+      anchors: keys.map(ANCHOR_SKELETON) };
+    fs.writeFileSync(path.resolve(jsonPath), JSON.stringify(skel, null, 2) + '\n', 'utf8');
+  }
+  /* `--json <路径>` = 把骨架写到该路径（仍给人读摘要）；纯 `--json` = 机器输出。两者语义不同，别混。 */
+  if (JSON_OUT && !jsonPath) {
+    console.log(JSON.stringify({ draft: draftAbs, keys, gate: gate ? { high: (gate.HIGH || []).length, low: (gate.LOW || []).length, verdict: gate.verdict } : null, out: outPath, skeleton: null }, null, 2));
+  } else {
+    console.log('引用锚点表工作单 · ' + path.basename(draftAbs));
+    console.log('  扫描到引用键 ' + keys.length + ' 个' + (keys.length ? '：' + keys.join(', ') : ''));
+    console.log('  门的结论：' + (gate ? ('HIGH ' + (gate.HIGH || []).length + ' · LOW ' + (gate.LOW || []).length + ' · ' + gate.verdict) : '未取到（' + gateWhy + '）'));
+    console.log('  工作单：' + outPath + (jsonPath ? '\n  骨架：  ' + path.resolve(jsonPath) + '（逐条填完后用 preflight --anchors 复跑）' : ''));
+  }
+  return 0;
+}
+
 function cmdPreflight(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -2015,7 +2200,9 @@ function cmdPreflight(args, argv) {
   run('门执行器（必过门清单）', process.execPath,
     [path.join(ROOT, 'bin', 'gate-runner.cjs'), '--type', val('type') || 'check', '--draft', draftAbs]
       .concat(pkgDir ? ['--package', path.resolve(pkgDir)] : [])
-      .concat(contractArg ? ['--contract', path.resolve(contractArg)] : []));
+      .concat(contractArg ? ['--contract', path.resolve(contractArg)] : [])
+      /* v3.2.21：锚点表透传给门执行器（第 14 道门 claim-anchor 用它核"引用↔来源"） */
+      .concat(val('anchors') ? ['--anchors', path.resolve(val('anchors'))] : []));
   // 2) 期刊契约门（给了契约才跑；跑不了就记"不可用"）
   if (contractArg) {
     const gateDef = (pipeline.gates || []).find((g) => g.id === 'journal-contract');
@@ -2058,6 +2245,7 @@ function cmdPreflight(args, argv) {
   L.push('- 稿件：`' + draftAbs + '`');
   L.push('- 投稿包：' + (pkgDir ? '`' + path.resolve(pkgDir) + '`' : '**未给** ⇒ 包级门未检查'));
   L.push('- 期刊契约：' + (contractArg ? '`' + path.basename(contractArg) + '`' : '**未给** ⇒ 契约门未检查'));
+  L.push('- 引用锚点表：' + (val('anchors') ? '`' + path.basename(val('anchors')) + '`（已透传给第 14 道门）' : '**未给** ⇒ claim-anchor 门按"无锚点"判 ⇒ 已计入下方结果'));
   L.push('- 结论：**' + verdict + '**（未通过 ' + bad.length + ' 项 · 未检查 ' + unchecked.length + ' 项 · 共 ' + steps.length + ' 步）');
   L.push('');
   const CN = ['一', '二', '三', '四', '五', '六', '七', '八'];
@@ -2803,6 +2991,7 @@ function main(argv) {
     if (cmd === 'credit') return cmdCredit(args[1] || '');
     if (cmd === 'formats') return cmdFormats(args, argv);
     if (cmd === 'preflight') return cmdPreflight(args, argv);
+    if (cmd === 'anchors') return cmdAnchors(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;
