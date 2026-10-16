@@ -1299,16 +1299,34 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c, '--contract', k], { encoding: 'utf8' });
     return (r.status === 0 && /投稿信要素核对/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
   });
-  check('★报告默认落点不得写进投稿包目录（否则工具自己污染投稿包）', () => {
+  /* ★ v3.2.43：**逐个命令都测**（此前只测 cover ⇒ `anchors` 的落点污染一路漏过去，直到包卫生门把 A 稿判红）。 */
+  check('★报告默认落点不得写进投稿包目录（**逐个会写报告的命令都测**：cover / anchors / preflight）', () => {
     const { spawnSync } = require('node:child_process');
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pkg-'));
-    const pkg = path.join(tmp, 'submission'); fs.mkdirSync(pkg);
-    const c = path.join(pkg, 'Cover-Letter.md');
-    fs.writeFileSync(c, 'Dear Editor, original, not under consideration elsewhere, the author approved, no competing interests.\n');
-    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c], { encoding: 'utf8' });
-    const strays = fs.readdirSync(pkg).filter((f) => f.startsWith('_'));
-    return (r.status === 1 || r.status === 0) && strays.length === 0
-      ? true : 'exit=' + r.status + ' 包内混入=' + JSON.stringify(strays);
+    const results = [];
+    const mk = (name) => { const tmp = fs.mkdtempSync(path.join(os.tmpdir(), name)); const pkg = path.join(tmp, 'submission'); fs.mkdirSync(pkg); return { tmp, pkg }; };
+    /* ① cover */
+    { const { pkg } = mk('h1-'); const c = path.join(pkg, 'Cover-Letter.md');
+      fs.writeFileSync(c, 'Dear Editor, original, not under consideration elsewhere, the author approved, no competing interests.\n');
+      const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c], { encoding: 'utf8' });
+      const strays = fs.readdirSync(pkg).filter((f) => f.startsWith('_'));
+      if (strays.length) results.push('cover:exit=' + r.status + ' 混入=' + JSON.stringify(strays)); }
+    /* ② anchors（本轮修的那个） */
+    { const { tmp, pkg } = mk('h2-'); const d = path.join(pkg, 'manuscript.md');
+      fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody cites [1].\n');
+      /* 给一份锚点表，免得它走"无锚点态"再来回跑门（与本锁无关）。 */
+      fs.writeFileSync(path.join(tmp, 'anchors-已解析.json'), JSON.stringify({ anchors: [{ marker: '1', identifier: { doi: '10.1000/x' } }] }));
+      const r = spawnSync(process.execPath, [__filename, 'anchors', '--draft', d], { encoding: 'utf8' });
+      const strays = fs.readdirSync(pkg).filter((f) => f.startsWith('_'));
+      if (strays.length) results.push('anchors:exit=' + r.status + ' 混入=' + JSON.stringify(strays));
+      const landed = fs.readdirSync(tmp).filter((f) => /^_锚点表工作单-/.test(f));
+      if (!landed.length) results.push('anchors:工作单没落在父目录（应在 ' + tmp + '）'); }
+    /* ③ preflight */
+    { const { pkg } = mk('h3-'); const d = path.join(pkg, 'manuscript.md');
+      fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody.\n');
+      const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d], { encoding: 'utf8' });
+      const strays = fs.readdirSync(pkg).filter((f) => /^_(投稿前总检|契约检查报告|锚点表工作单)/.test(f));
+      if (strays.length) results.push('preflight:exit=' + r.status + ' 混入=' + JSON.stringify(strays)); }
+    return results.length === 0 ? true : results.join(' · ');
   });
   check('★假阴性锁：**单作者稿**写 "The author approved the submission" 必须判通过（首版只认 all authors ⇒ 误报缺声明）', () => {
     const { spawnSync } = require('node:child_process');
@@ -3602,7 +3620,12 @@ function cmdAnchors(args, argv) {
   L.push('node bin/studio.cjs anchors --draft "' + draftAbs + '" --json anchors.json   # 生成骨架后逐条填');
   L.push('node bin/studio.cjs preflight --draft "' + draftAbs + '" --anchors anchors.json   # 带锚点表复跑第 14 道门');
   L.push('```');
-  const outPath = val('out') || path.join(path.dirname(draftAbs), '_锚点表工作单-' + new Date().toISOString().slice(0, 10) + '.md');
+  /* ★ v3.2.43：默认落点必须**包感知**。此前直接用稿件所在目录 ⇒ 稿在 `submission/` 时工作单被写进投稿包，
+     下一轮「包卫生」判 **✗ 不该进包**（真实发生：A 稿因此从 18/0/2 变 17/1/2）—— **工具自己污染投稿包**。
+     项目里早有 `reportHome()` 干这个（cover/response/preflight 都在用），`anchors` 漏了。
+     （诚实记：本补丁第一版用 `already='reportHome(draftAbs)'` 做幂等哨兵，被 preflight 的同名调用误匹配 ⇒ 实际没落盘，
+      由刚扩展的落点锁当场抓出。教训：幂等哨兵要选**只在目标处出现**的串。） */
+  const outPath = val('out') || path.join(reportHome(draftAbs), '_锚点表工作单-' + new Date().toISOString().slice(0, 10) + '.md');
   fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
   const jsonPath = val('json');
   if (jsonPath) {
