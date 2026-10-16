@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.2.91 —— 2026-10-17
+
+**把「命令总表」改为从真源自动生成（漂移根因＝手写第二份清单），并补齐对话侧文档缺的 17 个命令。**
+
+- v3.2.90 新加的跨面文档锁一上线就量出**真漂移的规模**：对话侧 `plugin/skill/SKILL.md` 不是只缺 `talk`/`reviewers`，而是**缺 17 个 agent_facing 命令**
+  （`anonymize` `model` `refs` `state` `lessons` `method` `handoff` `crosscheck` `docx` `cost` `selftest` `compliance` `hygiene` `claims` `coverage` `credit` `retract-check`）。
+- **修法不是手抄补 17 行**（那正是漂移的根因：**同一份清单写两遍**），而是**自动生成**：对话侧文档里插入 `<!-- AUTO:agent-facing:start … end -->` 标记段，
+  由脚本从真源 `references/pipeline.json.agent_facing` + 根 `SKILL.md` 的用法行**生成命令总表**；重跑即刷新，手改会被锁抓。
+- **登记表**：插件自检数 **38/38 → 40/40**（新增跨面文档锁 + 必失败臂两条）。
+- 教训：**凡"两处都要写同一份清单"，就该有一处是生成的**；手写第二份 = 定时炸弹。
+
 ## v3.2.90 —— 2026-10-17
 
 **修「对话侧技能文档落后于 CLI」的真漂移，并加一道跨面文档锁（防再漂移）。**

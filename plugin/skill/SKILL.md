@@ -147,3 +147,45 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 - `reviewers grade <transcript.md> --target 45 --max 75`：**问答演练评分**（逐答计时 / 未答 / 对冲开头 / 填充词密度 / 是否把答案埋在 yes-no 之后）。
 - `review --reviews <意见.md> [--draft <稿.md>] [--budget N --unit chars|words]`：**审稿意见分诊**（严重度×成本 · 共识升级 · must/should/brief 三带 · 按回复预算分配；**分类未完成退 1**）。
 - 以上 `talk` / `reviewers` / 严重度分诊的**规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0）**，实现为本仓自有 Node 纯函数，**未复制其代码**；来源见 `references/external-adoptions.md`。
+<!-- AUTO:agent-facing:start 本段由脚本生成（_ef/gen-flat-skill.py）；不要手改，改了会被锁抓 -->
+
+## 真源 agent_facing 命令总表（34 个 · 自动同步自 references/pipeline.json）
+
+> 本表由脚本从**真源**生成：根 `SKILL.md` 写用法，本表保证**对话侧文档不漏任何一个命令**（插件自检的跨面文档锁会核这一份）。
+
+- `anonymize`：**双盲投稿匿名化**：抹作者/单位/邮箱/ORCID/电话/基金号/致谢整节，**逐条记 original→replacement 进清单**（清单用于复核与还原，不写进正文）；自引表述与仓库链接**只提醒不擅改**；既无名单又无作者行 ⇒ 明确「未检查」退 1；**文档属性(docx/PDF 元数据)与图内水印不在覆盖范围**（如实标注）
+- `model`：**面板凭据的 CLI 通道**（与面板写同一份本机存储；`set` 用 `--key` 或 `--from-file`）
+- `refs`：**按 CSL 样式格式化参考文献**（零 key、离线）：样式名支持 `gb-t-7714-2025-numeric`（中文刊顺序编码制）/ `gb-t-7714-2025-author-date` / `vancouver`；样式文件在 `assets/csl/`（第三方，CC-BY-SA 3.0，见同目录 PROVENANCE.md），**sha256 锁**在 `references/csl-lock.json` —— `refs --check` 核样式是否被无声替换；取不到样式/引擎一律报错并算未通过
+- `route`：判类型 + 出链路 + 出必过门 + 出**期刊分类路由**（该读哪份资产 + 存在性 + 边界）
+- `gates`：列全部必过门（含运行器与脚本路径是否存在）
+- `intake`：登记稿件 + 出体检前检查项（语言判错可 --lang zh|en 覆盖）
+- `draft`：node bin/studio.cjs draft --out "<你的稿件目录>" --name "论文名" --journal "目标刊" --lang en
+- `scaffold`：**开一篇新稿：按 S0–S7 生成骨架 + 复制现成模板**
+- `genre`：判**稿件体裁**（empirical/review/methodological/secondary-analysis）→ 决定哪些门适用
+- `sections`：**章节级框架**（每节：解决什么/必答/篇幅/证据义务/门/常见退回）
+- `verify`：工件复核（重算输入哈希 ⇒ FRESH / STALE；与 report 同源，惰性加载 gate-runner）
+- `stylecheck`：写作质量机检（HARD＝低信息化开头；SOFT＝填充词/hedge/模糊词/贡献句/摘要无数字）
+- `polish`：**LaTeX 保真守卫**（数学与命令必须原样；抓新引入的未转义特殊字符；`\item`/破折号 warn）
+- `revise`：审稿回复：逐条 4 段骨架；有回应时机检**覆盖/空话/承诺未兑现/对抗措辞**
+- `figures`：题注体检（硬判据＝"见正文"；缺 n/单位只提示）· `figures recommend` 绘图建议 · `figures arch` 架构图 Mermaid 源码
+- `profile`：**研究风格档案**（`brief` 开工注入；**凭证类字段一律拒收**）
+- `coach`：**开工教练**：教训 × 强制级别（已挂门＝enforced / advisory）× 用过次数 ⇒ 取 top-N（`coach use <id>` 记使用）
+- `talk`：**讲授预算**：内容页目标（≈1 张/分钟）与硬上限 1.25×，problem-first 分节配时（**槽位时长必须由你给出，绝不臆测**）
+- `reviewers`：**聚合评审**：置信加权均值 · champion/detractor · 拖后腿维度 · 决策风险带（含「borderline 无 champion ⇒ 向下判」）
+- `audit`：**出厂审查**（完整性 + 重复性 + 数字一致性，6 项可复跑）
+- `state`：运行状态机（**done ≠ accepted**；accept 需 verdict_id + reviewer，同族会告警）
+- `lessons`：初稿经验库 L-1…L-18（每条带出处与"能不能机检"）
+- `method`：11 维方法论索引（指向真源文件，不复制）
+- `handoff`：列交接契约（必填 / 闭集 / 逐项 schema）
+- `crosscheck`：**同判回归**（两对判据：材料声明 / 成品件结构）必须同判
+- `docx`：**不依赖文档库**读成品件结构（表格/图/段落/残留标记）
+- `cost`：node bin/studio.cjs cost [--latest|--file <会话日志>] [--out 交付总结.md] [--prices <价格表>] [--usd-cny <汇率>]
+- `selftest`：机器可读计数（下游一律引用本命令，别手抄数字）
+- `compliance`：合规门（投稿前过：硬项=稿件+Cover Letter；软项=图件/参考文献/契约/声明段；取不到即失败）（含**硬检查「包卫生」**：内部产物/陈旧/临时文件不得进包，与契约门 `package_hygiene` 同规则）
+- `hygiene`：残留件门（备份/临时件不得留在技能树内）
+- `claims`：文档数字一致性门（文档写的 N/N 必须与实跑一致）
+- `coverage`：自检覆盖门（bin/*.cjs 含自检者须在真源 selfchecks 登记）
+- `credit`：CRediT 官方 14 角色核对（非官方写法＝失败；缺 CRediT 段＝未通过；依据 references/credit-roles.json）
+- `retract-check`：引用撤稿检查（OpenAlex is_retracted；撤稿须显式说明；取不到≠通过）
+
+<!-- AUTO:agent-facing:end -->
