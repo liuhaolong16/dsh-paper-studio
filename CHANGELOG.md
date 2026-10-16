@@ -13,6 +13,20 @@
 
 
 
+
+## v3.2.11 —— 2026-10-16
+
+**契约门补两件事：① "契约要求的节必须都在场"；② 契约的"来源等级/待重核"变成机器可见的提醒。**
+
+- **新检查 `required_sections`**：契约声明必需的节（Data Availability / Conflict of Interest / Funding / CRediT / 中图分类号 …）必须都在场。证据强度沿用"声明级"纪律：**只认标题行或独立文件名**，**待办行不算**（`[ ]`/TODO/待填）；逐节可选 `evidence: heading|line`——中文刊的「中图分类号/文献标志码」是**正文前普通行**，一刀切认标题会造假阴性。
+- **逐刊差异显式化**：PLOS 把 Financial Disclosure / Competing interests / Data Availability / CRediT 收在**投稿系统**里 ⇒ 其契约 `required_sections` 为**空数组**并附 `required_sections_note` 写明原因——**空是"已决定"，不是"忘了写"**。
+- **来源分级机器化**：契约可带 `provenance_level`（`first-hand` / `archived-secondary`）与 `needs_official_recheck: true`；标了后者 ⇒ 门**每次运行都打一条 WARN**（`contract_recheck_required`），报告永远不会"看起来很干净"。配套新资产 `references/contract-provenance.md`（三级纪律：不推定 / 冲突以最新一手为准 / 取不到不许写成要求 + 重核步骤）。
+- **实测（当前投稿稿 `13-英文投稿稿-v1.md`）**：
+  - **JoES：通过 13 · FAIL 2** —— `credit_present` 缺 CRediT；**`required_sections` 缺 2/3：Declaration of Competing Interest、Funding**（Data Availability 证据在包内）。
+  - **PLOS：通过 6 · FAIL 2 · WARN 1**（与基线一致 ⇒ `required_sections=[]` 不制造无谓失败）。
+  - 中文两份契约在样例稿上分别 10/1 与 **9/0 + WARN 1（待重核显形）**。
+- **修一处由真跑暴露的缺陷**：文件名匹配正则写成 `[*_\- ]?` ⇒ 字符类非法区间（`_`..空格），真跑直接崩；而**26 条自检当时已全绿**——原因是夹具里**没有"带 --package 的文件名匹配"这条支路**。已修正则（改用"任意单个非字母数字字符"）并**补上该支路夹具** ⇒ 自检 23 → 26/26。
+
 ## v3.2.10 —— 2026-10-16
 
 **第二份中文刊契约（验证"逐刊不同"能被机器承接）+ 修掉正文上限的同族漏网。**

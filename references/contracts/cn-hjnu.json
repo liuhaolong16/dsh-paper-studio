@@ -35,7 +35,18 @@
     "references_style": "numbered（[1] 上标，置于引文所在句/段标点之前；同一文献多次引用同一序号）",
     "reference_entry_must_include": [
       "year"
-    ]
+    ],
+    "required_sections": [
+      {
+        "name": "中图分类号",
+        "evidence": "line"
+      },
+      {
+        "name": "文献标志码",
+        "evidence": "line"
+      }
+    ],
+    "required_sections_note": "来源：本刊书写顺序（中图分类号 → 文献标志码 为正文前置项，是**普通行**而非标题 ⇒ evidence=line，但仍排除待办行）。"
   },
   "verified_facts": {
     "关键词": "3–5 个（分号间隔）——§2 逐刊对照（汉江师范列）",
@@ -70,7 +81,11 @@
     "keywords_present",
     "heading_max_chars",
     "keywords_count",
+    "required_sections",
+    "checkable_ids_covered",
+    "contract_recheck_required",
     "checkable_ids_covered"
   ],
-  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；声明了却没执行的检查会被 `checkable_ids_covered` 判失败。"
+  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；声明了却没执行的检查会被 `checkable_ids_covered` 判失败。",
+  "needs_official_recheck": true
 }

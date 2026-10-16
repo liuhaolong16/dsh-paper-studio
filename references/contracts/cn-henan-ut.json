@@ -64,7 +64,18 @@
       "英文关键词",
       "正文",
       "参考文献"
-    ]
+    ],
+    "required_sections": [
+      {
+        "name": "中图分类号",
+        "evidence": "line"
+      },
+      {
+        "name": "文献标志码",
+        "evidence": "line"
+      }
+    ],
+    "required_sections_note": "来源：本刊书写顺序（中图分类号 → 文献标志码 为正文前置项，是**普通行**而非标题 ⇒ evidence=line，但仍排除待办行）。"
   },
   "human_only": [
     "版面费 / 审稿费：该页可见范围内**未见收费表述** ⇒ 记为\"未见收费表述\"，**不得写成免费**，须向编辑部（电话 0371-67756156 · 工作 QQ 0128723）确认",
@@ -90,6 +101,7 @@
     "title_max_chars",
     "heading_max_chars",
     "keywords_count",
+    "required_sections",
     "required_terms_present",
     "checkable_ids_covered",
     "checkable_ids_covered"

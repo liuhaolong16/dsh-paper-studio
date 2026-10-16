@@ -68,7 +68,9 @@
     "funding_in_manuscript": false,
     "si_captions_at_end_of_manuscript": true,
     "si_item_naming": "S+编号（如 S1 Table、S2 Appendix）",
-    "cover_letter_separate": true
+    "cover_letter_separate": true,
+    "required_sections": [],
+    "required_sections_note": "**显式声明为空**：PLOS 把 Financial Disclosure / Competing interests / Data Availability Statement / CRediT / 相关在先稿件声明收在**投稿系统**里（见本契约 system_only_fields），**不要求写进稿件** ⇒ 稿件侧不设必需节。空数组是\"已决定\"，不是\"忘了写\"。"
   },
   "references": {
     "style": "Vancouver / ICMJE",
@@ -139,12 +141,14 @@
   "exemption_window": "官方明确：图件格式要求在\"暂定编辑接收（provisional Editorial Accept）\"之前一律放宽 —— 首投不必为图件规格卡住，但结构/参考/声明该改仍要改。",
   "checkable_ids": [
     "abstract_max_words",
-    "abstract_no_citations",
     "title_max_chars",
     "short_title",
     "heading_levels_max",
+    "abstract_no_citations",
     "figures_not_embedded",
     "funding_not_in_manuscript",
+    "checkable_ids_covered",
+    "package_dir",
     "checkable_ids_covered"
   ],
   "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。"

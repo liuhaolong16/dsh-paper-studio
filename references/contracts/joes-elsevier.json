@@ -32,7 +32,36 @@
       "year"
     ],
     "ai_declaration_required": true,
-    "ai_declaration_provenance": "★ 出版社级要求，**2026-10-16 本机复核（HTTP 200）**：Elsevier《Generative AI policies for journals》（https://www.elsevier.com/about/policies-and-standards/generative-ai-policies-for-journals）。现行要点：① AI 用于稿件准备须在稿件中**单独的 AI 声明段**披露，并写明**工具名 · 用途 · 监督程度**；② 声明段标题推荐用 “Declaration of generative AI and AI-assisted technologies **in the manuscript preparation process**”（本稿已按此对齐）；③ 纯语法/拼写检查无需声明，但**对句子结构或组织作出实质改动须披露**；④ **AI 用于研究过程（而非稿件准备）的用途须在 Methods 中详述**（本稿已在 Methods 的 Seed stability 段后补“No AI tool participated in the analysis”）；⑤ 不得把 AI 列为作者。"
+    "ai_declaration_provenance": "★ 出版社级要求，**2026-10-16 本机复核（HTTP 200）**：Elsevier《Generative AI policies for journals》（https://www.elsevier.com/about/policies-and-standards/generative-ai-policies-for-journals）。现行要点：① AI 用于稿件准备须在稿件中**单独的 AI 声明段**披露，并写明**工具名 · 用途 · 监督程度**；② 声明段标题推荐用 “Declaration of generative AI and AI-assisted technologies **in the manuscript preparation process**”（本稿已按此对齐）；③ 纯语法/拼写检查无需声明，但**对句子结构或组织作出实质改动须披露**；④ **AI 用于研究过程（而非稿件准备）的用途须在 Methods 中详述**（本稿已在 Methods 的 Seed stability 段后补“No AI tool participated in the analysis”）；⑤ 不得把 AI 列为作者。",
+    "required_sections": [
+      {
+        "name": "Data Availability",
+        "aliases": [
+          "Data Availability",
+          "Availability of data",
+          "数据可用性"
+        ]
+      },
+      {
+        "name": "Declaration of Competing Interest",
+        "aliases": [
+          "Declaration of Competing Interest",
+          "Conflict of Interest",
+          "Conflicts of Interest",
+          "利益冲突"
+        ]
+      },
+      {
+        "name": "Funding",
+        "aliases": [
+          "Funding",
+          "资助",
+          "基金"
+        ]
+      }
+    ],
+    "required_sections_note": "来源：references/compliance-checklist.md §4（一手：该刊 Guide 的声明段要求）。**Ethics 有意不列入**：伦理批准/知情同意只对**人体或动物研究**适用，本刊投稿的电池类研究不适用 ⇒ 列入会产生假失败，改由人工按研究类型判断。CRediT 与生成式 AI 声明已有独立检查（credit_present / ai_declaration_present），不在此重复。",
+    "required_sections_source": "references/compliance-checklist.md §4（2026-10-16 一手取证）"
   },
   "quotes": {
     "abstract": "You are required to provide a concise and factual abstract that does not exceed 250 words.",
@@ -60,6 +89,9 @@
     "acknowledgements_before_references",
     "ai_declaration_present",
     "ai_declaration_before_references",
+    "required_sections",
+    "checkable_ids_covered",
+    "package_dir",
     "checkable_ids_covered"
   ],
   "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。"
