@@ -3,6 +3,16 @@
 
 # 变更记录
 
+## v3.2.73 —— 2026-10-16
+
+**发布通路：给 `publish-npm` 增加「标签触发」（`push.tags: ['v*']`）。**
+
+- **为什么**：本机 `api.github.com` 被 hosts 指向 127.0.0.1（由本机加速器 `Steam++.Accelerator` 在 443 端口代理），**只有 `github.com` 的 git 通路可用**、API 不可用 ⇒ 无法从本机 dispatch 工作流。改由**打标签**让 GitHub 端自己跑（git push 实测可用）。
+- **触发规则**：只匹配 `v*` ⇒ 回滚标签 `pre-v*` **不会误触发发布**（这一条是刻意设计的，避免回滚动作意外发版）。
+- **标签触发时 `inputs.dry_run` 为空** ⇒ 工作流里 `!inputs.dry_run` 为真 ⇒ 走**真发布**；要演练请用网页手动触发并保持 `dry_run=true`。
+- **前置未变**（npm 侧一次性）：npmjs → Package → Settings → **Trusted Publisher** → GitHub Actions → `liuhaolong16 / dsh-paper-studio / publish-npm.yml`；未配置则工作流会在鉴权处失败（失败是可读的，不会误发）。
+- 本轮**未改任何判据与门**：studio 自检仍 **231/231**（版本号变更是唯一功能改动之外的差异）。
+
 ## v3.2.72 —— 2026-10-16
 
 **多形态论文 · 第 5 轮：按形态出骨架（`scaffold --form`，且未收齐答案不许开写）。**
