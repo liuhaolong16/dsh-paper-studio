@@ -1392,6 +1392,46 @@ function runSelftest() {
     return (/返修回复信核对（退出码 1）/.test(out) && !/返修回复信核对（退出码 未运行）/.test(out))
       || ('exit=' + r.status + ' out=' + out.replace(/\n/g, ' | ').slice(0, 280));
   });
+  check('scaffold·正控：按 --comments 生成逐条待填骨架（每条的原文逐字带入 + 两处填写位 + 待填哨兵）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'scaf-'));
+    const c = path.join(tmp, 'c.md'); const s = path.join(tmp, 's.md');
+    fs.writeFileSync(c, '1. The comparison with the baseline is missing; please add it.\n\n2. Please clarify the threshold used for the health indicator.\n');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--comments', c, '--scaffold', s], { encoding: 'utf8' });
+    let txt = ''; try { txt = fs.readFileSync(s, 'utf8'); } catch {}
+    const heads = (txt.match(/^## Comment \d+/gm) || []).length;
+    const okOrig = txt.includes('The comparison with the baseline is missing; please add it.') && txt.includes('Please clarify the threshold used for the health indicator.');
+    /* 说明行里也含这两个标签字样 ⇒ 用 >=2 而不是 ==2（首版按 ==2 断言，红的是断言不是生成器）。 */
+    const okSlots = (txt.match(/\*\*Response:\*\*/g) || []).length >= 2 && (txt.match(/\*\*Where:\*\*/g) || []).length >= 2;
+    const okSentinel = (txt.match(/待填/g) || []).length >= 2;
+    return (r.status === 0 && heads === 2 && okOrig && okSlots && okSentinel) ? true
+      : `exit=${r.status} 段数=${heads} 原文=${okOrig} 填写位=${okSlots} 哨兵=${okSentinel}`;
+  });
+  check('★scaffold·fail-first：**刚生成的骨架必须通不过核对**（每条判 not-filled，退出码 1）—— 骨架不得被当成成品交出去', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'scaf2-'));
+    const c = path.join(tmp, 'c.md'); const s = path.join(tmp, 's.md');
+    fs.writeFileSync(c, '1. Please add a comparison with the baseline model.\n\n2. The dataset section is unclear about preprocessing steps.\n');
+    spawnSync(process.execPath, [__filename, 'response', '--comments', c, '--scaffold', s], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', s, '--comments', c, '--json'], { encoding: 'utf8' });
+    let j = null; try { j = JSON.parse(String(r.stdout)); } catch {}
+    const all = j && j.rows && j.rows.length === 2 && j.rows.every((x) => x.verdict === 'not-filled');
+    return (r.status === 1 && all) ? true : `exit=${r.status} rows=${JSON.stringify(j && j.rows && j.rows.map((x) => x.verdict))}`;
+  });
+  check('scaffold·必失败面：没给 --comments 必须 exit=2（生成不出逐条骨架）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'scaf3-'));
+    const r = spawnSync(process.execPath, [__filename, 'response', '--scaffold', path.join(tmp, 's.md')], { encoding: 'utf8' });
+    return (r.status === 2 && /需要 --comments/.test(String(r.stderr))) ? true : `exit=${r.status}`;
+  });
+  check('scaffold·反控：意见文件里解析不出条目 ⇒ exit=2（不得生成空骨架后报成功）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'scaf4-'));
+    const c = path.join(tmp, 'c.md'); const s = path.join(tmp, 's.md');
+    fs.writeFileSync(c, '短\n');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--comments', c, '--scaffold', s], { encoding: 'utf8' });
+    return (r.status === 2 && !fs.existsSync(s)) ? true : `exit=${r.status} 生成了=${fs.existsSync(s)}`;
+  });
   check('response·正控：逐条有回应且指明改动位置 ⇒ 通过', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'resp-'));
@@ -2630,6 +2670,34 @@ function cmdResponse(args, argv) {
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
   const letterArg = val('letter');
   const commentsArg = val('comments');
+  const scaffoldArg = val('scaffold');
+  /* ★ v3.2.32：**生成器模式** —— 只给 `--comments` 就够（它不检查，而是产出待填骨架）。
+     ★★ 关键纪律（fail-first）：骨架必须**通不过本命令自己的核对**。做法是每条回应都带 `待填` 哨兵，
+     核对时直接判「未填写（仍是骨架）」⇒ 「把骨架当成品交出去」在结构上不可能发生。 */
+  if (scaffoldArg) {
+    if (!commentsArg) { console.error('前提层失败：response --scaffold 需要 --comments <审稿意见.md>（没有意见清单就生成不出逐条骨架）'); return 2; }
+    const cS = path.resolve(commentsArg);
+    if (!fs.existsSync(cS)) { console.error('前提层失败：审稿意见不存在 —— ' + cS); return 2; }
+    const cs = splitComments(fs.readFileSync(cS, 'utf8'));
+    if (!cs.length) { console.error('前提层失败：审稿意见文件里没解析出任何条目（≥20 字的块才算意见）'); return 2; }
+    const outS = path.resolve(scaffoldArg);
+    const S = [];
+    S.push('# Response to Reviewers（待填骨架 · 由 paper-studio 生成）', '');
+    S.push('> 每条意见下有两处必须由人填写：`**Response:**`（实质回应，≥40 字，不能只写「已修改」）与 `**Where:**`（改动位置：行号 / 页 / 节 / 图表编号）。', '');
+    S.push('> ⚠ 本文件**填写前不能作为成品**：核对器会按条报「未填写（仍是骨架）」。', '', '---', '');
+    for (const c of cs) {
+      S.push('## Comment ' + c.no, '');
+      S.push('**Comment ' + c.no + ':** ' + c.text, '');
+      S.push('**Response:**', '');
+      S.push('<!-- 待填：实质回应 —— 做了什么、为什么这样做；≥40 字。不要只写「已修改」。 -->', '');
+      S.push('**Where:**', '');
+      S.push('<!-- 待填：改动位置 —— 行号 / 页 / 节 / 表格或插图编号；也可说明改写的段落。 -->', '', '');
+    }
+    fs.writeFileSync(outS, S.join('\n'), 'utf8');
+    console.log('已生成回复信待填骨架 · ' + cs.length + ' 条意见 ⇒ ' + outS);
+    console.log('  下一步：逐条填写 Response 与 Where，然后用 `response --letter <本文件> --comments <意见>` 复跑核对。');
+    return 0;
+  }
   if (!letterArg) { console.error('前提层失败：response 需要 --letter <回复信.md> --comments <审稿意见.md>'); return 2; }
   if (!commentsArg) { console.error('前提层失败：response 需要 --comments <审稿意见.md>（**没有意见清单就核不了覆盖**，不得当通过）'); return 2; }
   const lAbs = path.resolve(letterArg); const cAbs = path.resolve(commentsArg);
@@ -2660,9 +2728,12 @@ function cmdResponse(args, argv) {
     const body = block.split('\n').filter((L) => !/^\s*>/.test(L)).join('\n')
       .replace(normText(probe), '').replace(/^\s*(?:回应|回复|Response|Answer|答)\s*[:：]?/i, '').trim();
     const hasLocator = LOCATOR_RE.test(body);
+    /* ★ v3.2.32：骨架哨兵 —— 只要回应块里还有 `待填`/TODO/FIXME，就判「未填写」，
+       而不是含糊地报「空回应」或「未指明改动位置」（那两句会让人以为"我写了但不够"）。 */
+    const unfilled = /待填|TODO|FIXME/i.test(body);
     const empty = EMPTY_RESPONSE.test(body) || body.length < 40;
     const covered = hit >= 0 || matched >= 40;
-    const verdict = !covered ? 'missing' : (empty ? 'empty-response' : (hasLocator ? 'ok' : 'no-locator'));
+    const verdict = !covered ? 'missing' : (unfilled ? 'not-filled' : (empty ? 'empty-response' : (hasLocator ? 'ok' : 'no-locator')));
     rows.push({ no: c.no, covered, matched, len: body.length, hasLocator, verdict, text: c.text.slice(0, 60) });
   }
   const bad = rows.filter((r) => r.verdict !== 'ok');
@@ -2677,7 +2748,7 @@ function cmdResponse(args, argv) {
   L.push('');
   L.push('| # | 状态 | 原文匹配 | 回应字数 | 有改动位置 | 意见开头 |');
   L.push('| --- | --- | --- | --- | --- | --- |');
-  const ZH = { ok: '✅ 合规', missing: '✗ **漏回**', 'empty-response': '✗ **空回应**（<40 字或只有"已修改"）', 'no-locator': '✗ **未指明改动位置**' };
+  const ZH = { ok: '✅ 合规', missing: '✗ **漏回**', 'not-filled': '✗ **未填写**（仍是骨架）', 'empty-response': '✗ **空回应**（<40 字或只有"已修改"）', 'no-locator': '✗ **未指明改动位置**' };
   for (const r of rows) L.push('| ' + r.no + ' | ' + (ZH[r.verdict] || r.verdict) + ' | ' + (r.matched ? r.matched + ' 字' : '未匹配') + ' | ' + r.len + ' | ' + (r.hasLocator ? '是' : '否') + ' | ' + r.text.replace(/\|/g, '\\|') + ' |');
   if (bad.length) {
     L.push('');

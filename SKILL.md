@@ -49,7 +49,7 @@ node bin/studio.cjs preflight --draft <稿.md> [--package <投稿包>] [--contra
 node bin/studio.cjs anchors --draft <稿.md> [--out <工作单.md>] [--json <骨架.json>]   :: **引用锚点表工作单**（键集+行号来自扫描；骨架字段留空不预填；第 14 道门的判定权仍在门）
 node bin/studio.cjs anchors --draft <稿.md> --resolve [--online] [--out <anchors.json>]   :: **从稿件题录解析 DOI/URL 生成草稿锚点表**（有则采、无则留空并标 `_unresolved`；`--online` 用 Crossref 兜底且须过相似度阈值）
 node bin/studio.cjs anchors --draft <稿.md> --oa [--in <anchors.json>]   :: **查引用的开放获取可达性**（OpenAlex 免 key 批量）⇒ 得到"补页号原句"的起点清单（可免费读的带 PDF 直链）
-node bin/studio.cjs response --letter <回复信.md> --comments <审稿意见.md>   :: **返修回复信逐条核对**（覆盖/实质回应/**改动位置**；只核可机械判定的部分）
+node bin/studio.cjs response --letter <回复信.md> --comments <审稿意见.md>   :: **返修回复信逐条核对**（覆盖/实质回应/**改动位置**；只核可机械判定的部分） ｜ `--comments <意见> --scaffold <骨架.md>`：**生成逐条待填骨架**（带「待填」哨兵 ⇒ 未填写前通不过核对）
 node bin/studio.cjs retract-check <稿件或参考文献文件>          :: 引用撤稿检查（OpenAlex is_retracted；撤稿须显式说明；取不到≠通过）
 node bin/criteria-abcd.cjs --check <报告> | --scan-only <文本> | --selftest   :: 证据纪律四条 A/B/C/D（可达性 / 未检查显形 / 失败分型 / 结论带位置+对外扫描）
                                                            ::  依据=references/compliance-checklist.md（含 Elsevier 在先发表一手原文 2026-10-16 取证）
