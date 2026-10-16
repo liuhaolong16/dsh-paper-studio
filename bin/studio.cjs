@@ -1295,6 +1295,17 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c, '--contract', k], { encoding: 'utf8' });
     return (r.status === 0 && /投稿信要素核对/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
   });
+  check('★报告默认落点不得写进投稿包目录（否则工具自己污染投稿包）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pkg-'));
+    const pkg = path.join(tmp, 'submission'); fs.mkdirSync(pkg);
+    const c = path.join(pkg, 'Cover-Letter.md');
+    fs.writeFileSync(c, 'Dear Editor, original, not under consideration elsewhere, the author approved, no competing interests.\n');
+    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c], { encoding: 'utf8' });
+    const strays = fs.readdirSync(pkg).filter((f) => f.startsWith('_'));
+    return (r.status === 1 || r.status === 0) && strays.length === 0
+      ? true : 'exit=' + r.status + ' 包内混入=' + JSON.stringify(strays);
+  });
   check('★假阴性锁：**单作者稿**写 "The author approved the submission" 必须判通过（首版只认 all authors ⇒ 误报缺声明）', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-single-'));
@@ -2508,6 +2519,18 @@ const COVER_ITEMS = [
   { id: 'no-conflict', label: '无利益冲突（或与稿件一致）', re: /(?:no\s+(?:known\s+)?(?:competing|conflict)|declar(?:e|es|ation)\s+(?:that\s+)?(?:there\s+is\s+)?no\s+(?:competing|conflict)|无(?:利益)?冲突|无竞争性利益)/i },
   { id: 'originality', label: '原创、未发表（且不涉重复发表）', re: /(?:original|has\s+not\s+been\s+published|not\s+published\s+before|原创|未曾发表|未公开发表)/i },
 ];
+/**
+ * ★ v3.2.29：报告的**默认落点**必须躲开投稿包目录 —— 否则工具自己会污染投稿包。
+ *   实测事故：`cover --cover submission/Cover-Letter.md` 不加 `--out` 时，把 `_投稿信核对-*.md`
+ *   写进了 `submission/`，随后**被 package_hygiene 抓个正着**（包内多出 1 个内部产物）。
+ *   规则：输入所在目录若"像投稿包"（名字含 submission / 投稿包 / package），落点取其**父目录**，否则取同目录。
+ */
+function reportHome(inputFile) {
+  const dir = path.dirname(path.resolve(inputFile));
+  const base = path.basename(dir);
+  return /submission|投稿包|package/i.test(base) ? path.dirname(dir) : dir;
+}
+
 function cmdCover(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -2573,7 +2596,7 @@ function cmdCover(args, argv) {
   L.push('```text');
   L.push('node bin/studio.cjs cover --cover "' + cAbs + '"' + (contractArg ? ' --contract "' + path.resolve(contractArg) + '"' : ''));
   L.push('```');
-  const outPath = val('out') || path.join(path.dirname(cAbs), '_投稿信核对-' + new Date().toISOString().slice(0, 10) + '.md');
+  const outPath = val('out') || path.join(reportHome(cAbs), '_投稿信核对-' + new Date().toISOString().slice(0, 10) + '.md');
   fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
   if (JSON_OUT && !val('out')) {
     console.log(JSON.stringify({ cover: cAbs, journal: journalCheck, missing: missing.map((x) => x.id), holes: Array.from(new Set(holes)), bad, out: outPath }, null, 2));
@@ -2653,7 +2676,7 @@ function cmdResponse(args, argv) {
   L.push('```text');
   L.push('node bin/studio.cjs response --letter "' + lAbs + '" --comments "' + cAbs + '"');
   L.push('```');
-  const outPath = val('out') || path.join(path.dirname(lAbs), '_回复信核对-' + new Date().toISOString().slice(0, 10) + '.md');
+  const outPath = val('out') || path.join(reportHome(lAbs), '_回复信核对-' + new Date().toISOString().slice(0, 10) + '.md');
   fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
   if (JSON_OUT && !val('out')) {
     console.log(JSON.stringify({ letter: lAbs, comments: comments.length, bad: bad.length, rows }, null, 2));
@@ -2914,7 +2937,7 @@ function cmdPreflight(args, argv) {
   L.push('node bin/studio.cjs preflight --draft "' + draftAbs + '"' + (pkgDir ? ' --package "' + path.resolve(pkgDir) + '"' : '') + (contractArg ? ' --contract "' + path.resolve(contractArg) + '"' : ''));
   L.push('```');
   const reportText = L.join('\n') + '\n';
-  const outPath = outArg ? path.resolve(outArg) : path.join(path.dirname(draftAbs), '_投稿前总检-' + new Date().toISOString().slice(0, 10) + '.md');
+  const outPath = outArg ? path.resolve(outArg) : path.join(reportHome(draftAbs), '_投稿前总检-' + new Date().toISOString().slice(0, 10) + '.md');
   try { fs.writeFileSync(outPath, reportText, 'utf8'); } catch (e) { console.error('报告写不进去：' + String((e && e.message) || e)); return 2; }
   if (JSON_OUT) {
     console.log(JSON.stringify({ draft: draftAbs, package: pkgDir || null, contract: contractArg || null, verdict, out: outPath,
