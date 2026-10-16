@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.2.68 —— 2026-10-16
+
+**多形态论文 · 第 1 轮：调研与设计定稿（先弄清"改什么"，再动手）。**
+
+- **★先分清两根轴（否则必然撞名）**：`genres`（**研究类型**：实证/综述/方法学/公开数据二次分析，**决定哪些门适用**，已存在 4 种）与 `forms`（**论文形态**：学位论文/课堂演讲/SCI/开题报告/会议/课程论文，**决定框架·必备件·字数·工作流·重点**，本轮新建）**正交**：**形态选流程，体裁选门**。
+- **形态清单定稿**（按交付场景，不臆造）：**必做**＝① 学位论文（含开题/答辩）② 课堂演讲论文 ③ SCI/EI 期刊论文（保持）④ 开题报告/研究计划书；**增量**＝⑤ 课程论文 ⑥ 会议论文；**暂缓**＝毕业设计报告、读书报告（待需求驱动）。每形态已写明框架/必备件/字数口径/重点/工作流差异（例：课堂演讲＝**结论先行+时间盒+口播与幻灯片分工**；开题＝**可行性+进度表+创新点论证，无结果数据也可开工**）。
+- **调研来源（真实站点，已入档）**：国家/校级规范（[全国标准信息公共服务平台](https://std.samr.gov.cn/gb/search/gbDetailed?mode=p&id=MrfiyWoM%2B4Q%3D) · [北师大 2026 版学位论文编写规则](http://ss.graduate.bnu.edu.cn/core/ucontent/FmFile/r_xw_dbcl)）· [北邮答辩/报告**时间分配表**](http://grs.bupt.edu.cn/__local/5/FC/DF/04B16F6ED7170647BD24A5A0298_9F3C23C5_12F1509.pdf) · [开题报告模板](http://yjs.pzhu.cn/system/_content/download.jsp?urltype=news.DownloadAttachUrl&owner=1867425180&wbfileid=13181625) · [东莞理工写作指南](https://yjs.dgut.edu.cn/system/_content/download.jsp?urltype=news.DownloadAttachUrl&owner=1768337307&wbfileid=BDF0BEEB5AEC1D16A373760B067729FC) · [课堂项目：5–10 页论文 + 15 分钟演讲](https://wiseman.agnesscott.org/old/mat480S20/stuff/mat480project.pdf) · [图宾根 Seminar 指南](https://www-ti.informatik.uni-tuebingen.de/~fmg/download/guidelines.pdf)。
+- **竞品扫描（npm/Gitee 实测 2026-10-16）**：**`dsh-thesis`（学位论文+答辩全流程：材料摄取→逐题追问→逐章写作→原创性自查）＝学位论文形态最直接对手** · `dsh-plugin-academic-writing`（outlines）· `dsh-plugin-writing-guard`（完整性守卫）· **`wtf-p`（papers + proposals）＝开题的现成先例** · `shuozhao-academic-skills`（Claude Code）· **`@chhsiching/chhsich-thesis-aigc-skills`（降中文 AIGC 检测率）＝中文场景真实痛点** · `@youzhijc/overleaf-paper-mcp`（LaTeX）· `lunheng-article-pipeline`（长文流水线）；Gitee **`georgechou17/open-science-dispatcher`（312 个科研子技能装进通用 AI Agent 平台）＝跨宿主编排范例**。**纪律**：小 star 项目只作思路样本、**不当依赖**，不复制其文案/资产。
+- **启动问答（问完才开工）**：形态（8 选 1）→ 语言（中/英/中译英）→ 目标去向（国内刊/国外刊/校内/会议/未定）→ **载体要求（有模板 / 通用规范 / 按目标期刊 / 不确定）** → 创作模式（五种，已有）→ 该形态+模式的 `next_ask`；**未收齐答案不许开写**（将配夹具）。
+- 本轮**只做调研与设计**，未改任何判据或门（避免"没想清就动门"）：产出 `references/forms/00-recon-and-design.md`。
+
 ## v3.2.67 —— 2026-10-16
 
 **面板 key 连接器第 3 轮：装进宿主并实证「没白屏」，同时补掉一个分发缺口。**
