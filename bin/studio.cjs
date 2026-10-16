@@ -555,6 +555,7 @@ const SUBCOMMANDS = [
   'cover',
   'report-check',
   'reports',
+  'refs',
   'submission-fields',
   'route',
   'gates',
@@ -2664,6 +2665,64 @@ function runSelftest() {
       ? true : `created=${r1.created.length} skipped2=${r2.skipped.length} after=${after.slice(0, 16)}`;
   });
 
+  /* ★ v3.2.60 夹具：refs（CSL 格式化）+ 样式 sha256 锁。三条正控 + 两条必失败面。 */
+  check('v3.2.60·refs·GB/T 7714-2025 顺序编码制：真样式必须出条目且以 [1] 起头', () => {
+    const st = resolveCslStyleIn(cslDirPath(), 'gb-t-7714-2025-numeric');
+    if (!st) return '找不到 GB/T 7714-2025 样式文件';
+    const r = formatRefsCsl({ styleFile: st, locale: 'zh-CN', items: [{ id: 'a', type: 'article-journal', title: '锂电池健康状态估计与寿命预测综述', 'container-title': '电源技术', volume: '45', page: '1-8', issued: { 'date-parts': [[2019]] }, author: [{ family: '王', given: '明' }] }] });
+    if (!r.lines.length) return '没有条目';
+    if (!/^\[1\]/.test(r.lines[0])) return '条目没有以 [1] 起头：' + r.lines[0].slice(0, 60);
+    if (r.lines[0].indexOf('锂电池') < 0) return '条目里没有题名：' + r.lines[0].slice(0, 60);
+    return true;
+  });
+  check('v3.2.60·refs·著者-年制样式同样必须出条目（防只对一种样式有效）', () => {
+    const st = resolveCslStyleIn(cslDirPath(), 'gb-t-7714-2025-author-date');
+    if (!st) return '找不到 GB/T 7714-2025 著者-年制样式';
+    const r = formatRefsCsl({ styleFile: st, locale: 'zh-CN', items: [{ id: 'a', type: 'article-journal', title: '锂电池健康状态估计综述', 'container-title': '电源技术', issued: { 'date-parts': [[2019]] }, author: [{ family: '王', given: '明' }] }] });
+    if (!r.lines.length || r.lines[0].indexOf('锂电池') < 0) return '著者-年制没有出有效条目';
+    return true;
+  });
+  check('v3.2.60·refs·Vancouver：条目必须以「1.」起头', () => {
+    const st = resolveCslStyleIn(cslDirPath(), 'vancouver');
+    if (!st) return '找不到 vancouver 样式';
+    const r = formatRefsCsl({ styleFile: st, locale: 'en-US', items: [{ id: 'a', type: 'article-journal', title: 'Battery state of health estimation', 'container-title': 'J Power Sources', issued: { 'date-parts': [[2019]] }, author: [{ family: 'Wang', given: 'Y' }] }] });
+    if (!/^1\./.test(r.lines[0])) return 'Vancouver 条目没有以 1. 起头：' + r.lines[0].slice(0, 60);
+    return true;
+  });
+  check('v3.2.60·refs·样式锁：现有样式与 csl-lock.json 必须全部一致', () => {
+    const lock = readCslLock();
+    if (!lock || !lock.styles) return '样式锁不可读';
+    let bad = 0;
+    for (const name of Object.keys(lock.styles)) {
+      const f = path.join(cslDirPath(), lock.styles[name].file || (name + '.csl'));
+      if (!fs.existsSync(f) || sha256File(f) !== lock.styles[name].sha256) bad++;
+    }
+    return bad ? ('有 ' + bad + ' 个样式与锁不符') : true;
+  });
+  check('v3.2.60·refs·必失败：样式被改一个字节 ⇒ 锁必须报不符（防无声替换）', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'csl-lock-'));
+    const src = resolveCslStyleIn(cslDirPath(), 'vancouver');
+    const dst = path.join(tmp, 'vancouver.csl');
+    let xml = fs.readFileSync(src, 'utf8');
+    xml = xml.replace('<title>', '<title>X');           /* 改一个字节 */
+    fs.writeFileSync(dst, xml, 'utf8');
+    const fakeLock = path.join(tmp, 'lock.json');
+    fs.writeFileSync(fakeLock, JSON.stringify({ styles: { vancouver: { file: 'vancouver.csl', sha256: sha256File(src) } } }), 'utf8');
+    const rows = []; let bad = 0;
+    const lock = readCslLock(fakeLock);
+    for (const name of Object.keys(lock.styles)) {
+      const f = path.join(tmp, lock.styles[name].file);
+      const ok = fs.existsSync(f) && sha256File(f) === lock.styles[name].sha256;
+      if (!ok) bad++;
+      rows.push(name);
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+    return bad === 1 ? true : ('被改动的样式没有被抓出来（bad=' + bad + '）');
+  });
+  check('v3.2.60·refs·必失败：样式名写错必须返回 null（不许静默当通过）', () => {
+    const st = resolveCslStyleIn(cslDirPath(), 'no-such-style-xyz');
+    return st === null ? true : '写错的样式名竟然解析到了文件';
+  });
   check('方法论索引：11 维条目齐全（缺文件只报不崩）', () => listMethod().length >= 11 ? true : '维数不足');
 
   check('模板清单：计划里的目标文件名不得重复（防同一件东西两个名字）', () => {
@@ -3804,6 +3863,133 @@ function cmdDoctor(args, argv) {
   const srcCount = r.gateRows.filter((g) => g.source === 'bundled').length;
   console.log('doctor：' + (r.ok ? '环境齐备' : '**有缺口**') + '（门 ' + r.gatesOk + '/' + r.gatesTotal + ' · 素材 ' + r.assetsOk + '/' + r.assetsTotal + (srcCount ? ' · 其中 ' + srcCount + ' 道门用**插件内置副本**' : '') + '）' + (outPath ? '；机器可读：' + outPath : '（未落文件；要机器可读加 `--json` 或 `--out <路径>`）'));
   return r.ok ? 0 : 1;
+}
+/* ★ v3.2.60 `refs`：按 CSL 样式**格式化参考文献**（零 key、离线）。
+   引擎＝citeproc-js（与 citation-js 同源）；样式＝本仓库 assets/csl 下的第三方样式（CC-BY-SA 3.0，见 PROVENANCE.md）；
+   语言包＝citeproc-locales（MIT）。★样式文件带 sha256 锁（references/csl-lock.json）⇒ `--check` 能抓出被无声替换的样式。
+   纪律：引擎/样式/语言包任一取不到 ⇒ **明确报错并算未通过**，绝不静默当通过。 */
+const CSL_STYLE_ALIASES = {
+  'gb-t-7714-2025-numeric': 'china-national-standard-gb-t-7714-2025-numeric',
+  'gb-t-7714-2025': 'china-national-standard-gb-t-7714-2025-numeric',
+  'gbt7714': 'china-national-standard-gb-t-7714-2025-numeric',
+  'cn': 'china-national-standard-gb-t-7714-2025-numeric',
+  'gb-t-7714-2025-author-date': 'china-national-standard-gb-t-7714-2025-author-date',
+  'vancouver': 'vancouver'
+};
+function cslDirPath() { return path.join(ROOT, 'assets', 'csl'); }
+function cslLockFilePath() { return path.join(ROOT, 'references', 'csl-lock.json'); }
+function sha256File(p) { return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'); }
+function readCslLock(lockFile) {
+  try { return JSON.parse(fs.readFileSync(lockFile || cslLockFilePath(), 'utf8')); } catch (e) { return null; }
+}
+function resolveCslStyleIn(dir, name) {
+  const raw = String(name || '');
+  const key = CSL_STYLE_ALIASES[raw.toLowerCase()] || raw;
+  const cands = [];
+  if (/\.csl$/i.test(key)) cands.push(path.resolve(key));
+  cands.push(path.join(dir, key + '.csl'));
+  cands.push(path.join(dir, key));
+  for (const c of cands) { if (fs.existsSync(c) && fs.statSync(c).isFile()) return c; }
+  return null;
+}
+function normalizeRefs(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') {
+    for (const k of ['references', 'items', 'refs', 'data']) {
+      if (Array.isArray(raw[k])) return raw[k];
+    }
+    return [raw];
+  }
+  return [];
+}
+/** 纯格式化函数（自检直接调用它 ⇒ 夹具盯的是**被测那一层的真实输出**）。取不到引擎/语言包时抛错，绝不返回空串。 */
+function formatRefsCsl(opts) {
+  const o = opts || {};
+  const styleFile = o.styleFile;
+  if (!styleFile || !fs.existsSync(styleFile)) throw new Error('样式文件不存在：' + String(styleFile));
+  let CSL;
+  try { CSL = require('citeproc'); } catch (e) { throw new Error('未安装引擎 citeproc（未检查，不算通过）：' + String(e.message).slice(0, 90)); }
+  let localesDir = null;
+  try { localesDir = require('citeproc-locales'); } catch (e) { localesDir = null; }
+  const retrieveLocale = (lang) => {
+    if (!localesDir) return null;
+    for (const cand of [lang, String(lang).replace('-', '_'), String(lang).split('-')[0]]) {
+      const f = path.join(localesDir, 'locales-' + cand + '.xml');
+      if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8');
+    }
+    return null;
+  };
+  const items = normalizeRefs(o.items);
+  if (!items.length) throw new Error('没有可格式化的条目');
+  const byId = {};
+  items.forEach((it, i) => { const id = String((it && it.id) || ('r' + (i + 1))); byId[id] = Object.assign({}, it, { id }); });
+  const locale = o.locale || 'en-US';
+  const engine = new CSL.Engine({ retrieveLocale, retrieveItem: (id) => byId[id] || null }, fs.readFileSync(styleFile, 'utf8'), locale, true);
+  engine.setOutputFormat('text');
+  if (engine.opt && engine.opt.development_extensions) engine.opt.development_extensions.wrap_url_and_doi = false;
+  engine.updateItems(Object.keys(byId));
+  const bib = engine.makeBibliography();
+  if (!bib || !Array.isArray(bib[1]) || !bib[1].length) throw new Error('引擎没有产出条目（样式/语言包/条目可能不匹配）');
+  const lines = bib[1].map((s) => String(s).replace(/<[^>]+>/g, '').replace(/\s+$/, '')).filter((s) => s.length);
+  if (!lines.length) throw new Error('条目为空（去标签后无内容）');
+  return { lines, locale, styleSha256: sha256File(styleFile), styleFile };
+}
+function cmdRefs(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const dir = path.resolve(val('dir') || cslDirPath());
+  const lockFile = path.resolve(val('lock') || cslLockFilePath());
+  if (A.includes('--check') || A.includes('--styles')) {
+    const lock = readCslLock(lockFile);
+    if (!lock || !lock.styles) { console.error('前提层失败：样式锁不可读 —— ' + lockFile); return 2; }
+    const rows = []; let bad = 0;
+    for (const name of Object.keys(lock.styles)) {
+      const meta = lock.styles[name] || {};
+      const f = path.join(dir, meta.file || (name + '.csl'));
+      if (!fs.existsSync(f)) { rows.push([name, '缺文件', '(未检查)']); bad++; continue; }
+      const h = sha256File(f);
+      const ok = h === meta.sha256;
+      rows.push([name, ok ? 'OK' : '**哈希不符**', ok ? h.slice(0, 16) : h.slice(0, 16) + ' ≠ ' + String(meta.sha256).slice(0, 16)]);
+      if (!ok) bad++;
+    }
+    if (A.includes('--json')) {
+      console.log(JSON.stringify({ dir, lockFile, styles: rows.map((r) => ({ name: r[0], state: r[1], hash: r[2] })), bad }, null, 2));
+    } else {
+      console.log('样式锁核验（' + dir + '）');
+      for (const r of rows) console.log('  ' + String(r[0]).padEnd(52) + String(r[1]).padEnd(14) + r[2]);
+      console.log('合计：' + rows.length + ' 个样式 · 不符 ' + bad + ' 个 ⇒ ' + (bad ? '不成立（样式被替换，或锁过期未更新）' : '成立'));
+    }
+    return bad ? 2 : 0;
+  }
+  const fmt = val('format') || val('style');
+  const refsPath = val('refs');
+  if (!fmt) { console.error('前提层失败：refs 需要 --format <样式名>（gb-t-7714-2025-numeric / gb-t-7714-2025-author-date / vancouver），或 --check 核样式锁'); return 2; }
+  if (!refsPath) { console.error('前提层失败：refs --format 需要 --refs <CSL-JSON 文件>'); return 2; }
+  if (!fs.existsSync(path.resolve(refsPath))) { console.error('前提层失败：--refs 文件不存在 —— ' + path.resolve(refsPath)); return 2; }
+  const styleFile = resolveCslStyleIn(dir, fmt);
+  if (!styleFile) { console.error('前提层失败：找不到样式「' + fmt + '」（在 ' + dir + ' 下；用 refs --styles 看可用样式）'); return 2; }
+  const lock = readCslLock(lockFile);
+  const meta = lock && lock.styles ? (lock.styles[path.basename(styleFile, '.csl')] || null) : null;
+  const styleSha = sha256File(styleFile);
+  const lockState = !meta ? '未登记（锁里没有这个样式）' : (meta.sha256 === styleSha ? '与锁一致' : '**与锁不符**');
+  let raw;
+  try { raw = JSON.parse(fs.readFileSync(path.resolve(refsPath), 'utf8')); }
+  catch (e) { console.error('前提层失败：--refs 不是合法 JSON —— ' + String(e.message).slice(0, 90)); return 2; }
+  const locale = val('locale') || (/gb-t/i.test(path.basename(styleFile)) ? 'zh-CN' : 'en-US');
+  let res;
+  try { res = formatRefsCsl({ styleFile, items: raw, locale }); }
+  catch (e) { console.error('未通过：' + String(e.message)); return 2; }
+  const outPath = val('out');
+  if (outPath) fs.writeFileSync(path.resolve(outPath), res.lines.join('\n') + '\n\n' + provenanceLine([['style', styleFile], ['refs', path.resolve(refsPath)]]) + '\n', 'utf8');
+  if (A.includes('--json')) {
+    console.log(JSON.stringify({ style: path.basename(styleFile), styleSha256: res.styleSha256, lock: lockState, locale: res.locale, n: res.lines.length, lines: res.lines }, null, 2));
+  } else {
+    for (const l of res.lines) console.log(l);
+    console.log('---');
+    console.log('样式：' + path.basename(styleFile) + '（sha256 ' + styleSha.slice(0, 16) + ' · ' + lockState + '）· 语言：' + res.locale + ' · 条目：' + res.lines.length);
+    if (outPath) console.log('已写入：' + path.resolve(outPath));
+  }
+  return 0;
 }
 function cmdReports(args, argv) {
   const A = argv || [];
@@ -5131,6 +5317,7 @@ function main(argv) {
     if (cmd === 'report-check') return cmdReportCheck(args, argv);
     if (cmd === 'doctor') return cmdDoctor(args, argv);
   if (cmd === 'reports') return cmdReports(args, argv);
+    if (cmd === 'refs') return cmdRefs(args, argv);
     if (cmd === 'submission-fields') return cmdSubmissionFields(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);

@@ -1153,6 +1153,7 @@
     "criteria-abcd.cjs": "A/B/C/D 证据纪律四条（--selftest 15 条）"
   },
   "agent_facing": [
+    "refs",
     "route",
     "gates",
     "intake",

@@ -1,0 +1,30 @@
+{
+  "note": "CSL 样式的 sha256 锁：防止随包分发的第三方样式被无声替换（样式一变，所有人的参考文献输出就变）。",
+  "dir": "assets/csl",
+  "styles": {
+    "china-national-standard-gb-t-7714-2025-numeric": {
+      "file": "china-national-standard-gb-t-7714-2025-numeric.csl",
+      "sha256": "4df240a008123cb070dfd5224f45514f868e1fb27fb2dc678edc6b01fd314900",
+      "license": "http://creativecommons.org/licenses/by-sa/3.0/",
+      "author": "Zeping Lee",
+      "source": "https://www.zotero.org/styles/china-national-standard-gb-t-7714-2025-numeric",
+      "fetched": "2026-10-16"
+    },
+    "china-national-standard-gb-t-7714-2025-author-date": {
+      "file": "china-national-standard-gb-t-7714-2025-author-date.csl",
+      "sha256": "5b8b56b8d9f18a151d6edd9ca315ae332ff0a219163d6e08ebb2e00f181d6695",
+      "license": "http://creativecommons.org/licenses/by-sa/3.0/",
+      "author": "Zeping Lee",
+      "source": "https://www.zotero.org/styles/china-national-standard-gb-t-7714-2025-author-date",
+      "fetched": "2026-10-16"
+    },
+    "vancouver": {
+      "file": "vancouver.csl",
+      "sha256": "3bcebfe5ac07cba3d17716e77e6ded213435fba77ceb28a55e8e39f1eb9d2dfd",
+      "license": "http://creativecommons.org/licenses/by-sa/3.0/",
+      "author": "Michael Berkowitz",
+      "source": "https://www.zotero.org/styles/vancouver",
+      "fetched": "2026-10-16"
+    }
+  }
+}

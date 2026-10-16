@@ -3,6 +3,22 @@
 
 # 变更记录
 
+## v3.2.60 —— 2026-10-16
+
+**外部素材吸收第一件（R2）：`refs` —— 按 CSL 样式**格式化**参考文献（零 key、离线）。**
+
+- **背景**：此前我们对参考文献只判「齐不齐、编号顺不顺、著录项缺不缺」，**不会真的按规范排版**。生态扫描（`references/ecosystem-scan-2026-10-16.md`）确认：这件事有成熟引擎（citeproc-js，MIT）与**官方样式**（CSL 样式库，CC-BY-SA 3.0）。
+- **新增**：`refs --format <样式> --refs <CSL-JSON> [--out <文件>] [--json]` · `refs --check|--styles`
+  · 样式名：`gb-t-7714-2025-numeric`（中文刊顺序编码制）/ `gb-t-7714-2025-author-date` / `vancouver`；也可给 `.csl` 路径。
+  · 样式文件随包走：`assets/csl/`（**第三方**，来源与许可留痕见同目录 `PROVENANCE.md`：CC-BY-SA 3.0，作者 Zeping Lee / Michael Berkowitz）。
+  · **依赖只有两个，且都真的用到**：`citeproc`（citeproc-js 引擎，MIT）、`citeproc-locales`（zh-CN 等 CSL 语言包，MIT）。
+  · ★**诚实记录**：初版还装了 `@citation-js/core|plugin-csl|plugin-doi`（也是 MIT），但实现最终直接用 citeproc 吃样式 XML ⇒ 那三个成了**未使用依赖**，已卸掉（不养死依赖）；将来若要支持 **.bib / DOI 输入**，再按需把 `@citation-js/plugin-bibtex` 接上。
+- **★样式 sha256 锁**：`references/csl-lock.json` 记每个样式的哈希、许可、作者、来源；`refs --check` 逐个核 —— **样式被无声替换会被抓出来**（样式一变，所有人的参考文献输出就变）。`--out` 写出的文件带运行指纹，且指纹里含**样式文件**这一输入。
+- **纪律（延续本插件一贯做法）**：引擎/样式/语言包任一取不到 ⇒ **明确报错并算未通过**，绝不静默当通过（实测：样式名写错 ⇒ 前提层失败 exit 2；样式被改一字节 ⇒ 锁报「哈希不符」exit 2）。
+- **接线（四处同判，缺一处就红）**：真源 `references/pipeline.json` 的 `agent_facing` · 插件 `STUDIO_ACTIONS` · 根 `SKILL.md` 文档面 · 以及既有的「CLI 子命令 ⊆ 插件动作枚举」漂移锁。★**这次是锁先红了才发现的**（studio 173/174 + plugin 36/38 各报一条）—— 接线漏一处，能力对别的宿主就不可达。
+- 实测输出（真跑，中文刊样式）：`[1] Wang Y，Tian J，Sun Z，等. Data-driven health estimation and lifetime prediction of lithium-ion batteries: A review[J/OL]. Renewable and Sustainable Energy Reviews，2019，113：109254. DOI:10.1016/j.rser.2019.109254.` / `[2] 李明，张伟. 锂电池剩余寿命预测方法综述[J]. 电源技术，2021，45（3）：401-405.`
+- 自检：studio **168 → 174/174**（+6 夹具：三种样式正控 + 锁一致 + 两条必失败面）· plugin 38/38 · audit 9/9 且真跑全绿 · 契约门 69/69 · 门执行器 53/53。
+
 ## v3.2.59 —— 2026-10-16
 
 **上架 npm 的两条通路落地（文档 + 免 token 的 OIDC 工作流），本机不再需要保存任何发布凭据。**

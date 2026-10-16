@@ -1,0 +1,24 @@
+[
+  {
+    "id": "wang2019",
+    "type": "article-journal",
+    "title": "Data-driven health estimation and lifetime prediction of lithium-ion batteries: A review",
+    "container-title": "Renewable and Sustainable Energy Reviews",
+    "volume": "113",
+    "page": "109254",
+    "issued": { "date-parts": [[2019]] },
+    "author": [{ "family": "Wang", "given": "Y" }, { "family": "Tian", "given": "J" }, { "family": "Sun", "given": "Z" }, { "family": "Wang", "given": "L" }],
+    "DOI": "10.1016/j.rser.2019.109254"
+  },
+  {
+    "id": "li2021",
+    "type": "article-journal",
+    "title": "锂电池剩余寿命预测方法综述",
+    "container-title": "电源技术",
+    "volume": "45",
+    "issue": "3",
+    "page": "401-405",
+    "issued": { "date-parts": [[2021]] },
+    "author": [{ "family": "李", "given": "明" }, { "family": "张", "given": "伟" }]
+  }
+]
