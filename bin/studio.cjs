@@ -494,6 +494,7 @@ const SUBCOMMANDS = [
   'retract-check',
   'credit',
   'formats',
+  'preflight',
   'route',
   'gates',
   'intake',
@@ -1225,6 +1226,35 @@ function runSelftest() {
     const out = String(r.stdout || '');
     return (r.status === 1 && out.indexOf('未命中') >= 0) || ('exit=' + r.status + ' ｜ 含未命中=' + (out.indexOf('未命中') >= 0));
   });
+  check('preflight·结构：能生成总检报告（含门执行器段落与结论行）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-'));
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nA few words.\n\n## Introduction\n\nBody.\n');
+    const out = path.join(tmp, 'pf.md');
+    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--out', out], { encoding: 'utf8' });
+    let txt = '';
+    try { txt = fs.readFileSync(out, 'utf8'); } catch {}
+    const ok = r.status !== 2 && /^# 投稿前总检/m.test(txt) && /## 一、门执行器/.test(txt) && /## 二、期刊契约门/.test(txt)
+      && /共 3 步/.test(txt) && /结论：\*\*/.test(txt) && /未检查 ≠ 通过|未检查（不是通过）/.test(txt)
+      /* ★ 顺序锁：第一节的内容必须是**门执行器的真输出**（gate-runner 打印"门执行结果"），
+         而不是别的门的报告——首版因下标写死+漏跑一步，把契约门报告顶到了第一节。 */
+      && /## 一、门执行器[\s\S]{0,200}门执行结果/.test(txt);
+    return ok || ('exit=' + r.status + ' ｜ 报告长度=' + txt.length + ' ｜ 输出头=' + JSON.stringify(String(r.stdout || '').slice(0, 80)));
+  });
+  check('preflight·必失败面：给了不存在的契约必须 exit=2（不许静默跳过契约门）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pf2-'));
+    const d = path.join(tmp, 'd.md');
+    fs.writeFileSync(d, '# T\n');
+    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', path.join(tmp, 'nope.json')], { encoding: 'utf8' });
+    return (r.status === 2 && /不许静默跳过契约门/.test(String(r.stderr || '') + String(r.stdout || ''))) || ('exit=' + r.status);
+  });
+  check('preflight·必失败面：缺 --draft 必须 exit=2 并说明用法', () => {
+    const { spawnSync } = require('node:child_process');
+    const r = spawnSync(process.execPath, [__filename, 'preflight'], { encoding: 'utf8' });
+    return (r.status === 2 && /需要 --draft/.test(String(r.stderr || ''))) || ('exit=' + r.status);
+  });
   check('接口面：分派支持的命令必须都在 SUBCOMMANDS 登记（不许加了命令忘登记）', () => {
     const r = subcommandGaps(fs.readFileSync(__filename, 'utf8'), SUBCOMMANDS);
     return (r.missing.length === 0 && r.phantom.length === 0) || ('未登记: ' + r.missing.join(',') + ' ｜ 幽灵登记: ' + r.phantom.join(','));
@@ -1944,6 +1974,150 @@ function detectTexFormat(text) {
   for (const m of String(text).matchAll(/\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g)) pkgs.push(m[1].trim());
   return { documentclass: cls.trim(), bibliographystyle: bib.trim(), packages: pkgs };
 }
+/** 投稿前总检（v3.2.20）
+ *  为什么：判据已经很多（门执行器 / 期刊契约门 / 合规门 / 图件规格…），但用户得自己记住跑哪几件，
+ *  而且**跑漏一件不会有任何提示**。本命令只做**汇总**，逐项判定权仍归各门自身（不抢判定权）。
+ *  ★ 纪律：某一步**没跑成**（脚本缺失 / 本机路径未解析 / 缺输入）一律记为"未检查/不可用"，**不得当通过**。 */
+function resolveGateScript(gate, pipeline) {
+  const rel = gate.rel === 'playbook_root' ? String((pipeline.assets || {}).playbook_root || '') : ROOT;
+  if (!rel || String(rel).indexOf('__LOCAL__') === 0) return { script: '', why: '本机路径未解析（' + LOCAL_HINT + '）' };
+  return { script: path.join(rel, gate.entry), why: '' };
+}
+function cmdPreflight(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const draft = val('draft');
+  const pkgDir = val('package');
+  const contractArg = val('contract');
+  const outArg = val('out');
+  if (!draft) { console.error('前提层失败：preflight 需要 --draft <稿.md>（可选 --package <投稿包> --contract <契约.json> --out <报告.md>）'); return 2; }
+  const draftAbs = path.resolve(draft);
+  if (!fs.existsSync(draftAbs)) { console.error('前提层失败：稿件不存在 —— ' + draftAbs); return 2; }
+  if (contractArg) {
+    const cAbs = path.resolve(contractArg);
+    if (!fs.existsSync(cAbs)) { console.error('前提层失败：契约不存在 —— ' + cAbs + '（**不许静默跳过契约门**：给了契约就必须能跑）'); return 2; }
+  }
+  if (pkgDir && !fs.existsSync(path.resolve(pkgDir))) { console.error('前提层失败：投稿包目录不存在 —— ' + path.resolve(pkgDir)); return 2; }
+  let pipeline;
+  try { pipeline = readPipeline(); } catch (e) { console.error('前提层失败：' + String((e && e.message) || e)); return 2; }
+
+  const { spawnSync } = require('child_process');
+  const steps = [];
+  const run = (label, cmd, cmdArgs) => {
+    const r = spawnSync(cmd, cmdArgs, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    const out = String(r.stdout || '') + String(r.stderr || '');
+    steps.push({ label, rc: r.status === null ? -1 : r.status, out });
+    return r;
+  };
+
+  // 1) 门执行器（必过门清单）——★ 必须是**真调用**：首版这里只声明了一个变量却从未 run，
+  //    结果"共 2 步"、且段落标题按下标写死 ⇒ 契约门报告被打上"一、门执行器"的标题（最要紧的一步其实没跑）。
+  run('门执行器（必过门清单）', process.execPath,
+    [path.join(ROOT, 'bin', 'gate-runner.cjs'), '--type', val('type') || 'check', '--draft', draftAbs]
+      .concat(pkgDir ? ['--package', path.resolve(pkgDir)] : [])
+      .concat(contractArg ? ['--contract', path.resolve(contractArg)] : []));
+  // 2) 期刊契约门（给了契约才跑；跑不了就记"不可用"）
+  if (contractArg) {
+    const gateDef = (pipeline.gates || []).find((g) => g.id === 'journal-contract');
+    if (!gateDef) {
+      steps.push({ label: '期刊契约门', rc: -1, out: '真源里没有 journal-contract 门定义 ⇒ **未检查**（不是通过）' });
+    } else {
+      const { script, why } = resolveGateScript(gateDef, pipeline);
+      if (!script || !fs.existsSync(script)) {
+        steps.push({ label: '期刊契约门', rc: -1, out: '门脚本不可用：' + (why || script) + ' ⇒ **未检查**（不是通过）' });
+      } else {
+        const repPath = path.join(os.tmpdir(), 'preflight-contract-' + Date.now() + '.md');
+        const a = ['--draft', draftAbs, '--contract', path.resolve(contractArg), '--report', repPath];
+        if (pkgDir) a.push('--package', path.resolve(pkgDir));
+        const r = run('期刊契约门', process.execPath, [script].concat(a));
+        try { steps[steps.length - 1].report = fs.readFileSync(repPath, 'utf8'); } catch {}
+      }
+    }
+  } else {
+    steps.push({ label: '期刊契约门', rc: null, out: '未给 --contract ⇒ **未检查**（未检查 ≠ 通过）' });
+  }
+  // 3) 合规门（给了包才跑）
+  if (pkgDir) {
+    run('投稿合规门', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'compliance', path.resolve(pkgDir)]);
+  } else {
+    steps.push({ label: '投稿合规门', rc: null, out: '未给 --package ⇒ **未检查**（未检查 ≠ 通过）' });
+  }
+  // 4) 图件规格（契约里声明了 figure_spec 才相关；由契约门覆盖 ⇒ 这里只提示）
+  const specNote = contractArg ? '见契约门输出里的 figure_spec 项（若契约声明了 limits.figure_spec）' : '未给契约 ⇒ 未检查';
+
+  const bad = steps.filter((s) => s.rc !== null && s.rc !== 0);
+  const unchecked = steps.filter((s) => s.rc === null || s.rc === -1 && /未检查|不可用/.test(s.out));
+  const verdict = bad.length ? '不可投（有门未通过）' : (steps.some((s) => s.rc === null) || steps.some((s) => /未检查/.test(s.out)) ? '待定（有项目未检查）' : '可投（当前所有必过项通过）');
+
+  const L = [];
+  L.push('# 投稿前总检（preflight）· ' + path.basename(draftAbs));
+  L.push('');
+  L.push('> 由 `node bin/studio.cjs preflight` 汇总生成。**本命令不做判定**——逐项判定权属于各门自身；');
+  L.push('> 凡"未检查/不可用"一律**不得当通过**（这是本技能的一贯纪律）。');
+  L.push('');
+  L.push('- 稿件：`' + draftAbs + '`');
+  L.push('- 投稿包：' + (pkgDir ? '`' + path.resolve(pkgDir) + '`' : '**未给** ⇒ 包级门未检查'));
+  L.push('- 期刊契约：' + (contractArg ? '`' + path.basename(contractArg) + '`' : '**未给** ⇒ 契约门未检查'));
+  L.push('- 结论：**' + verdict + '**（未通过 ' + bad.length + ' 项 · 未检查 ' + unchecked.length + ' 项 · 共 ' + steps.length + ' 步）');
+  L.push('');
+  const CN = ['一', '二', '三', '四', '五', '六', '七', '八'];
+  steps.forEach((s, i) => {
+    /* ★ 标题**由步名派生**（此前按下标写死 ⇒ 少一步就整排错位、把别人的报告顶到"一、门执行器"下） */
+    L.push('## ' + (CN[i] || (i + 1)) + '、' + s.label);
+    L.push('');
+    L.push('退出码：' + (s.rc === null ? '（未运行）' : s.rc) + '　' + (s.rc === 0 ? '⇒ 通过' : (s.rc === null ? '' : '⇒ **未通过**')));
+    L.push('');
+    if (s.report) {
+      L.push('```markdown');
+      L.push(String(s.report).trim());
+      L.push('```');
+    } else {
+      L.push('```text');
+      L.push(String(s.out).trim().slice(0, 4000));
+      L.push('```');
+    }
+    L.push('');
+  });
+  L.push('## 五、图件规格');
+  L.push('');
+  L.push(specNote);
+  if (contractArg) {
+    try {
+      const C = JSON.parse(fs.readFileSync(path.resolve(contractArg), 'utf8'));
+      if (Array.isArray(C.human_only) && C.human_only.length) {
+        L.push('');
+        L.push('## 六、人工边界（机器不判，须人核）');
+        L.push('');
+        for (const x of C.human_only) L.push('- ' + x);
+      }
+      if (C.needs_official_recheck === true) {
+        L.push('');
+        L.push('> ⚠ 本契约标 `needs_official_recheck`：数字来自归档二手口径，**尚未经官网重核**。');
+      }
+    } catch {}
+  }
+  L.push('');
+  L.push('## 复跑命令');
+  L.push('');
+  L.push('```text');
+  L.push('node bin/studio.cjs preflight --draft "' + draftAbs + '"' + (pkgDir ? ' --package "' + path.resolve(pkgDir) + '"' : '') + (contractArg ? ' --contract "' + path.resolve(contractArg) + '"' : ''));
+  L.push('```');
+  const reportText = L.join('\n') + '\n';
+  const outPath = outArg ? path.resolve(outArg) : path.join(path.dirname(draftAbs), '_投稿前总检-' + new Date().toISOString().slice(0, 10) + '.md');
+  try { fs.writeFileSync(outPath, reportText, 'utf8'); } catch (e) { console.error('报告写不进去：' + String((e && e.message) || e)); return 2; }
+  if (JSON_OUT) {
+    console.log(JSON.stringify({ draft: draftAbs, package: pkgDir || null, contract: contractArg || null, verdict, out: outPath,
+      steps: steps.map((s) => ({ label: s.label, rc: s.rc })) }, null, 2));
+  } else {
+    console.log('投稿前总检（preflight）· ' + path.basename(draftAbs));
+    for (const s of steps) console.log('  ' + (s.rc === 0 ? '✓' : (s.rc === null ? '·' : '✘')) + ' ' + s.label + '（退出码 ' + (s.rc === null ? '未运行' : s.rc) + '）');
+    console.log('  结论：**' + verdict + '**');
+    console.log('  报告：' + outPath);
+    console.log('  说明：本命令只汇总，不判定；"未检查/不可用"不得当通过。');
+  }
+  return bad.length ? 1 : 0;
+}
+
 function cmdFormats(args, argv) {
   let d;
   try { d = readFormats(); } catch (e) { console.error(String((e && e.message) || e)); return 2; }
@@ -2628,6 +2802,7 @@ function main(argv) {
     if (cmd === 'compliance') return cmdCompliance(args[1] || '');
     if (cmd === 'credit') return cmdCredit(args[1] || '');
     if (cmd === 'formats') return cmdFormats(args, argv);
+    if (cmd === 'preflight') return cmdPreflight(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;

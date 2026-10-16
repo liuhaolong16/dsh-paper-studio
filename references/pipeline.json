@@ -30,7 +30,8 @@
     "criteria_abcd_gate": "bin/criteria-abcd.cjs（**A/B/C/D 证据纪律四条的单一文件实现**：零依赖 · 自带 20 条自检 · `--list/--check/--scan-only/--selftest`；来源＝公开承诺 issue #1）",
     "local_paths": "references/local-paths.example.json（机器本地路径表样板：真源用 __LOCAL__/<key> 占位符引用，真值放 git 忽略的 references/local-paths.json）",
     "submission_formats": "references/submission-formats.json（投稿格式模板表：CTAN 一手核实 elsarticle/IEEEtran/gbt7714/ctex + GitHub rticles；含 not_verified 与 human_only）",
-    "cn_contract_generic": "references/contracts/cn-generic.json（**中文刊跨刊共性**契约：书写顺序 · 页脚著录项 · GB/T 7714 编号；**刻意不含逐刊数字**，逐刊项全在 human_only）"
+    "cn_contract_generic": "references/contracts/cn-generic.json（**中文刊跨刊共性**契约：书写顺序 · 页脚著录项 · GB/T 7714 编号；**刻意不含逐刊数字**，逐刊项全在 human_only）",
+    "preflight_cmd": "bin/studio.cjs preflight --draft <稿> [--package <包>] [--contract <契约>] [--out <报告.md>]（**投稿前一条命令总检**：汇总门执行器/契约门/合规门；只汇总不判定，\"未检查/不可用\"≠通过）"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",

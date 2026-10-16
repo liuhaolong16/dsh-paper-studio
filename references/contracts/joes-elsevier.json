@@ -49,6 +49,12 @@
           "Conflict of Interest",
           "Conflicts of Interest",
           "利益冲突"
+        ],
+        "patterns": [
+          "declare[sd]? (?:that )?(?:the authors?|he|she|they) (?:has|have) no",
+          "no known competing financial interests",
+          "declare no competing interests",
+          "no conflict of interest"
         ]
       },
       {
@@ -57,10 +63,18 @@
           "Funding",
           "资助",
           "基金"
-        ]
+        ],
+        "patterns": [
+          "did not receive any specific (?:grant|funding)",
+          "received no (?:external |specific )?funding",
+          "no specific (?:grant|funding)",
+          "funded by",
+          "grant (?:number|no\\.?)"
+        ],
+        "note": "★ 资助既可写成 \"Funding\" 节，也可写成**标准无资助声明句**（Elsevier 常见：\"This research did not receive any specific grant…\"）——两者同等强。"
       }
     ],
-    "required_sections_note": "来源：references/compliance-checklist.md §4（一手：该刊 Guide 的声明段要求）。**Ethics 有意不列入**：伦理批准/知情同意只对**人体或动物研究**适用，本刊投稿的电池类研究不适用 ⇒ 列入会产生假失败，改由人工按研究类型判断。CRediT 与生成式 AI 声明已有独立检查（credit_present / ai_declaration_present），不在此重复。",
+    "required_sections_note": "来源：references/compliance-checklist.md §4（一手：该刊 Guide 的声明段要求）。**Ethics 有意不列入**：伦理批准/知情同意只对**人体或动物研究**适用，本刊投稿的电池类研究不适用 ⇒ 列入会产生假失败，改由人工按研究类型判断。CRediT 与生成式 AI 声明已有独立检查（credit_present / ai_declaration_present），不在此重复。 **v3.2.20**：证据强度含 ①标题行 ②**行首加粗/斜体标签** ③逐节 `patterns`（标准声明句）；三者同等强，且一律排除待办行。",
     "required_sections_source": "references/compliance-checklist.md §4（2026-10-16 一手取证）"
   },
   "quotes": {
