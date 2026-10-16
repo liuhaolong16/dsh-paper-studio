@@ -9,6 +9,19 @@
 
 
 
+
+## v3.2.7 —— 2026-10-16
+
+**新能力：引用撤稿检查 `retract-check`（素材来自 OpenAlex，只查询不复制数据）+ 修一处措辞。**
+
+- **能力**：`node bin/studio.cjs retract-check <稿件或参考文献文件>`（或 `--dois a,b`）——从文本抽 DOI（清洗尾部标点与 `https://doi.org/` 前缀）→ 批量查 OpenAlex `works.is_retracted`（`filter=doi:A|B`，每批 40）。
+- **三态 + 取不到≠通过**：`retracted`（撤稿，须显式说明撤稿状态）/ `clean` / `notFound`（OpenAlex 无记录，**不等于没问题**）/ `unreadable`（批失败）；**全批不可读 ⇒ 退出码 2**；有撤稿 ⇒ 退出码 1。
+- **实测通道**：OpenAlex 三条调用（单查 / `filter=is_retracted:true` / 批量 `filter=doi:A|B`）**均 HTTP 200**；已实测样例 `10.1038/nature00870`、`10.1016/s0140-6736(20)30367-6`、`10.1016/j.antimicag.2020.105949` 为 `is_retracted=true`（写在资产里供人工核对）。
+- **许可态度**：只在运行时查询，**不复制/不再分发** OpenAlex 数据；若将来要缓存结果，须先核 `docs.openalex.org` 条款。可选礼貌池走环境变量 `OPENALEX_MAILTO`（**代码与文档不留邮箱**）。
+- **资产** `references/retraction-check.md`（来源 · 三态 · **已知漏检面**（刚撤稿未更新 / 非 DOI 引用 / 撤稿声明 DOI 不同）· 不替代作者自核）。
+- **修**：`credit` 的措辞由"段落存在但无角色名"改为"**仅出现 CRediT 关键词**、未匹配到官方角色名（可能只是待办备注）"——原措辞会让读者以为稿件有该段。
+- 新判据 5 条（含 3 必失败：撤稿必报 / 取不到必不通过 / notFound 不得冒充 clean）。自检：CLI **97 → 102**。
+
 ## v3.2.6 —— 2026-10-16
 
 **上网找方向与素材（目标轮）：把 CRediT 官方角色做成资产 + 一条"非官方写法"判据。**

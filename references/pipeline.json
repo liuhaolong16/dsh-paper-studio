@@ -20,7 +20,8 @@
     "plos_contract": "references/contracts/plos-one.json（PLOS ONE 机器可读契约：limits/structure/references/cover_letter/system_only_fields/human_only/machine_checkable；每个数字取自 plos-one.md 的官方原文，带 verified_at/verified_from）",
     "contract_joes_elsevier": "references/contracts/joes-elsevier.json（Journal of Energy Storage / Elsevier 机器可读契约；搬自已取证件，带 verified_at/verified_from）",
     "contract_ripp_bmc": "references/contracts/ripp-bmc.json（RIPP / BMC (Springer Nature) 机器可读契约；搬自已取证件，带 verified_at/verified_from）",
-    "credit_roles": "references/credit-roles.json（CRediT 官方 14 角色（ANSI/NISO Z39.104-2022 · CC-BY 4.0），含逐字角色名与取证信息）"
+    "credit_roles": "references/credit-roles.json（CRediT 官方 14 角色（ANSI/NISO Z39.104-2022 · CC-BY 4.0），含逐字角色名与取证信息）",
+    "retraction_check": "references/retraction-check.md（引用撤稿检查说明：来源 OpenAlex is_retracted · 三态判据 · 取不到≠通过 · 已知漏检面）"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",
@@ -1129,6 +1130,7 @@
     "hygiene",
     "claims",
     "coverage",
-    "credit"
+    "credit",
+    "retract-check"
   ]
 }

@@ -440,6 +440,7 @@ function detectGenre(text, pipeline, override) {
 
 /** 阶段词汇表（骨干层）：chain 项必须能解析到真实实现，不许「只是名字」。 */
 const SUBCOMMANDS = [
+  'retract-check',
   'credit',
   'route',
   'gates',
@@ -1294,6 +1295,35 @@ function runSelftest() {
     return (!r.ok && r.reasons.some((x) => /未找到 CRediT/.test(x))) ? true : JSON.stringify(r.reasons);
   });
 
+  // ★ v3.2.7：引用撤稿检查（同步测纯判据；异步网络路径由真跑覆盖）
+  check('撤稿检查·DOI 提取：抽 DOI 并清洗尾部标点与 URL 前缀', () => {
+    const txt = 'Refs: doi:10.1038/nature00870. and https://doi.org/10.1371/journal.pone.0000217, plus 10.1016/j.ijantimicag.2020.105949;';
+    const d = extractDois(txt);
+    return (d.length === 3 && d.includes('10.1038/nature00870') && d.includes('10.1016/j.ijantimicag.2020.105949')) ? true : JSON.stringify(d);
+  });
+  check('撤稿检查·正控：批结果里全部未标撤稿 ⇒ 通过', () => {
+    const b = [{ ok: true, results: [
+      { doi: 'https://doi.org/10.1000/aaa', title: 'A', is_retracted: false, publication_year: 2020 },
+      { doi: 'https://doi.org/10.1000/bbb', title: 'B', is_retracted: false, publication_year: 2021 }] }];
+    const r = retractJudge(['10.1000/aaa', '10.1000/bbb'], b);
+    return r.ok === true ? true : JSON.stringify({ clean: r.clean.length, retracted: r.retracted.length, unreadable: r.unreadable.length });
+  });
+  check('必失败：有撤稿文献必须判不通过并逐条列出', () => {
+    const b = [{ ok: true, results: [
+      { doi: 'https://doi.org/10.1000/aaa', title: 'RETRACTED', is_retracted: true, publication_year: 2019 },
+      { doi: 'https://doi.org/10.1000/bbb', title: 'B', is_retracted: false, publication_year: 2021 }] }];
+    const r = retractJudge(['10.1000/aaa', '10.1000/bbb'], b);
+    return (!r.ok && r.retracted.length === 1 && r.retracted[0].doi === '10.1000/aaa') ? true : JSON.stringify(r.retracted);
+  });
+  check('必失败：批失败必须记 unreadable 且不判通过（取不到≠通过）', () => {
+    const r = retractJudge(['10.1000/aaa'], [{ ok: false, error: 'HTTP 503' }]);
+    return (!r.ok && r.unreadable.length === 1 && r.clean.length === 0) ? true : JSON.stringify({ ok: r.ok, unreadable: r.unreadable.length });
+  });
+  check('必失败：OpenAlex 无该 DOI 时记 notFound，且不得冒充 clean', () => {
+    const r = retractJudge(['10.9999/none'], [{ ok: true, results: [] }]);
+    return (r.notFound.length === 1 && r.clean.length === 0 && r.ok === false) ? true : JSON.stringify({ nf: r.notFound.length, clean: r.clean.length, ok: r.ok });
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1798,7 +1828,7 @@ function creditScan(text) {
       if (d === 2) { out.nearVariants.push({ found: c, official: r, distance: d }); break; }
     }
   }
-  if (out.section && out.rolesFound.length === 0) out.reasons.push('段落存在但未匹配到任何官方角色名（写法可能非官方）');
+  if (out.section && out.rolesFound.length === 0) out.reasons.push('仅出现 CRediT 关键词、未匹配到任何官方角色名（可能只是待办备注，或写法非官方）');
   out.ok = out.section && out.variants.length === 0 && out.rolesFound.length > 0;
   return out;
 }
@@ -1817,6 +1847,88 @@ function cmdCredit(file) {
   for (const why of r.reasons) console.log('  ✘ ' + why);
   console.log(r.ok ? '  ✔ CRediT 通过（段落在、角色名皆为官方写法）' : '  ⇒ 未通过（修完再投）');
   return r.ok ? 0 : 1;
+}
+
+/** 引用撤稿检查（v3.2.7）
+ *  为什么：期刊要求"引用被撤稿文献必须显式说明撤稿状态"，人工逐条核 DOI 必漏。
+ *  数据源：OpenAlex `works.is_retracted`（本机实测三条调用 HTTP 200；**只查询、不复制其数据**）。
+ *  结构：**同步纯判据 retractJudge（夹具可注入）+ 异步薄 IO retractScan（真跑用）**——
+ *  这样自检不需要联网，也不会出现"夹具返回 Promise 被当成通过"的假绿。
+ *  判据：三态（retracted/clean/notFound）+ **取不到≠通过**（批失败记 unreadable；全不可读 ⇒ 退出码 2）。 */
+function extractDois(text) {
+  const out = new Set();
+  for (const m of String(text || '').matchAll(/10\.\d{4,9}\/[^\s"'<>()\[\],;]+/g)) {
+    out.add(m[0].replace(/[.,;)\]]+$/, '').replace(/^https?:\/\/doi\.org\//i, '').toLowerCase());
+  }
+  return [...out];
+}
+/** 纯判据：dois + 每批结果（{ok:true,results:[...]} 或 {ok:false,error}）⇒ 汇总。 */
+function retractJudge(dois, batches) {
+  const rows = []; const chunkSize = 40;
+  for (let i = 0, bi = 0; i < dois.length; i += chunkSize, bi++) {
+    const chunk = dois.slice(i, i + chunkSize);
+    const b = batches && batches[bi];
+    if (!b || b.ok !== true) {
+      for (const d of chunk) rows.push({ doi: d, state: 'unreadable', error: String((b && b.error) || '未取到该批结果') });
+      continue;
+    }
+    const byDoi = new Map();
+    for (const w of (b.results || [])) byDoi.set(String(w.doi || '').replace(/^https?:\/\/doi\.org\//i, '').toLowerCase(), w);
+    for (const d of chunk) {
+      const w = byDoi.get(d);
+      if (!w) rows.push({ doi: d, state: 'notFound' });
+      else rows.push({ doi: d, state: w.is_retracted ? 'retracted' : 'clean', title: w.title || '', year: w.publication_year || null });
+    }
+  }
+  const retracted = rows.filter((r) => r.state === 'retracted');
+  const unreadable = rows.filter((r) => r.state === 'unreadable');
+  const notFound = rows.filter((r) => r.state === 'notFound');
+  const clean = rows.filter((r) => r.state === 'clean');
+  return { rows, retracted, unreadable, notFound, clean, total: rows.length,
+    ok: retracted.length === 0 && unreadable.length === 0 && clean.length > 0 };
+}
+async function retractScan(dois, opts) {
+  opts = opts || {};
+  const fetchJson = opts.fetchJson || (async (url) => {
+    const r = await fetch(url, { signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(30000) : undefined });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+  const mail = process.env.OPENALEX_MAILTO ? '&mailto=' + encodeURIComponent(process.env.OPENALEX_MAILTO) : '';
+  const batches = []; const chunkSize = 40;
+  for (let i = 0; i < dois.length; i += chunkSize) {
+    const chunk = dois.slice(i, i + chunkSize);
+    const url = 'https://api.openalex.org/works?per-page=200&select=doi,title,is_retracted,publication_year&filter=doi:' + chunk.map(encodeURIComponent).join('|') + mail;
+    try { const j = await fetchJson(url); batches.push({ ok: true, results: (j && j.results) || [] }); }
+    catch (e) { batches.push({ ok: false, error: String((e && e.message) || e) }); }
+  }
+  return retractJudge(dois, batches);
+}
+async function cmdRetractCheck(args, doisMode) {
+  let dois = [];
+  if (doisMode) {
+    const i = args.indexOf('--dois');
+    dois = extractDois(args.slice(i + 1).join(' '));
+  } else {
+    const file = args[1] || '';
+    if (!file) { console.error('前提层失败：retract-check 需要 <文件> 或 --dois <列表>'); return 2; }
+    const abs = path.resolve(file);
+    if (!fs.existsSync(abs)) { console.error('前提层失败：文件不存在 —— ' + abs); return 2; }
+    dois = extractDois(fs.readFileSync(abs, 'utf8'));
+  }
+  if (!dois.length) { console.error('前提层失败：未从输入中解析到任何 DOI（无 DOI 不判通过）'); return 2; }
+  const r = await retractScan(dois); r.dois = dois;
+  if (JSON_OUT) { console.log(JSON.stringify(r, null, 2)); return r.ok ? 0 : (r.unreadable.length === r.total ? 2 : 1); }
+  console.log('撤稿检查：' + dois.length + ' 个 DOI（来源 OpenAlex is_retracted；只查询不复制数据）');
+  if (r.retracted.length) {
+    console.log('  ✘ 引用了被撤稿文献（须显式说明撤稿状态，不得当普通文献引）：');
+    for (const x of r.retracted) console.log('     - ' + x.doi + '  ' + String(x.title || '').slice(0, 60) + ' (' + (x.year || '?') + ')');
+  }
+  if (r.notFound.length) console.log('  · OpenAlex 无记录（' + r.notFound.length + ' 个；**不等于没问题**）：' + r.notFound.slice(0, 5).map((x) => x.doi).join(' · '));
+  if (r.unreadable.length) console.log('  ✘ 取不到（' + r.unreadable.length + ' 个）⇒ **不得当成通过**：' + r.unreadable.slice(0, 3).map((x) => x.doi).join(' · '));
+  console.log('  ✔ 未标撤稿：' + r.clean.length + ' 个');
+  console.log(r.ok ? '  ✔ 撤稿检查通过' : '  ⇒ 未通过（撤稿项须处置；不可读项须重跑）');
+  return r.ok ? 0 : (r.unreadable.length === r.total ? 2 : 1);
 }
 
 // ── v3.1.9 三道新判据（都由 2026-10-16 生态日审的真实问题驱动）────────────
@@ -2353,6 +2465,7 @@ function main(argv) {
     if (cmd === 'coverage') return cmdCoverage();
     if (cmd === 'compliance') return cmdCompliance(args[1] || '');
     if (cmd === 'credit') return cmdCredit(args[1] || '');
+    if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;
   } catch (e) {
@@ -2368,5 +2481,16 @@ module.exports = { readPipeline, routeTask, resolveGate, intake, runSelftest, pr
 //   后者顶层又 require('./studio.cjs') —— 若此时 exports 还没赋值，
 //   拿到的是空对象，报 "studio.readPipeline is not a function"（2026-10-14 实测）。
 if (require.main === module) {
-  process.exitCode = main(process.argv.slice(2));
+  // ★ v3.2.7：main 里有一个异步命令（retract-check 需联网查 OpenAlex）。
+//   处理：同步命令照旧直接取返回值；**返回值是 Promise 时单独 await 并兜底捕获**——
+//   否则会把 Promise 赋给 process.exitCode（Node 报 ERR_INVALID_ARG_TYPE，本机实测踩过）。
+{
+  const __r = main(process.argv.slice(2));
+  if (__r && typeof __r.then === 'function') {
+    __r.then((c) => { process.exitCode = c; })
+      .catch((e) => { console.error('未捕获错误：' + String((e && e.message) || e)); process.exitCode = 2; });
+  } else {
+    process.exitCode = __r;
+  }
+}
 }
