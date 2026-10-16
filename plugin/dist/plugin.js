@@ -255,7 +255,10 @@ const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 
   'compliance', 'hygiene', 'claims', 'coverage', 'credit', 'retract-check',
   // ★ v3.2.24：补上 CLI 已有、但工具面漏接的 5 个 —— formats/preflight/anchors/report/schemacheck
   //   （经**真 MCP 客户端探针**实测：这五个子命令在原 action 枚举下**根本调不到** ⇒ 前端能力对别的宿主是死的）
-  'formats', 'preflight', 'anchors', 'report', 'schemacheck']
+  'formats', 'preflight', 'anchors', 'report', 'schemacheck',
+  // ★ v3.2.25：新增 response（返修回复信核对）—— **上一轮加的漂移锁当轮就抓到了它**（插件自检直接红：
+  //   「CLI 子命令 35 个，枚举缺：response」），说明该锁确实在拦新增能力静默进不了工具面。
+  'response']
 
 const PAPER_STUDIO_TOOL = {
   name: 'paper_studio',
