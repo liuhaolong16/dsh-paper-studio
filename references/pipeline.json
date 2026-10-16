@@ -179,6 +179,30 @@
       }
     ]
   },
+  "forms": {
+    "note": "论文**形态**模型（与 genres 正交：形态决定框架/必备件/字数/工作流/重点，体裁决定哪些门适用）。每形态一份 JSON，真源目录见 dir；缺文件或 JSON 非法一律判前提层失败（不许静默跳过）。",
+    "dir": "references/forms",
+    "default": "sci-journal",
+    "ask_order": [
+      "form",
+      "lang",
+      "target",
+      "carrier",
+      "mode"
+    ],
+    "ids": [
+      "thesis",
+      "class-talk",
+      "sci-journal",
+      "proposal",
+      "course-paper",
+      "conference"
+    ],
+    "deferred": {
+      "graduation-design-report": "与学位论文重叠高，待需求驱动；先登记不实现",
+      "reading-report": "读书报告需求弱，待需求驱动"
+    }
+  },
   "gate_meta": {
     "applies_to_default": [
       "*"

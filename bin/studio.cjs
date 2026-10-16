@@ -133,6 +133,46 @@ function localPathHint(v) {
   return String(v || '').indexOf('__LOCAL__') === 0 ? LOCAL_HINT : '';
 }
 
+function loadForms(repoRoot) {
+  /* 形态（form）真源加载：目录与 id 表来自 pipeline.forms；缺文件/JSON 非法一律判前提层失败（不许静默跳过）。
+     与体裁（genre）正交：形态决定框架/必备件/字数/工作流/重点，体裁决定哪些门适用。 */
+  const out = { ok: false, reason: '', dir: '', list: [], errors: [] };
+  try {
+    const p = readPipeline();
+    out.dir = path.resolve(repoRoot, (p.forms && p.forms.dir) || 'references/forms');
+    if (!fs.existsSync(out.dir)) { out.reason = '形态目录不存在：' + out.dir; return out; }
+    const files = fs.readdirSync(out.dir).filter((f) => f.endsWith('.json') && !f.startsWith('_'));
+    if (!files.length) { out.reason = '形态目录里没有 .json：' + out.dir; return out; }
+    for (const f of files) {
+      try {
+        const j = JSON.parse(fs.readFileSync(path.join(out.dir, f), 'utf8'));
+        if (!j || !j.id || !j.label) { out.errors.push(f + '：缺 id 或 label'); continue; }
+        if (!Array.isArray(j.framework) || !j.framework.length) { out.errors.push(f + '：framework 为空'); continue; }
+        out.list.push(j);
+      } catch (e) { out.errors.push(f + '：' + String((e && e.message) || e).slice(0, 90)); }
+    }
+    if (out.errors.length) { out.reason = '有形态文件不可用：' + out.errors.join(' | '); return out; }
+    out.list.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    out.ok = true;
+    return out;
+  } catch (e) { out.reason = '读形态真源失败：' + String((e && e.message) || e); return out; }
+}
+
+function formRequiredReport(text, form) {
+  /* 形态必备件判据（纯函数，便于夹具直接调用）：
+     命中=必备节找到信号；缺件=该节有信号但正文没有；**未检查**=该节没有机检信号。
+     ★缺件与未检查都让 ok=false —— 绝不把"没检查"报成"合格"。 */
+  const sig = (form && form.check_signals) || {};
+  const req = ((form && form.framework) || []).filter((x) => x.required);
+  const hit = [], miss = [], unchecked = [];
+  for (const it of req) {
+    const ks = sig[it.id];
+    if (!Array.isArray(ks) || !ks.length) { unchecked.push(it); continue; }
+    if (String(text).includes(ks[0]) || ks.some((k) => String(text).includes(k))) hit.push(it); else miss.push(it);
+  }
+  return { required: req.length, present: hit.length, missing: miss.map((x) => x.label), unchecked: unchecked.map((x) => x.label), ok: miss.length === 0 && unchecked.length === 0 };
+}
+
 function readPipeline(p = PIPELINE_PATH) {
   if (!fs.existsSync(p)) {
     const e = new Error(`前提层失败：找不到真源 ${p}`);
@@ -578,7 +618,7 @@ const SUBCOMMANDS = [
   'figures',
   'audit',
   'state',
-  'genre',
+  'form', 'genre',
   'sections',
   'docx',
   'handoff',
@@ -3056,6 +3096,119 @@ function runSelftest() {
     return (r.lang && typeof r.lang_reason === 'string' && r.lang_reason.length > 0) ? true : `lang=${r.lang} reason=${r.lang_reason}`;
   });
 
+        // ── v3.2.69 · 形态层（多形态论文）──────────────────────────────
+        check('v3.2.69·form·形态真源：目录内每个 .json 都必须可解析且有 id/label/framework（有坏文件即失败，不许静默跳过）', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          if (r.list.length < 6) return '形态数应 ≥6，实得 ' + r.list.length;
+          for (const f of r.list) {
+            if (!f.id || !f.label) return '有形态缺 id/label';
+            if (!Array.isArray(f.framework) || !f.framework.length) return f.id + ' 的 framework 为空';
+            if (!Array.isArray(f.next_ask) || f.next_ask.length < 3) return f.id + ' 的 next_ask 少于 3 条（没问清就开工＝理解度无从保证）';
+          }
+          return true;
+        });
+
+        check('v3.2.69·form·用户点名的两种必须在列（学位论文 / 课堂演讲论文）', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          const ids = r.list.map((f) => f.id);
+          for (const need of ['thesis', 'class-talk']) if (!ids.includes(need)) return '缺形态：' + need;
+          const labels = r.list.map((f) => f.label).join(' ');
+          if (!/学位论文/.test(labels)) return '没有「学位论文」这个形态';
+          if (!/课堂/.test(labels)) return '没有「课堂演讲论文」这个形态';
+          return true;
+        });
+
+        check('v3.2.69·form·学位论文必备件必须含 目录/致谢/原创性声明/成果（这几样正是它区别于期刊论文之处）', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          if (!f) return '没有 thesis 形态';
+          const sig = f.check_signals || {};
+          for (const k of ['toc', 'acknowledgements', 'originality', 'achievements']) if (!sig[k]) return '缺必备节机检信号：' + k;
+          if (!(f.gates || []).includes('form-required-artifacts')) return 'thesis 未挂 form-required-artifacts 门';
+          return true;
+        });
+
+        check('v3.2.69·form·★差异化：课堂演讲必备件必须含「结论先行」与「问答」，且不得混入学位论文专属件', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'class-talk');
+          if (!f) return '没有 class-talk 形态';
+          const sig = f.check_signals || {};
+          if (!sig.takeaway) return '课堂演讲缺「结论先行」必备节（这正是它与期刊/学位论文的关键差异）';
+          if (!sig.qna) return '课堂演讲缺「问答预备」必备节';
+          for (const bad of ['acknowledgements', 'originality', 'cover']) if (sig[bad]) return '课堂演讲混入了学位论文专属件：' + bad;
+          return true;
+        });
+
+        check('v3.2.69·form·check 正控（纯函数）：必备件齐全的稿必须 ok=true', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const lines = [];
+          for (const it of f.framework.filter((x) => x.required)) {
+            const ks = (f.check_signals || {})[it.id] || [];
+            lines.push('## ' + (ks[0] || it.label));
+          }
+          const rep = formRequiredReport(lines.join('\n'), f);
+          if (rep.required !== f.framework.filter((x) => x.required).length) return '必备节数对不上：' + rep.required;
+          if (rep.present !== rep.required) return '命中 ' + rep.present + '/' + rep.required + '（缺 ' + rep.missing.join('、') + '）';
+          if (rep.unchecked.length) return '有未检查项（本形态应已给全信号）：' + rep.unchecked.join('、');
+          return rep.ok === true ? true : 'ok 应为 true';
+        });
+
+        check('v3.2.69·form·check 必失败面（纯函数）：抽掉致谢/目录/原创性声明后必须 ok=false 并点名缺件', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const drop = new Set(['acknowledgements', 'toc', 'originality']);
+          const lines = [];
+          for (const it of f.framework.filter((x) => x.required)) {
+            if (drop.has(it.id)) continue;
+            const ks = (f.check_signals || {})[it.id] || [];
+            lines.push('## ' + (ks[0] || it.label));
+          }
+          const rep = formRequiredReport(lines.join('\n'), f);
+          if (rep.ok !== false) return '缺件的稿竟判 ok=true';
+          if (rep.missing.length !== 3) return '应缺 3 项，实缺 ' + rep.missing.length + '：' + rep.missing.join('、');
+          for (const w of ['致谢', '目录', '原创性声明']) if (!rep.missing.some((x) => x.includes(w))) return '缺件清单里没点名「' + w + '」';
+          return true;
+        });
+
+        check('v3.2.69·form·★诚实面（纯函数）：必备节没有机检信号时必须判不合格（未检查 ≠ 合格）', () => {
+          const fake = { id: 'x', label: 'x', framework: [{ id: 'a', label: '有信号节', required: true }, { id: 'b', label: '无信号节', required: true }], check_signals: { a: ['有信号节'] } };
+          const rep = formRequiredReport('有信号节', fake);
+          if (rep.present !== 1) return '命中数应为 1，实得 ' + rep.present;
+          if (rep.unchecked.length !== 1) return '未检查数应为 1，实得 ' + rep.unchecked.length;
+          if (rep.ok !== false) return '★有未检查项时 ok 仍为 true —— 这正是"没检查被当成合格"的漏洞';
+          return true;
+        });
+
+        check('v3.2.69·form·端到端（子进程·静默）：齐全退 0、缺件退 2、未知形态退 2', () => {
+          const r = loadForms(ROOT);
+          if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const good = f.framework.filter((x) => x.required).map((it) => '## ' + (((f.check_signals || {})[it.id] || [it.label])[0])).join('\n');
+          const drop = new Set(['acknowledgements', 'toc', 'originality']);
+          const bad = f.framework.filter((x) => x.required && !drop.has(x.id)).map((it) => '## ' + (((f.check_signals || {})[it.id] || [it.label])[0])).join('\n');
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-form-'));
+          const gp = path.join(dir, 'good.md'), bp = path.join(dir, 'bad.md');
+          fs.writeFileSync(gp, good, 'utf8'); fs.writeFileSync(bp, bad, 'utf8');
+          const { execFileSync } = require('child_process');
+          const run = (args) => { try { execFileSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs')].concat(args), { stdio: ['ignore', 'ignore', 'ignore'] }); return 0; } catch (e) { return (e && e.status) || 1; } };
+          const s1 = run(['form', 'check', '--form', 'thesis', '--draft', gp]);
+          const s2 = run(['form', 'check', '--form', 'thesis', '--draft', bp]);
+          const s3 = run(['form', 'show', 'no-such-form']);
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* 清不掉不影响判据 */ }
+          if (s1 !== 0) return '齐全的稿应退 0，实退 ' + s1;
+          if (s2 !== 2) return '缺件的稿应退 2，实退 ' + s2;
+          if (s3 !== 2) return '未知形态应退 2，实退 ' + s3;
+          return true;
+        });
+
+
   const failed = results.filter((r) => !r.ok);
   if (!JSON_OUT) for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   const __pass = results.length - failed.length;
@@ -3063,6 +3216,7 @@ function runSelftest() {
   if (JSON_OUT) {
     console.log(JSON.stringify({ suite: 'studio', pass: __pass, total: __total, ok: __total === __pass, version: VERSION, failed: failed.map((f) => f.name) }, null, 2));
   } else {
+
     console.log(`\n自检：${__pass}/${__total} 通过`);
   }
   return __total === __pass ? 0 : 1;
@@ -6048,6 +6202,72 @@ function main(argv) {
       }
       return r.ok ? 0 : 1;
     }
+if (cmd === 'form') {
+      // 论文形态：list / show / check（必备件门）。与体裁正交——形态选流程，体裁选门。
+      const rest = argv.slice(1);
+      const flag = (k) => { const i = rest.indexOf(k); return i > -1 ? rest[i + 1] : ''; };
+      const forms = loadForms(ROOT);
+      if (!forms.ok) { console.error('前提层失败：形态真源不可用 —— ' + forms.reason); return 2; }
+      const sub = (rest[0] && !rest[0].startsWith('--')) ? rest[0] : 'list';
+      if (sub === 'list') {
+        const brief = forms.list.map((f) => ({ id: f.id, label: f.label, required: (f.framework || []).filter((x) => x.required).length, gates: (f.gates || []).length }));
+        if (json) console.log(JSON.stringify({ dir: forms.dir, forms: brief }, null, 2));
+        else {
+          console.log('论文形态（形态选流程，体裁选门）· 真源 ' + forms.dir);
+          for (const f of brief) console.log('  ' + f.id.padEnd(12) + ' ' + f.label + '  · 必备节 ' + f.required + ' · 门 ' + f.gates);
+          console.log('用法：form show <id> | form check --form <id> --draft <稿.md> [--json]');
+        }
+        return 0;
+      }
+      if (sub === 'show' || sub === 'check') {
+        const id = (rest[1] && !rest[1].startsWith('--')) ? rest[1] : flag('--form');
+        const f = forms.list.find((x) => x.id === id);
+        if (!f) { console.error('前提层失败：未知形态「' + String(id || '(空)') + '」——可选：' + forms.list.map((x) => x.id).join(' / ')); return 2; }
+        if (sub === 'show') {
+          if (json) console.log(JSON.stringify(f, null, 2));
+          else {
+            console.log(f.label + '（' + f.id + '）—— ' + (f.blurb || ''));
+            console.log('适用场景：' + (f.applies_when || '（未写）'));
+            console.log('必备件（缺一即不合格，共 ' + (f.framework || []).filter((x) => x.required).length + ' 项）：');
+            for (const it of (f.framework || []).filter((x) => x.required)) console.log('  · ' + it.label + (it.note ? ' —— ' + it.note : ''));
+            const opt = (f.framework || []).filter((x) => !x.required);
+            if (opt.length) console.log('可选件：' + opt.map((x) => x.label).join(' / '));
+            console.log('篇幅与格式口径：' + (((f.norms || {}).length) || '（未写）'));
+            console.log('本形态重点（与其它形态的差异就在这几行）：');
+            for (const x of (f.focus || [])) console.log('  · ' + x);
+            console.log('工作流：'); for (const x of (f.workflow || [])) console.log('  · ' + x);
+            console.log('开工前必须问清：'); for (const x of (f.next_ask || [])) console.log('  · ' + x);
+            console.log('本形态适用门：' + (((f.gates || []).join(' / ')) || '（未写）'));
+            console.log('雷区：'); for (const x of (f.risks || [])) console.log('  · ' + x);
+          }
+          return 0;
+        }
+        // check：必备件门。★缺件与「无法机检」都判不合格——绝不把"没检查"报成"合格"
+        const draft = flag('--draft') || rest.slice(2).find((a) => !a.startsWith('--'));
+        if (!draft) { console.error('用法：node bin/studio.cjs form check --form <id> --draft <稿.md> [--json]'); return 2; }
+        if (!fs.existsSync(draft)) { console.error('前提层失败：文件不存在 ' + draft); return 2; }
+        const text = fs.readFileSync(draft, 'utf8');
+        const rep = formRequiredReport(text, f);
+        const req = { length: rep.required };
+        const hit = new Array(rep.present);
+        const miss = rep.missing.map((x) => ({ label: x }));
+        const unchecked = rep.unchecked.map((x) => ({ label: x }));
+        const ok = rep.ok;
+        const out = { form: f.id, label: f.label, draft, required: rep.required, present: rep.present, missing: rep.missing, unchecked: rep.unchecked, ok };
+        if (json) console.log(JSON.stringify(out, null, 2));
+        else {
+          console.log('形态必备件检查：' + f.label + '（' + f.id + '） ← ' + draft);
+          console.log('  必备 ' + req.length + ' 项：命中 ' + hit.length + ' · 缺 ' + miss.length + ' · 未检查 ' + unchecked.length);
+          if (miss.length) { console.log('  缺件（必须补）：'); for (const x of miss) console.log('    ✘ ' + x.label); }
+          if (unchecked.length) { console.log('  ★未检查（本形态未给机检信号，不计入通过）：'); for (const x of unchecked) console.log('    ? ' + x.label); }
+          console.log(ok ? '  判定：必备件齐备' : '  判定：不合格（有缺件或未检查项）');
+        }
+        return ok ? 0 : 2;
+      }
+      console.error('用法：node bin/studio.cjs form list | form show <id> | form check --form <id> --draft <稿.md> [--json]');
+      return 2;
+    }
+    
     if (cmd === 'genre') {
       const rest = argv.slice(1);
       const flag = (k) => { const i = rest.indexOf(k); return i > -1 ? rest[i + 1] : ''; };

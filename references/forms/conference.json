@@ -1,0 +1,141 @@
+{
+  "id": "conference",
+  "label": "会议论文",
+  "blurb": "按会议模板的页数硬约束写：双栏、摘要截稿与全文截稿两个关口，口头/海报两种形态",
+  "applies_when": "投向学术会议（有明确模板与页数上限，常为双栏 4–8 页）",
+  "source_note": "形态依据：会议 Author Kit / 模板（常见 4–8 页双栏、页数超限直接退稿）；与期刊的两处关键差异＝**页数硬约束**与**双截稿日**",
+  "framework": [
+    {
+      "id": "title_authors",
+      "label": "Title / Authors / Affiliations",
+      "required": true,
+      "note": "按会议模板（有的双盲：需匿名化）"
+    },
+    {
+      "id": "abstract",
+      "label": "Abstract",
+      "required": true,
+      "note": "会议摘要常单独先交（摘要截稿）"
+    },
+    {
+      "id": "keywords",
+      "label": "Keywords",
+      "required": true,
+      "note": "会议常要求用于分轨"
+    },
+    {
+      "id": "intro",
+      "label": "1 Introduction",
+      "required": true,
+      "note": "会议审稿快，贡献要在第一页出现"
+    },
+    {
+      "id": "related",
+      "label": "2 Related work",
+      "required": true,
+      "note": "常压缩到半页；只留必须对比的工作"
+    },
+    {
+      "id": "method",
+      "label": "3 Method/Approach",
+      "required": true,
+      "note": "页数不够时把推导放附录或补充材料"
+    },
+    {
+      "id": "eval",
+      "label": "4 Experiments/Evaluation",
+      "required": true,
+      "note": "会议更看重与基线对比的公平性"
+    },
+    {
+      "id": "conclusion",
+      "label": "5 Conclusion & future work",
+      "required": true,
+      "note": "短，不超过半页"
+    },
+    {
+      "id": "references",
+      "label": "References",
+      "required": true,
+      "note": "按模板样式；**参考文献计入页数**（多数会议）"
+    },
+    {
+      "id": "supplementary",
+      "label": "Supplementary material（可选）",
+      "required": false,
+      "note": "放不下又不该删的内容"
+    }
+  ],
+  "norms": {
+    "length": "★硬约束：常见 4–8 页（双栏），**含参考文献**；超限常直接不送审",
+    "format": "★必须用会议官方模板（LaTeX/Word），擅自改边距会被格式审查退稿",
+    "numbering": "图/表全文连续编号",
+    "citation": "模板样式；页数紧张时优先精简参考文献条目数（不删必要引用）"
+  },
+  "focus": [
+    "★页数硬约束：先按模板排版再填内容，边写边量页数",
+    "★双截稿：摘要截稿与全文截稿两个时间点，别只记一个",
+    "模板服从：格式审查是会议的第一道门",
+    "口头 / 海报两种交付：海报要能 3 分钟讲清",
+    "双盲会议：正文与元数据都要匿名化"
+  ],
+  "workflow": [
+    "1 载入会议模板与页数上限、确认截稿日与是否双盲",
+    "2 出摘要（可能先交）→ 3 按模板写正文并持续量页数",
+    "4 格式审查自检（边距/字号/参考文献样式/页数）",
+    "5 按要求出匿名版或终版",
+    "6 口头报告或海报版（若需要）"
+  ],
+  "next_ask": [
+    "会议名称与届次（我去取官方模板与页数上限）",
+    "投的是全文还是摘要、口头还是海报",
+    "是否双盲（决定要不要匿名化流程）",
+    "截稿时间（摘要/全文分别）与你的可用时间",
+    "是否已有会议模板文件（有就直接用它）"
+  ],
+  "gates": [
+    "form-required-artifacts",
+    "contract",
+    "language",
+    "figures"
+  ],
+  "risks": [
+    "字数按期刊习惯写 ⇒ 页数超限被格式审查退稿",
+    "只记一个截稿日（摘要截稿更早）",
+    "双盲会议忘了匿名化（作者、致谢、自引表述都会暴露身份）"
+  ],
+  "check_signals": {
+    "title_authors": [
+      "Title",
+      "Authors"
+    ],
+    "abstract": [
+      "Abstract"
+    ],
+    "keywords": [
+      "Keywords"
+    ],
+    "intro": [
+      "Introduction"
+    ],
+    "related": [
+      "Related work",
+      "相关工作"
+    ],
+    "method": [
+      "Method",
+      "方法"
+    ],
+    "eval": [
+      "Experiments",
+      "Evaluation",
+      "实验"
+    ],
+    "conclusion": [
+      "Conclusion"
+    ],
+    "references": [
+      "References"
+    ]
+  }
+}

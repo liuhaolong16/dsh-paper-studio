@@ -1,6 +1,6 @@
 {
   "name": "dsh-paper-studio",
-  "version": "3.2.68",
+  "version": "3.2.69",
   "description": "论文插件 V3 整包：CLI + 判据资产 + 期刊体系 + DSH 插件半体 + 面板 key 连接器 + MCP 服务端（一份安装＝全部能力）",
   "license": "MIT",
   "type": "module",

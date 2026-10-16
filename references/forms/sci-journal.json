@@ -1,0 +1,183 @@
+{
+  "id": "sci-journal",
+  "label": "SCI/EI 期刊论文",
+  "blurb": "投向国际期刊的实证/方法论文：契约合规、IMRaD、引用锚点、图件规格、投稿包",
+  "applies_when": "目标是国际期刊或会议论文集的正刊投稿（英文为主）",
+  "source_note": "本形态沿用既有 12 道门链与随包期刊契约（joes-elsevier / plos-one / ripp-bmc）；规则真源在 references/pipeline.json 与 references/contracts/*.json",
+  "framework": [
+    {
+      "id": "title",
+      "label": "Title",
+      "required": true,
+      "note": "≤ 契约上限；避免空泛词"
+    },
+    {
+      "id": "authors",
+      "label": "Authors / affiliations / corresponding",
+      "required": true,
+      "note": "含通讯作者标记与邮箱"
+    },
+    {
+      "id": "abstract",
+      "label": "Abstract",
+      "required": true,
+      "note": "按契约字数上限（本仓有自动判据）"
+    },
+    {
+      "id": "keywords",
+      "label": "Keywords",
+      "required": true,
+      "note": "≥3 且不与标题重复"
+    },
+    {
+      "id": "highlights",
+      "label": "Highlights（若契约要求）",
+      "required": false,
+      "note": "常见 3–5 条、每条 ≤85 字符"
+    },
+    {
+      "id": "intro",
+      "label": "1 Introduction",
+      "required": true,
+      "note": "研究空白 → 本文贡献"
+    },
+    {
+      "id": "methods",
+      "label": "2 Materials and methods",
+      "required": true,
+      "note": "可复现：参数、数据、代码可得性"
+    },
+    {
+      "id": "results",
+      "label": "3 Results",
+      "required": true,
+      "note": "只报结果不解释"
+    },
+    {
+      "id": "discussion",
+      "label": "4 Discussion",
+      "required": true,
+      "note": "与文献对话、局限与展望"
+    },
+    {
+      "id": "conclusions",
+      "label": "5 Conclusions",
+      "required": true,
+      "note": "逐条对应贡献"
+    },
+    {
+      "id": "declarations",
+      "label": "Declarations（CRediT/竞争利益/资助/数据可得性/伦理）",
+      "required": true,
+      "note": "★行首加粗标签也算（本仓判据已支持三类证据形态）"
+    },
+    {
+      "id": "references",
+      "label": "References",
+      "required": true,
+      "note": "目标刊样式（本仓有 CSL 样式锁）"
+    },
+    {
+      "id": "figures",
+      "label": "Figures + captions",
+      "required": true,
+      "note": "分辨率/字号/题注位置按契约"
+    },
+    {
+      "id": "cover_letter",
+      "label": "Cover letter（独立文件）",
+      "required": true,
+      "note": "多数刊要求单独提交"
+    }
+  ],
+  "norms": {
+    "length": "按目标刊契约（本仓 contract_limits 自动判）",
+    "format": "双栏/单栏、行号、页数按契约；LaTeX 或 Word 模版均可",
+    "numbering": "图/表/公式全文连续编号（期刊惯例，与学位论文的分章编号不同）",
+    "citation": "目标刊引用样式；正文引用与文后条目一一对应，摘要级证据需锚点核对"
+  },
+  "focus": [
+    "契约合规（字数/结构/声明/图件）——本仓 12 道门主要打这里",
+    "引用锚点：摘要级断言必须能回指原文",
+    "可复现性：数据与代码可得性声明",
+    "投稿包：稿件 + 图件 + 声明 + cover letter 齐备"
+  ],
+  "workflow": [
+    "1 选刊并载入契约（没有就去抓官方作者指南生成契约）",
+    "2 检索与核实 → 3 逐节起草 → 4 跑门 → 5 补锚点与声明 → 6 出投稿包"
+  ],
+  "next_ask": [
+    "目标期刊（有就载入契约；没有我给候选并说明依据）",
+    "论文类型（实证/综述/方法学）与数据来源",
+    "是否已有图件与数据（无数据时不许硬写结果）",
+    "作者与通讯信息、基金与致谢"
+  ],
+  "gates": [
+    "contract",
+    "claim-anchor",
+    "language",
+    "figures",
+    "compliance",
+    "package-hygiene"
+  ],
+  "risks": [
+    "语言或结构达标但**声明段缺失**（最常被 desk reject）",
+    "图件规格不符（位图字体、题注位置）",
+    "引用锚点是摘要级就下断言"
+  ],
+  "check_signals": {
+    "title": [
+      "Title",
+      "题目"
+    ],
+    "authors": [
+      "Author",
+      "作者"
+    ],
+    "abstract": [
+      "Abstract",
+      "摘要"
+    ],
+    "keywords": [
+      "Keywords",
+      "关键词"
+    ],
+    "intro": [
+      "Introduction",
+      "引言"
+    ],
+    "methods": [
+      "Methods",
+      "方法"
+    ],
+    "results": [
+      "Results",
+      "结果"
+    ],
+    "discussion": [
+      "Discussion",
+      "讨论"
+    ],
+    "conclusions": [
+      "Conclusion",
+      "结论"
+    ],
+    "declarations": [
+      "Declaration",
+      "CRediT",
+      "声明"
+    ],
+    "references": [
+      "References",
+      "参考文献"
+    ],
+    "figures": [
+      "Figure",
+      "图"
+    ],
+    "cover_letter": [
+      "Cover Letter",
+      "投稿信"
+    ]
+  }
+}

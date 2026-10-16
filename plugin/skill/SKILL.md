@@ -87,6 +87,7 @@ metadata:
   - `action=route` 判任务类型与必过门 · `gates` 列门 · `intake` 登记稿件；**`route` 还输出期刊分类路由**（该读哪份资产 + 存在性 + 边界，缺资产即失败退出）
 - **合规门（v3.2.2 接线）**：`action=compliance` + `args=["<投稿包目录>"]` ⇒ 投稿前过合规与许可清单（在先发表/预印本 · 第三方许可 · 地图政治正确性 · 伦理声明 · 可机检交付）；**硬项缺一即失败，取不到即失败**；依据＝仓库 `references/compliance-checklist.md`（单一真源，工具面不复制判据）。自审三件同样可达：`action=credit`（CRediT 官方 14 角色与非官方写法核对） · `action=retract-check`（引用撤稿检查：撤稿须显式说明，取不到≠通过）· `action=claims`（文档数字一致性）· `action=hygiene`（残留件）· `action=coverage`（自检覆盖）。
   - `draft` / `scaffold` 起新稿 · `genre` 判体裁 · `sections` 出章节骨架（含篇幅预算与必答问题）
+- `form list | form show <id> | form check --form <id> --draft <稿.md>` —— **论文形态**（学位论文 / 课堂演讲论文 / SCI / 开题报告 / 课程论文 / 会议论文）：**形态选流程，体裁选门**；`check` 是必备件门（缺件或无法机检一律判不合格）
   - `verify` 跑门 · `stylecheck` 写作质量 · `polish` 润色保障（保真守卫 + 改动账本）· `revise` 审稿回复/去 AI 味/通读/缩写扩写
   - `figures` 题注与绘图建议 · `profile` 研究风格档案 · `coach` 开工教练 · `audit` 出厂审查
 - **永远看退出码**：`paper_studio` 返回 `exit_code`。**0 才叫通过**；非 0 要在回答里如实说明（不要把它说成"跑过了"）。
