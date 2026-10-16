@@ -497,6 +497,7 @@ const SUBCOMMANDS = [
   'preflight',
   'anchors',
   'response',
+  'cover',
   'route',
   'gates',
   'intake',
@@ -1238,7 +1239,8 @@ function runSelftest() {
     let txt = '';
     try { txt = fs.readFileSync(out, 'utf8'); } catch {}
     const ok = r.status !== 2 && /^# 投稿前总检/m.test(txt) && /## 一、门执行器/.test(txt) && /## 二、期刊契约门/.test(txt)
-      && /共 3 步/.test(txt) && /结论：\*\*/.test(txt) && /未检查 ≠ 通过|未检查（不是通过）/.test(txt)
+      && /## 三、投稿信要素核对/.test(txt) && /共 4 步/.test(txt)   /* v3.2.26：接入投稿信步骤 ⇒ 步数 3→4 */
+      && /结论：\*\*/.test(txt) && /未检查 ≠ 通过|未检查（不是通过）/.test(txt)
       /* ★ 顺序锁：第一节的内容必须是**门执行器的真输出**（gate-runner 打印"门执行结果"），
          而不是别的门的报告——首版因下标写死+漏跑一步，把契约门报告顶到了第一节。 */
       && /## 一、门执行器[\s\S]{0,200}门执行结果/.test(txt);
@@ -1282,6 +1284,49 @@ function runSelftest() {
     const miss = byDoi.size === 0;
     const bad = (() => { try { oaLookup(['10.1/x'], () => { throw new Error('curl 退出码 7'); }); return false; } catch (e) { return true; } })();
     return (miss && !bad) || ('size=' + byDoi.size + ' threw=' + bad);
+  });
+  check('cover·正控：四项声明在场 + 刊名与契约一致 + 无占位符 ⇒ 通过', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-'));
+    const k = path.join(tmp, 'k.json'); const c = path.join(tmp, 'cover.md');
+    fs.writeFileSync(k, JSON.stringify({ journal: 'Journal of Energy Storage', publisher: 'Elsevier', verified_at: '2026-10-16', verified_from: 'u', limits: {} }));
+    fs.writeFileSync(c, 'Dear Editor,\n\nWe submit our original manuscript, which has not been published before and is not under consideration elsewhere, for exclusive consideration by the Journal of Energy Storage.\n\nAll authors have read and approved the submission. The authors declare no competing interests.\n\nSincerely,\nA. B.\n');
+    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c, '--contract', k], { encoding: 'utf8' });
+    return (r.status === 0 && /投稿信要素核对/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
+  });
+  check('cover·必失败面：漏"未一稿多投"必须报缺；刊名与契约不一致必须 FAIL（交叉核）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov2-'));
+    const k = path.join(tmp, 'k.json'); const c = path.join(tmp, 'cover.md');
+    fs.writeFileSync(k, JSON.stringify({ journal: 'Journal of Energy Storage', publisher: 'Elsevier', verified_at: '2026-10-16', verified_from: 'u', limits: {} }));
+    fs.writeFileSync(c, 'Dear Editor,\n\nPlease consider our original manuscript for publication in Renewable Energy.\n\nAll authors have approved this submission and declare no competing interests.\n');
+    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c, '--contract', k], { encoding: 'utf8' });
+    const out = String(r.stdout);
+    return (r.status === 1 && /未一稿多投/.test(out) && /找不到/.test(out)) || ('exit=' + r.status + ' out=' + out.slice(0, 220));
+  });
+  check('cover·必失败面：残留模板占位符（[待填]/TODO）必须被抓', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov3-'));
+    const c = path.join(tmp, 'cover.md');
+    fs.writeFileSync(c, 'Dear [待填 Editors],\n\nOur original manuscript is not under consideration elsewhere. All authors have approved. No competing interests.\n\nTODO: add suggested reviewers.\n');
+    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c], { encoding: 'utf8' });
+    const out = String(r.stdout);
+    return (r.status === 1 && /占位符/.test(out)) || ('exit=' + r.status + ' out=' + out.slice(0, 200));
+  });
+  check('cover·必失败面：没给 --cover 必须 exit=2', () => {
+    const { spawnSync } = require('node:child_process');
+    const r = spawnSync(process.execPath, [__filename, 'cover'], { encoding: 'utf8' });
+    return (r.status === 2 && /需要 --cover/.test(String(r.stderr))) || ('exit=' + r.status);
+  });
+  check('cover·未核不得当通过：不给 --contract 时刊名一栏必须显式记"未交叉核对"', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov4-'));
+    const c = path.join(tmp, 'cover.md'); const o = path.join(tmp, 'r.md');
+    fs.writeFileSync(c, 'Dear Editor, original, not under consideration elsewhere, all authors approved, no competing interests.\n');
+    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c, '--out', o], { encoding: 'utf8' });
+    let txt = '';
+    try { txt = fs.readFileSync(o, 'utf8'); } catch {}
+    return (r.status === 0 && /未交叉核对/.test(txt) && /不等于通过/.test(txt)) || ('exit=' + r.status + ' 报告=' + txt.slice(0, 160));
   });
   check('response·正控：逐条有回应且指明改动位置 ⇒ 通过', () => {
     const { spawnSync } = require('node:child_process');
@@ -2411,6 +2456,96 @@ function splitComments(raw) {
   }
   return out.filter((c) => c.text.length >= 20);           // 太短的块（标题等）不算意见
 }
+/** 投稿信（cover letter）要素核对 + 与目标刊契约的**交叉核对**（v3.2.26）
+ *  为什么：投稿信里有若干**必须写到的声明**（未一稿多投 / 全体作者同意 / 无利益冲突 / 原创未发表），
+ *  漏一条在编辑部那关就可能被退回；另有一个天然的确定性交叉核：**信里写的期刊名必须与目标刊契约一致**。
+ *  还要防一种很丢人的事故：**模板里的 `[待填]` 占位符没删就投出去**。
+ *  本命令只核"在场/一致"这类可机械判定的事；信写得好不好仍属人读。 */
+const COVER_ITEMS = [
+  { id: 'not-under-consideration', label: '未一稿多投 / 未同时投他刊', re: /(?:not\s+(?:under|being)\s+consideration|not\s+submitted\s+elsewhere|exclusively\s+submitted|has\s+not\s+been\s+(?:published|submitted)|未一稿多投|未同时投(?:稿|递)|专投)/i },
+  { id: 'all-authors-approve', label: '全体作者已同意投稿', re: /(?:all\s+authors?\s+(?:have\s+)?(?:read|approv|agree)|all\s+author\s+contributions?\s+approved|作者(?:均|都)同意|全体作者同意)/i },
+  { id: 'no-conflict', label: '无利益冲突（或与稿件一致）', re: /(?:no\s+(?:known\s+)?(?:competing|conflict)|declar(?:e|es|ation)\s+(?:that\s+)?(?:there\s+is\s+)?no\s+(?:competing|conflict)|无(?:利益)?冲突|无竞争性利益)/i },
+  { id: 'originality', label: '原创、未发表（且不涉重复发表）', re: /(?:original|has\s+not\s+been\s+published|not\s+published\s+before|原创|未曾发表|未公开发表)/i },
+];
+function cmdCover(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const coverArg = val('cover');
+  if (!coverArg) { console.error('前提层失败：cover 需要 --cover <投稿信.md> [--contract <契约.json>] [--out <报告.md>]'); return 2; }
+  const cAbs = path.resolve(coverArg);
+  if (!fs.existsSync(cAbs)) { console.error('前提层失败：投稿信不存在 —— ' + cAbs); return 2; }
+  const text = fs.readFileSync(cAbs, 'utf8');
+  const plain = String(text).replace(/\r\n?/g, '\n');
+
+  /* ① 必需声明项 */
+  const items = COVER_ITEMS.map((it) => ({ id: it.id, label: it.label, ok: it.re.test(plain) }));
+  /* ② 期刊名交叉核（确定性：来自契约） */
+  let journalCheck = { state: 'skipped', why: '未给 --contract ⇒ **未交叉核对**（未核 ≠ 通过）', journal: '' };
+  const contractArg = val('contract');
+  if (contractArg) {
+    const kAbs = path.resolve(contractArg);
+    if (!fs.existsSync(kAbs)) { console.error('前提层失败：契约不存在 —— ' + kAbs); return 2; }
+    let J = '';
+    try { J = String(JSON.parse(fs.readFileSync(kAbs, 'utf8')).journal || ''); } catch (e) { console.error('前提层失败：契约不是 JSON —— ' + String((e && e.message) || e)); return 2; }
+    if (!J) journalCheck = { state: 'contract-missing-name', why: '契约里没有 journal 字段 ⇒ 核不了', journal: '' };
+    else {
+      /* 逐词判定：期刊名在信里出现（容忍缩写/大小写/连字符差异） */
+      const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ').trim();
+      const hay = norm(plain); const needle = norm(J);
+      const hit = hay.includes(needle) || needle.split(' ').filter((w) => w.length > 3).every((w) => hay.includes(w));
+      journalCheck = { state: hit ? 'match' : 'mismatch', why: hit ? '信里出现目标刊名' : '信里**找不到**契约声明的刊名「' + J + '」', journal: J };
+    }
+  }
+  /* ③ 占位符检查（防模板原文投出去） */
+  const holes = [];
+  const reHole = /\[(?:\s*(?:待填|待补|TBD|TODO|to be (?:filled|added)|XXX|xx+|填(?:写)?|insert[^\]]*)\s*)\]/gi;
+  let m;
+  while ((m = reHole.exec(plain)) !== null) holes.push(m[0]);
+  if (/待填|待补|TODO|TBD/.test(plain)) {
+    for (const w of (plain.match(/(?:待填|待补|TODO|TBD)[^\n]{0,20}/g) || []).slice(0, 5)) holes.push(w.trim());
+  }
+  const missing = items.filter((x) => !x.ok);
+  const bad = missing.length + (journalCheck.state === 'mismatch' ? 1 : 0) + holes.length;
+
+  const L = [];
+  L.push('# 投稿信（cover letter）要素核对 · ' + path.basename(cAbs));
+  L.push('');
+  L.push('> 只核 **"在场/一致"** 这类可机械判定的事：必需声明是否写到 · 刊名是否与目标刊契约一致 · 是否残留模板占位符。');
+  L.push('> 信写得有没有说服力，仍属人读。**未给 --contract 时刊名一栏记"未交叉核对"，不等于通过。**');
+  L.push('');
+  L.push('| 检查 | 结果 |');
+  L.push('| --- | --- |');
+  for (const it of items) L.push('| ' + it.label + ' | ' + (it.ok ? '✅ 在场' : '✗ **缺**') + ' |');
+  L.push('| 目标刊名一致（`--contract` 的 `journal`） | ' + (journalCheck.state === 'match' ? '✅ ' + journalCheck.why : (journalCheck.state === 'skipped' ? '· ' + journalCheck.why : '✗ **' + journalCheck.why + '**')) + ' |');
+  L.push('| 无模板占位符 | ' + (holes.length ? '✗ **发现 ' + holes.length + ' 处**：' + Array.from(new Set(holes)).slice(0, 8).join(' / ') : '✅ 无') + ' |');
+  L.push('');
+  if (bad) {
+    L.push('## 待补');
+    L.push('');
+    for (const x of missing) L.push('- 缺声明：**' + x.label + '**');
+    if (journalCheck.state === 'mismatch') L.push('- 刊名：' + journalCheck.why);
+    if (holes.length) L.push('- 占位符：' + Array.from(new Set(holes)).slice(0, 8).join(' / ') + '（**模板没填完就投出去会被编辑部直接看到**）');
+  }
+  L.push('');
+  L.push('## 复跑命令');
+  L.push('');
+  L.push('```text');
+  L.push('node bin/studio.cjs cover --cover "' + cAbs + '"' + (contractArg ? ' --contract "' + path.resolve(contractArg) + '"' : ''));
+  L.push('```');
+  const outPath = val('out') || path.join(path.dirname(cAbs), '_投稿信核对-' + new Date().toISOString().slice(0, 10) + '.md');
+  fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
+  if (JSON_OUT && !val('out')) {
+    console.log(JSON.stringify({ cover: cAbs, journal: journalCheck, missing: missing.map((x) => x.id), holes: Array.from(new Set(holes)), bad, out: outPath }, null, 2));
+  } else {
+    console.log('投稿信要素核对 · ' + path.basename(cAbs));
+    for (const it of items) console.log('  ' + (it.ok ? '✓' : '✘') + ' ' + it.label);
+    console.log('  ' + (journalCheck.state === 'match' ? '✓' : (journalCheck.state === 'skipped' ? '·' : '✘')) + ' 刊名：' + journalCheck.why);
+    console.log('  ' + (holes.length ? '✘' : '✓') + ' 模板占位符：' + (holes.length ? holes.length + ' 处' : '无'));
+    console.log('  报告：' + outPath);
+  }
+  return bad ? 1 : 0;
+}
+
 function cmdResponse(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -2646,6 +2781,14 @@ function cmdPreflight(args, argv) {
   } else {
     steps.push({ label: '期刊契约门', rc: null, out: '未给 --contract ⇒ **未检查**（未检查 ≠ 通过）' });
   }
+  /* 2.5) 投稿信要素核对（给了 --cover 才跑）—— 把"投稿阶段"也纳入总检 */
+  if (val('cover')) {
+    run('投稿信要素核对', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'cover', '--cover', path.resolve(val('cover'))]
+      .concat(contractArg ? ['--contract', path.resolve(contractArg)] : []));
+  } else {
+    steps.push({ label: '投稿信要素核对', rc: null, out: '未给 --cover ⇒ **未检查**（未检查 ≠ 通过）' });
+  }
+
   // 3) 合规门（给了包才跑）
   if (pkgDir) {
     run('投稿合规门', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'compliance', path.resolve(pkgDir)]);
@@ -2669,6 +2812,7 @@ function cmdPreflight(args, argv) {
   L.push('- 投稿包：' + (pkgDir ? '`' + path.resolve(pkgDir) + '`' : '**未给** ⇒ 包级门未检查'));
   L.push('- 期刊契约：' + (contractArg ? '`' + path.basename(contractArg) + '`' : '**未给** ⇒ 契约门未检查'));
   L.push('- 引用锚点表：' + (val('anchors') ? '`' + path.basename(val('anchors')) + '`（已透传给第 14 道门）' : '**未给** ⇒ claim-anchor 门按"无锚点"判 ⇒ 已计入下方结果'));
+  L.push('- 投稿信：' + (val('cover') ? '`' + path.basename(val('cover')) + '`（已核要素与刊名一致性）' : '**未给** ⇒ 投稿信要素未检查'));
   L.push('- 结论：**' + verdict + '**（未通过 ' + bad.length + ' 项 · 未检查 ' + unchecked.length + ' 项 · 共 ' + steps.length + ' 步）');
   L.push('');
   const CN = ['一', '二', '三', '四', '五', '六', '七', '八'];
@@ -3416,6 +3560,7 @@ function main(argv) {
     if (cmd === 'preflight') return cmdPreflight(args, argv);
     if (cmd === 'anchors') return cmdAnchors(args, argv);
     if (cmd === 'response') return cmdResponse(args, argv);
+    if (cmd === 'cover') return cmdCover(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;

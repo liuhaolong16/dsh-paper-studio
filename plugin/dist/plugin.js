@@ -258,7 +258,9 @@ const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 
   'formats', 'preflight', 'anchors', 'report', 'schemacheck',
   // ★ v3.2.25：新增 response（返修回复信核对）—— **上一轮加的漂移锁当轮就抓到了它**（插件自检直接红：
   //   「CLI 子命令 35 个，枚举缺：response」），说明该锁确实在拦新增能力静默进不了工具面。
-  'response']
+  'response',
+  // ★ v3.2.26：新增 cover（投稿信要素核对）—— **漂移锁第二次当轮抓到**（自检红：CLI 子命令 36 个，枚举缺：cover）。
+  'cover']
 
 const PAPER_STUDIO_TOOL = {
   name: 'paper_studio',
