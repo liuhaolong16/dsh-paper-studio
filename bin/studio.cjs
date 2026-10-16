@@ -1087,8 +1087,45 @@ function crosscheck(pair) {
  * 而是把「这篇论文该分几步写、每步产出什么、需要哪类证据、交付前过哪道门」**从真源推导**成两份可执行文件。
  * 项目目录若还没有骨架，顺带跑一次 scaffold（开一篇新稿：14 个文件）。
  */
+function formSectionBudget(form, opts) {
+  /* 分节预算（纯函数）：把该形态的总量摊到各节上——**每个形态的单位不同**：
+     字符型按字、会议按页、课堂演讲按分钟（口播）+ 页数。模板值优先。 */
+  const o = opts || {};
+  const items = ((form && form.framework) || []).filter((x) => x && x.id);
+  const band = ((form && form.norms) || {}).length_bands || {};
+  const bud = (o.budget) || {};
+  const minutes = Number(o.minutes) > 0 ? Number(o.minutes) : null;
+  const weight = (it) => (it.required ? 1 : 0.5);
+  const wsum = items.reduce((s, it) => s + weight(it), 0) || 1;
+  let unit = band.unit || 'chars';
+  let total = null, source = '';
+  if (unit === 'chars') {
+    if (Number(o.templateWords) > 0) { total = Number(o.templateWords); source = '模板指定字数'; }
+    else if (band.max > 0) { total = Math.round((band.min + band.max) / 2); source = (form.label || form.id) + ' 形态区间中值'; }
+  } else if (unit === 'pages') {
+    if (Number(o.templatePages) > 0) { total = Number(o.templatePages); source = '模板指定页数'; }
+    else if (band.max > 0) { total = band.max; source = (form.label || form.id) + ' 页数上限'; }
+  } else { unit = 'none'; source = '该形态以目标契约/模板为准，本命令不摊预算'; }
+  const per = items.map((it) => {
+    const share = weight(it) / wsum;
+    let b = '';
+    if (unit === 'chars' && total) b = '约 ' + Math.round(total * share * 0.8) + '–' + Math.round(total * share * 1.2) + ' 字';
+    else if (unit === 'pages' && total) b = '约 ' + (Math.round(total * share * 10) / 10) + ' 页';
+    else if (unit === 'none') b = '（按目标契约）';
+    if (minutes) {
+      const per_sec = bud.seconds_per_slide || 50;
+      const capPages = Math.round((minutes * 60) / per_sec);
+      const m = Math.round(minutes * share * 10) / 10;
+      b += (b ? ' · ' : '') + '口播约 ' + m + ' 分钟（幻灯片上限合计约 ' + capPages + ' 页，' + per_sec + ' 秒/页）';
+    }
+    return { id: it.id, label: it.label, required: !!it.required, share: Math.round(share * 1000) / 1000, budget: b || '（未声明）' };
+  });
+  return { unit, total, source, minutes, per };
+}
+
 function draftPlan(outDir, opts = {}) {
   if (!outDir) { const e = new Error('前提层失败：draft 需要 --out <目录>'); e.code = 'NO_OUT'; throw e; }
+  const flagSection = opts.section || null;
   const t = readTemplates();
   const pipeline = readPipeline();
   const wt = (pipeline.task_types || []).find((x) => x.id === 'write') || {};
@@ -1117,6 +1154,16 @@ function draftPlan(outDir, opts = {}) {
   L.push(`- 写作语言：${lang}`);
   L.push(`- **稿件体裁**：${genre}（决定用哪套骨架与哪些门适用；骨架集＝${ss.set}${ss.set === 'default' ? '（该体裁暂无专属骨架，用缺省套）' : ''}）`);
   if (ss.attribution) L.push(`- **骨架出处与许可**：${ss.attribution}`);
+  const form = opts.form || null;
+  const ans = (opts.answers && typeof opts.answers === 'object') ? opts.answers : {};
+  if (form) {
+    L.push(`- **论文形态**：${form.label}（${form.id}）—— 形态决定框架/必备件/字数与工作流，**与体裁正交**`);
+    L.push(`- 形态篇幅口径：${((form.norms || {}).length) || '（真源未写）'}`);
+    L.push(`- 本形态适用门：${(form.gates || []).join(' / ') || '（未声明）'}`);
+    const ks = Object.keys(ans);
+    if (ks.length) L.push(`- **启动问答答案**：${ks.map((k) => k + '=' + String(ans[k])).join(' · ')}`);
+    L.push(`- 形态专属必问：${((form.gate_extra || []).map((x) => x.label).join(' · ')) || '（无）'}`);
+  }
   L.push(`- 材料声明：${hasMat ? '**已提供** → `' + materials + '`' : '**未提供** ⇒ 按政策：只出框架与检索计划，**不硬写正文**'}`);
   L.push(`- 起草档位：**${wt.tier || 'T2'}**（错了会被人看见 ⇒ 强模型 + 对抗复核 + 过全部必过门）`);
   L.push(`- 政策前提：${wt.precondition || '（真源未写）'}`, '');
@@ -1146,6 +1193,24 @@ function draftPlan(outDir, opts = {}) {
     L.push(`- **证据义务**：${x.evidence_duty}`);
     L.push(`- **相关门**：${(x.gates || []).join(' / ')}`);
     if ((x.common_failures || []).length) L.push(`- **常见退回原因**：${x.common_failures.join(' ／ ')}`);
+    L.push('');
+  }
+  if (form) {
+    const sb = formSectionBudget(form, { minutes: Number(ans.talk_minutes) || null, templateWords: ans.template_words, templatePages: ans.template_pages, budget: (pipeline.forms || {}).budget });
+    L.push('## 1c. 形态级起草清单（' + form.label + ' · 按本形态逐节起草）', '');
+    L.push(`> 预算口径：**${sb.unit}**（总量 ${sb.total === null ? '—' : sb.total}，来源：${sb.source}）${sb.minutes ? '　·　口播时长 ' + sb.minutes + ' 分钟' : ''}`, '');
+    L.push('**本形态重点（与其它形态的差异就在这几行）**：');
+    for (const x of (form.focus || [])) L.push('- ' + x);
+    L.push('', '**本形态雷区**：');
+    for (const x of (form.risks || [])) L.push('- ' + x);
+    L.push('', '**逐节预算与必备性**：');
+    for (const x of sb.per) L.push(`- ${x.required ? '★必备' : '（可选）'} ${x.label} —— 预算：${x.budget}`);
+    const on = flagSection || null;
+    if (on) {
+      const one = sb.per.find((x) => x.id === on);
+      if (!one) { const e = new Error('前提层失败：未知章节「' + on + '」——可选：' + sb.per.map((x) => x.id).join(' / ')); e.code = 'FORM_SECTION_UNKNOWN'; throw e; }
+      L.push('', `> **本次只起草：${one.label}**（${one.budget}）—— 其余节按目录自行推进。`);
+    }
     L.push('');
   }
   L.push('## 2. 交付前必须过的门（真源原文，逐门记退出码）', '');
@@ -1187,7 +1252,7 @@ function draftPlan(outDir, opts = {}) {
     return { dir, dryRun: true, plan: files.map((f) => f.target), created: [], skipped: [], scaffold: null,
              materialProvided: hasMat, declaration, steps: steps.length, gates: gates.map((g) => g.id) };
   }
-  const sc = scaffold(dir, name, { genre: opts.genre || null });     // 顺手把骨架铺好（已存在的文件不覆盖）
+  const sc = scaffold(dir, name, { genre: opts.genre || null, form: opts.form || null, answers: opts.answers || {} });     // 顺手把骨架铺好（已存在的文件不覆盖）
   fs.mkdirSync(dir, { recursive: true });
   const created = []; const skipped = [];
   for (const f of files) {
@@ -3599,6 +3664,92 @@ function runSelftest() {
             if (plan.split('|').length < 8) return f.id + ' 骨架节数过少：' + plan.split('|').length;
           }
           return sigs.size >= 6 ? true : '可生成骨架的形态只有 ' + sigs.size + ' 个';
+        });
+
+
+        // ── v3.2.74 · draft 按形态走 ──────────────────────────────────
+        check('v3.2.74·draft·分节预算（字符型）：各节之和应≈总量，且必备节权重高于可选节', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const sb = formSectionBudget(f, { budget: readPipeline().forms.budget });
+          if (sb.unit !== 'chars') return '单位应为 chars，实得 ' + sb.unit;
+          const req = sb.per.filter((x) => x.required), opt = sb.per.filter((x) => !x.required);
+          if (!req.length) return '没有必备节';
+          if (opt.length && !(req[0].share > opt[0].share)) return '必备节权重未高于可选节';
+          const sum = sb.per.reduce((s, x) => s + x.share, 0);
+          return Math.abs(sum - 1) < 0.02 ? true : ('份额之和偏离 1：' + sum);
+        });
+
+        check('v3.2.74·draft·★形态差异化：课堂演讲按「分钟」、会议按「页」、学位论文按「字」给预算', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const p = readPipeline();
+          const talk = formSectionBudget(r.list.find((x) => x.id === 'class-talk'), { minutes: 15, budget: p.forms.budget });
+          if (!talk.minutes) return '课堂演讲没带时长预算';
+          if (!talk.per.some((x) => /口播约 .* 分钟/.test(x.budget))) return '课堂演讲未按分钟摊预算：' + talk.per[0].budget;
+          const conf = formSectionBudget(r.list.find((x) => x.id === 'conference'), { budget: p.forms.budget });
+          if (!conf.per.some((x) => /页/.test(x.budget))) return '会议未按页给预算：' + conf.per[0].budget;
+          const th = formSectionBudget(r.list.find((x) => x.id === 'thesis'), { budget: p.forms.budget });
+          if (!th.per.some((x) => /字/.test(x.budget))) return '学位论文未按字给预算';
+          return true;
+        });
+
+        check('v3.2.74·draft·模板优先：给 template_words 时预算总量必须按模板（而非形态中值）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const a = formSectionBudget(f, { budget: readPipeline().forms.budget });
+          const b = formSectionBudget(f, { templateWords: 20000, budget: readPipeline().forms.budget });
+          if (b.source !== '模板指定字数') return '没走模板优先：' + b.source;
+          if (b.total !== 20000) return '总量应为 20000，实得 ' + b.total;
+          return b.total !== a.total ? true : '模板值与形态中值相同，无法区分（请检查真源）';
+        });
+
+        check('v3.2.74·draft·形态工作单必须含该形态的「重点/雷区/逐节预算」（真跑一次并读文件）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'proposal');
+          const answers = { form: 'proposal', lang: 'zh', target: 'campus', carrier: 'template', mode: 'assist', deadline: '12 月底', resources: '实验室数据' };
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-draft-'));
+          let res;
+          try { res = draftPlan(dir, { name: '开题示例', form: f, answers }); }
+          catch (e) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e2) { /* ignore */ } return 'draftPlan 抛错：' + String((e && e.message) || e); }
+          const task = fs.readFileSync(path.join(dir, '00-写作任务书.md'), 'utf8');
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+          if (!/## 1c\. 形态级起草清单/.test(task)) return '任务书缺 §1c 形态级清单';
+          if (!/本形态重点/.test(task) || !/本形态雷区/.test(task)) return '任务书缺重点/雷区小节';
+          if (!/启动问答答案/.test(task)) return '任务书没把答案写进 §0';
+          const anyFocus = (f.focus || []).some((x) => task.includes(String(x).slice(0, 12)));
+          if (!anyFocus) return '任务书里找不到该形态的任何 focus 条目';
+          return true;
+        });
+
+        check('v3.2.74·draft·★未收齐答案不许开写 + 未知形态/未知章节必须退 2（子进程）', () => {
+          const { execFileSync } = require('child_process');
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-dr2-'));
+          const run = (args) => { try { execFileSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs')].concat(args), { stdio: ['ignore', 'ignore', 'ignore'] }); return 0; } catch (e) { return (e && e.status) || 1; } };
+          const s1 = run(['draft', '--out', path.join(dir, 'a'), '--form', 'thesis']);
+          fs.writeFileSync(path.join(dir, 'bad.json'), JSON.stringify({ form: 'thesis', lang: 'zh' }), 'utf8');
+          const s2 = run(['draft', '--out', path.join(dir, 'b'), '--form', 'thesis', '--answers', path.join(dir, 'bad.json')]);
+          const s3 = run(['draft', '--out', path.join(dir, 'c'), '--form', 'nope', '--answers', path.join(dir, 'bad.json')]);
+          fs.writeFileSync(path.join(dir, 'ok.json'), JSON.stringify({ form: 'course-paper', lang: 'zh', target: 'campus', carrier: 'generic', mode: 'assist', course: '数据库', deadline: '周五' }), 'utf8');
+          const s4 = run(['draft', '--out', path.join(dir, 'd'), '--form', 'course-paper', '--answers', path.join(dir, 'ok.json'), '--section', 'no-such-section']);
+          const madeA = fs.existsSync(path.join(dir, 'a')) || fs.existsSync(path.join(dir, 'b')) || fs.existsSync(path.join(dir, 'c'));
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+          if (s1 !== 2) return '不给答案应退 2，实退 ' + s1;
+          if (s2 !== 2) return '答案不齐应退 2，实退 ' + s2;
+          if (s3 !== 2) return '未知形态应退 2，实退 ' + s3;
+          if (s4 !== 2) return '未知章节应退 2，实退 ' + s4;
+          if (madeA) return '★被拒时仍写出了目录';
+          return true;
+        });
+
+        check('v3.2.74·draft·★兼容面：不传 --form 时任务书不得出现形态级小节（旧行为不变）', () => {
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-dr3-'));
+          let res;
+          try { res = draftPlan(dir, { name: '旧用法' }); }
+          catch (e) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e2) { /* ignore */ } return '旧用法抛错：' + String((e && e.message) || e); }
+          const task = fs.readFileSync(path.join(dir, '00-写作任务书.md'), 'utf8');
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+          if (/## 1c\. 形态级起草清单/.test(task)) return '旧用法被塞进了形态级小节';
+          return /## 1b\./.test(task) ? true : '旧用法的 §1b 章节清单没了（兼容面被破坏）';
         });
 
   const failed = results.filter((r) => !r.ok);
@@ -6779,9 +6930,30 @@ if (cmd === 'form') {
     if (cmd === 'draft') {
       const rest = argv.slice(1);
       const flag = (k) => { const i = rest.indexOf(k); return i > -1 ? rest[i + 1] : ''; };
+      const dFormId = flag('--form');
+      let dForm = null; let dAnswers = {};
+      if (dFormId) {
+        const forms = loadForms(ROOT);
+        if (!forms.ok) { console.error('前提层失败：形态真源不可用 —— ' + forms.reason); return 2; }
+        dForm = forms.list.find((x) => x.id === dFormId);
+        if (!dForm) { console.error('前提层失败：未知形态「' + dFormId + '」——可选：' + forms.list.map((x) => x.id).join(' / ')); return 2; }
+        const ap = flag('--answers');
+        if (!ap) { console.error('前提层失败：用 --form 时必须给 --answers <答案.json> —— **未收齐答案不许开写**（先跑 form ask / form gate）'); return 2; }
+        if (!fs.existsSync(ap)) { console.error('前提层失败：答案文件不存在 ' + ap); return 2; }
+        try { dAnswers = JSON.parse(fs.readFileSync(ap, 'utf8')) || {}; }
+        catch (e) { console.error('前提层失败：答案文件不是合法 JSON —— ' + String((e && e.message) || e).slice(0, 90)); return 2; }
+        const gref = formGateReport(dAnswers, dForm, readPipeline());
+        if (!gref.ok) {
+          console.error('前提层失败：启动问答未收齐 —— **不许开写**');
+          for (const m of gref.missing) console.error('  ✘ 还缺 ' + m);
+          for (const u of gref.unknown) console.error('  ✘ 值不在选项里 ' + u);
+          return 2;
+        }
+      }
       const r = draftPlan(flag('--out'), {
         name: flag('--name'), journal: flag('--journal'), lang: flag('--lang'),
         materials: flag('--materials'), genre: flag('--genre') || null, dryRun: rest.includes('--dry-run'),
+        form: dForm, answers: dAnswers, section: flag('--section') || null,
       });
       if (json) console.log(JSON.stringify(r, null, 2));
       else {
