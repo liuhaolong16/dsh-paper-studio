@@ -398,6 +398,29 @@ function runSelftest() {
     const r = out.results[0];
     return (r.verdict === 'skipped_not_applicable' && r.rc === null) ? true : `verdict=${r.verdict} rc=${r.rc}`;
   });
+  check('★ 静态锁：门参数模板里的占位符必须都在执行器白名单里（否则该输入**永远传不进去**）', () => {
+    const P = studio.readPipeline();
+    const bad = [];
+    for (const gt of (P.gates || [])) {
+      const tmpl = (gt.args || []).concat((gt.optional_args || []).flatMap((o) => o.args || []));
+      for (const a of tmpl) {
+        const h = /\{[a-z_]+\}/g; let m;
+        while ((m = h.exec(a)) !== null) if (!PLACEHOLDERS.includes(m[0])) bad.push(gt.id + ':' + m[0]);
+      }
+    }
+    return bad.length === 0 ? true : '模板里有白名单外的占位符：' + bad.join(', ');
+  });
+  check('★ 静态锁：已知需要输入的门必须声明它的输入（本条由 v3.2.30 的「输入没传到门」事故换来）', () => {
+    const P = studio.readPipeline();
+    const need = { 'journal-contract': '--package', 'compliance-scan': '--package', 'claim-anchor': '--anchors' };
+    const bad = [];
+    for (const [id, flag] of Object.entries(need)) {
+      const gt = (P.gates || []).find((x) => x.id === id);
+      if (!gt) { bad.push(id + ':门不存在'); continue; }
+      if (!(gt.args || []).includes(flag)) bad.push(id + ' 未声明 ' + flag);
+    }
+    return bad.length === 0 ? true : bad.join(' · ');
+  });
   check('★ 输入路由：参数模板里的 {package} 必须真的传给门（"被 CLI 接受" ≠ "传给了门"）', () => {
     const p = fakePipeline([g('echo', 'fx-echo-args.cjs', 'node', { args: ['--package', '{package}'] })]);
     /* 必须给**真实存在**的路径：buildArgs 对不存在的值按"缺输入"丢弃（这正是 `{package}` 曾被静默丢掉的机制）。 */

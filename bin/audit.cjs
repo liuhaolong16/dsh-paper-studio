@@ -18,7 +18,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const BIN = path.join(ROOT, 'bin');
@@ -29,6 +29,20 @@ const REG = process.env.DSH_AI_WORKBENCH_REGISTRY
 
 function read(p) { return fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''); }
 function binFiles() { return fs.readdirSync(BIN).filter((f) => f.endsWith('.cjs')); }
+
+/**
+ * ★ 2026-10-16：**读自检输出必须与退出码解耦**。
+ *   首版用 `execFileSync` ⇒ 子进程退出码非 0 时它**抛异常**，于是「某工具自检失败」在审查里表现为
+ *   「跑不出 N/M」（读数不可得），而不是「N/M 且 exit≠0」（可诊断）。真实后果：门执行器一次 40/41 让
+ *   整项 tools-probe 变红且不给数字，排查先怀疑解析、再怀疑工具，白走一圈。
+ *   现在一律 `spawnSync`，**无论退出码都解析 stdout**，并把退出码一并带回。
+ */
+function selftestOf(file, args) {
+  const r = spawnSync(process.execPath, [file].concat(args || ['--selftest']), { encoding: 'utf8', timeout: 120000 });
+  const out = String(r.stdout || '') + String(r.stderr || '');
+  const m = out.match(/(\d+)\s*\/\s*(\d+)\s*(?:通过|全过)/);
+  return { exit: r.status === null ? -1 : r.status, parsed: m ? `${m[1]}/${m[2]}` : null, out };
+}
 
 /** ① 子命令是否都在 SKILL.md 里写明。 */
 function skillsCoverage() {
@@ -117,20 +131,18 @@ function gatesMeta() {
  * ★ 首版只看文件里有没有 `--selftest` 字样 ⇒ 假阳性（`audit.cjs` 自己**调用**别人的自检，也被算成"有自检"）。
  *   现规则：**实际跑一次**，要求退出码 0 且末行能解析出 `N/M`。
  */
-function toolsProbe() {
+function toolsProbe(filesOverride) {
   if (!fs.existsSync(REG)) return { check: 'tools-probe', rows: [], pass: true, skipped: 'not-found', note: `能力登记表不存在（${REG}）⇒ **本项跳过**，不是通过：请设 DSH_AI_WORKBENCH_REGISTRY 指向你的登记表，或忽略本项。` };
   const regText = read(REG);
   const rows = [];
-  for (const f of binFiles()) {
+  for (const f of (filesOverride || binFiles())) {
     if (f === 'studio.cjs') continue;
-    let ok = false; let actual = null;
-    try {
-      const out = execFileSync(process.execPath, [path.join(BIN, f), '--selftest'], { encoding: 'utf8', timeout: 120000 });
-      const m = out.match(/(\d+)\s*\/\s*(\d+)\s*(?:通过|全过)/);
-      if (m) { actual = `${m[1]}/${m[2]}`; ok = true; }
-    } catch { ok = false; }
+    /* ★ 退出码与读数解耦：自检失败也要**读出数字**（首版 catch 掉之后只剩「跑不出 N/M」，不可诊断）。 */
+    const st = selftestOf(path.isAbsolute(f) ? f : path.join(BIN, f));   // 支持注入绝对路径（夹具走这条分支）
+    const actual = st.parsed;
     const covered = regText.includes(f);
-    rows.push({ tool: f, selftest_runs: ok, selftest_count: actual, registry_probe: covered, ok: ok && covered });
+    rows.push({ tool: f, selftest_runs: !!actual, selftest_count: actual, selftest_exit: st.exit,
+      registry_probe: covered, ok: !!actual && st.exit === 0 && covered });
   }
   return { check: 'tools-probe', rows, pass: rows.every((r) => r.ok) };
 }
@@ -145,16 +157,14 @@ function numberDrift() {
     if (!c.entry || !/\.cjs$/.test(c.entry) || !fs.existsSync(c.entry)) continue;
     if (!/--selftest/.test(c.evidence || '')) continue;
     let actual = null; let raw = '';
-    try {
-      const out = execFileSync(process.execPath, [c.entry, '--selftest'], { encoding: 'utf8', timeout: 120000 });
-      raw = out.trim().split(/\r?\n/).filter(Boolean).slice(-1)[0] || '';
-      const m = out.match(/(\d+)\s*\/\s*(\d+)\s*(?:通过|全过)/);
-      if (m) actual = `${m[1]}/${m[2]}`;
-    } catch { actual = 'ERR'; }
+    /* ★ 同上：退出码非 0 也要解析（漂移往往伴随自检失败 —— 那正是最该看见数字的时候）。 */
+    const st = selftestOf(c.entry);
+    raw = st.out.trim().split(/\r?\n/).filter(Boolean).slice(-1)[0] || '';
+    actual = st.exit === -1 ? 'ERR' : st.parsed;
     const claimed = [...String(c.evidence).matchAll(/\*\*(\d+\/\d+)\*\*/g)].map((x) => x[1]);
     // ★ 解析不出（不同工具的末行格式不同）**不算漂移**，只标 unparsed —— 否则审查器自己会制造假阳性
     const ok = actual === 'ERR' ? false : (actual === null ? true : (claimed.length === 0 || claimed.includes(actual)));
-    rows.push({ id: c.id, claimed, actual, unparsed: actual === null && !ok ? true : actual === null, raw: actual === null ? raw.slice(0, 80) : '', ok });
+    rows.push({ id: c.id, claimed, actual, selftest_exit: st.exit, unparsed: actual === null && !ok ? true : actual === null, raw: actual === null ? raw.slice(0, 80) : '', ok });
   }
   return { check: 'number-drift', rows, pass: rows.every((r) => r.ok), note: 'claimed 取 evidence 里全部 `**N/M**`；只要**有一个**与实际一致即视为一致（evidence 常同时记录历史值与现值）。' };
 }
@@ -213,6 +223,29 @@ function runSelftest() {
     return s.pass === true ? true : JSON.stringify(s.missing);
   });
 
+  check('★ 正控 · 自检**退出码非 0 也必须读得出数字**（首版 execFileSync 抛异常 ⇒ 只剩「跑不出 N/M」）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'audit-st-'));
+    const f = path.join(tmp, 'fx-fail.cjs');
+    fs.writeFileSync(f, 'console.log("自检：37/38 通过"); process.exit(1);');
+    const r = selftestOf(f);
+    return (r.parsed === '37/38' && r.exit === 1) ? true : `parsed=${r.parsed} exit=${r.exit}`;
+  });
+  check('★ 反控 · 自检没打印 N/M ⇒ 必须判「解析不出」（不得凭空造一个通过读数）', () => {
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'audit-st2-'));
+    const f = path.join(tmp, 'fx-silent.cjs');
+    fs.writeFileSync(f, 'process.exit(0);');
+    const r = selftestOf(f);
+    return (r.parsed === null && r.exit === 0) ? true : `parsed=${r.parsed} exit=${r.exit}`;
+  });
+  check('★ 正控 · toolsProbe 对「自检失败的工具」也要报出数字（走 filesOverride 分支）—— 这就是本轮修的那条路', () => {
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'audit-tp-'));
+    const f = path.join(tmp, 'fx-fail2.cjs');
+    fs.writeFileSync(f, 'console.log("自检：1/2 通过"); process.exit(1);');
+    const r = toolsProbe([f]);
+    const row = (r.rows || [])[0] || {};
+    return (row.selftest_count === '1/2' && row.selftest_exit === 1)
+      ? true : `count=${row.selftest_count} exit=${row.selftest_exit}（首版这里会是 undefined，整项只能报「跑不出 N/M」）`;
+  });
   const failed = results.filter((r) => !r.ok);
   for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   console.log(`\naudit 自检：${results.length - failed.length}/${results.length} 通过`);
