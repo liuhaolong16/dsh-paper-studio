@@ -1,0 +1,839 @@
+{
+  "schema": "ai-workbench.phrase-bank.v1",
+  "source": "E:\\DeepSeek\\research-paper-playbook\\third_party\\ultron-sci-pack\\academic-phrase-bank.md",
+  "built": "2026-10-12",
+  "sections": {
+    "A": "引言区",
+    "B": "方法区",
+    "C": "结果区",
+    "D": "讨论区",
+    "E": "弱化动词与判断词系统",
+    "F": "术语搭配",
+    "G": "高频句式模板"
+  },
+  "discipline": [
+    "从语料库取句式必须结合本稿数据与文献，不得复制无关实例数字",
+    "写结论句前先定证据等级（自有测量=强 / 转述他人=中 / 推断=弱）再选动词",
+    "引用他人数字一律用 as reported by the source studies，不写 we found",
+    "缺失信息保留 [占位]，不编造",
+    "句式模板可复用，实例细节必须改写；禁止整句照搬"
+  ],
+  "entries": [
+    {
+      "section": "A",
+      "group": "A1 背景铺陈（现状陈述）",
+      "label": "现状+任务列举",
+      "template": "[Agent] now handle tasks that were, until recently, firmly in the hands of human operators: [V-ing 列举 3-4 项]",
+      "example": "\"Autonomous agents built on large language models now handle tasks that were, until recently, firmly in the hands of human operators: writing code across a repository, navigating a browser to complete a purchase, running a data-analysis pipeline, or drafting a research report.\"（§1 P1）",
+      "line": 13
+    },
+    {
+      "section": "A",
+      "group": "A1 背景铺陈（现状陈述）",
+      "label": "趋势短句",
+      "template": "The trajectory has been steep.",
+      "example": "同上 P1",
+      "line": 14
+    },
+    {
+      "section": "A",
+      "group": "A1 背景铺陈（现状陈述）",
+      "label": "领域动态",
+      "template": "Dozens of [surveys] now map the design space of these systems, and the number of [primary studies] grows by the month.",
+      "example": "§1 P1",
+      "line": 15
+    },
+    {
+      "section": "A",
+      "group": "A1 背景铺陈（现状陈述）",
+      "label": "具体数据锚点",
+      "template": "[X], one of the earliest [Y], had accumulated more than [N] [metric] by the time of our data collection in [Month Year].",
+      "example": "\"AutoGPT ... had accumulated more than 187,000 GitHub stars by the time of our data collection in October 2026\"（§1 P1）",
+      "line": 16
+    },
+    {
+      "section": "A",
+      "group": "A2 研究空白（核心句式）",
+      "label": "差距陈述",
+      "template": "The [X] side of the field has not kept pace.",
+      "example": "\"The evaluation side of the field has not kept pace.\"（§1 P2）",
+      "line": 21
+    },
+    {
+      "section": "A",
+      "group": "A2 研究空白（核心句式）",
+      "label": "综述对比+空白",
+      "template": "Existing surveys of [topic] concentrate on [A] [ref], on [B] [ref], or on [C] [ref]. What is missing is a systematic account of *how* [the literature] actually [V]s — [列举被忽视维度].",
+      "example": "§1 P3",
+      "line": 22
+    },
+    {
+      "section": "A",
+      "group": "A2 研究空白（核心句式）",
+      "label": "空白后果",
+      "template": "Without such an account, claims such as \"[claim]\" rest on uneven ground, and [journals] have no shared benchmark against which to judge a submission.",
+      "example": "§1 P3",
+      "line": 23
+    },
+    {
+      "section": "A",
+      "group": "A2 研究空白（核心句式）",
+      "label": "继承问题",
+      "template": "[Field] inherits these problems and adds new ones: [V-ing 三项并列].",
+      "example": "\"Agent research inherits these problems and adds new ones: agents are stochastic in ways that are hard to bound, ...\"（§1 P2）",
+      "line": 24
+    },
+    {
+      "section": "A",
+      "group": "A3 研究问题引入",
+      "label": "问题列表",
+      "template": "We therefore ask three research questions: + 编号 **RQ1 (标签).** How do [对象] report [维度], and how has this changed between [Year1] and [Year2]?",
+      "example": "§1 P4（RQ1-RQ3）",
+      "line": 29
+    },
+    {
+      "section": "A",
+      "group": "A3 研究问题引入",
+      "label": "问题即承诺",
+      "template": "每个 RQ 用 (标签) 括注维度名，问题本身是疑问句",
+      "example": "同上",
+      "line": 30
+    },
+    {
+      "section": "A",
+      "group": "A4 贡献/创新点",
+      "label": "三分贡献",
+      "template": "Our contribution is threefold. We provide [A]; we contribute [B]; and we synthesize [C].",
+      "example": "§1 P5",
+      "line": 35
+    },
+    {
+      "section": "A",
+      "group": "A4 贡献/创新点",
+      "label": "创新定位",
+      "template": "— a focus we are not aware of in prior surveys, which have concentrated on [X] and [Y]",
+      "example": "§1 P5",
+      "line": 36
+    },
+    {
+      "section": "A",
+      "group": "A4 贡献/创新点",
+      "label": "谦逊+可信度",
+      "template": "We do not claim that our corpus is exhaustive — the field moves too quickly for that — but the protocol is fully described and the data are re-collectable, which is the point.",
+      "example": "§1 P5",
+      "line": 37
+    },
+    {
+      "section": "A",
+      "group": "A5 结构预告",
+      "label": "章节预告",
+      "template": "The rest of the paper is organised as follows. Section 2 [功能]. Section 3 [功能]. Section 4 reports the results for each research question. Section 5 [功能]. Section 6 concludes.",
+      "example": "§1 P6",
+      "line": 42
+    },
+    {
+      "section": "B",
+      "group": "B1 协议描述",
+      "label": "协议声明",
+      "template": "We followed a protocol adapted from [标准实践], simplified for a fast-moving field where [标准做法] is impractical but transparency remains achievable.",
+      "example": "§3.1",
+      "line": 51
+    },
+    {
+      "section": "B",
+      "group": "B1 协议描述",
+      "label": "步骤枚举",
+      "template": "The protocol has four steps: (i) [search], (ii) [eligibility], (iii) [coding], (iv) [synthesis].",
+      "example": "§3.1",
+      "line": 52
+    },
+    {
+      "section": "B",
+      "group": "B2 资格标准",
+      "label": "纳入标准",
+      "template": "A study was eligible if (a) ..., (b) ..., (c) ..., and (d) ...",
+      "example": "§3.1 Eligibility",
+      "line": 57
+    },
+    {
+      "section": "B",
+      "group": "B2 资格标准",
+      "label": "排除说明",
+      "template": "We excluded [X], [Y], and [Z].",
+      "example": "同上",
+      "line": 58
+    },
+    {
+      "section": "B",
+      "group": "B2 资格标准",
+      "label": "不设限理由",
+      "template": "We did not restrict by venue, because restricting to [high-impact venues] would have biased the sample towards [the very norms we wished to assess].",
+      "example": "§3.1",
+      "line": 59
+    },
+    {
+      "section": "B",
+      "group": "B3 数据收集",
+      "label": "采集声明",
+      "template": "We collected [data] for [N] [对象] directly from [source] on [date].",
+      "example": "§3.2",
+      "line": 64
+    },
+    {
+      "section": "B",
+      "group": "B3 数据收集",
+      "label": "选择标准",
+      "template": "We chose [对象] that (a) ..., (b) ..., and (c) ...",
+      "example": "§3.2",
+      "line": 65
+    },
+    {
+      "section": "B",
+      "group": "B3 数据收集",
+      "label": "局限自陈",
+      "template": "Because of [限制], our single-date snapshot is a point estimate, not a trend; the collection script is provided so the snapshot can be re-taken.",
+      "example": "§3.2",
+      "line": 66
+    },
+    {
+      "section": "B",
+      "group": "B3 数据收集",
+      "label": "未测不报",
+      "template": "The resulting [计数] could not be reliably re-verified at revision time. We therefore do not report a specific figure and rely on the [替代证据] below.",
+      "example": "§3.2",
+      "line": 67
+    },
+    {
+      "section": "B",
+      "group": "B4 透明度声明",
+      "label": "可验证边界",
+      "template": "We were transparent with ourselves about what can and cannot be verified from the materials available to us.",
+      "example": "§3.1 Coding",
+      "line": 72
+    },
+    {
+      "section": "B",
+      "group": "B4 透明度声明",
+      "label": "双级编码",
+      "template": "We distinguish two coding levels and only claim the second one.",
+      "example": "§3.1",
+      "line": 73
+    },
+    {
+      "section": "B",
+      "group": "B4 透明度声明",
+      "label": "拒编造声明",
+      "template": "We explicitly do not claim to have audited full texts for [X], because doing so without the full texts would be fabrication.",
+      "example": "§3.1",
+      "line": 74
+    },
+    {
+      "section": "B",
+      "group": "B4 透明度声明",
+      "label": "二次数据纪律",
+      "template": "All benchmark numbers cited in [section] are secondary data taken from the cited primary studies; we did not re-run any benchmark. In line with the reporting discipline for secondary data, we describe these numbers as reported by the source studies rather than as our own measurements. Where a number is a statistic we computed ourselves (e.g., ...), we say so explicitly.",
+      "example": "§3.3",
+      "line": 75
+    },
+    {
+      "section": "B",
+      "group": "B5 AI 使用声明（投稿必用句式）",
+      "label": "AI 辅助写作声明",
+      "template": "The authors used an LLM-based writing assistant to help draft and copy-edit parts of the text for readability and style. The study design, data collection, coding, and analysis were carried out by the authors; the assistant was not used to generate results, select sources, or formulate conclusions. All authors reviewed and take responsibility for the final content.",
+      "example": "§3.4 / Declarations",
+      "line": 80
+    },
+    {
+      "section": "C",
+      "group": "C1 数据报告",
+      "label": "分布特征",
+      "template": "The distribution is strongly concentrated at the top.",
+      "example": "§4.3",
+      "line": 89
+    },
+    {
+      "section": "C",
+      "group": "C1 数据报告",
+      "label": "占比表述",
+      "template": "The [top-N] repositories ... account for [X] of the [Y] total [metric], roughly half ([N]%).",
+      "example": "§4.3（49.9%）",
+      "line": 90
+    },
+    {
+      "section": "C",
+      "group": "C1 数据报告",
+      "label": "范围表述",
+      "template": "[指标] reported in the corpus ranged from [最小值描述] ... to [最大值描述] ...",
+      "example": "§4.1",
+      "line": 91
+    },
+    {
+      "section": "C",
+      "group": "C1 数据报告",
+      "label": "单例锚定",
+      "template": "(e.g., [18] with three frontier models; [9] with ten backbones; ...)",
+      "example": "§4.2",
+      "line": 92
+    },
+    {
+      "section": "C",
+      "group": "C2 收敛/发现表述",
+      "label": "多源收敛",
+      "template": "[N] independent [studies], published between [Y1] and [Y2], converge on the same picture.",
+      "example": "§4.2",
+      "line": 97
+    },
+    {
+      "section": "C",
+      "group": "C2 收敛/发现表述",
+      "label": "跨组收敛",
+      "template": "These three studies, from different groups and years, converge on the same conclusion: [结论].",
+      "example": "§4.4",
+      "line": 98
+    },
+    {
+      "section": "C",
+      "group": "C2 收敛/发现表述",
+      "label": "显著特征",
+      "template": "The striking feature of this synthesis is the absence of [X].",
+      "example": "§4.4",
+      "line": 99
+    },
+    {
+      "section": "C",
+      "group": "C2 收敛/发现表述",
+      "label": "证据综合",
+      "template": "Taken together, these results establish that [结论], and that [补充结论].",
+      "example": "§4.2",
+      "line": 100
+    },
+    {
+      "section": "C",
+      "group": "C2 收敛/发现表述",
+      "label": "最强结论",
+      "template": "This is, in our view, the most actionable finding of [RQ]: [结论].",
+      "example": "§4.4",
+      "line": 101
+    },
+    {
+      "section": "C",
+      "group": "C3 未测量说明（关键纪律）",
+      "label": "不可得则止",
+      "template": "Whether [X] is reported cannot be established from [source]; based on [evidence], it is unlikely to be [V], but we refrain from asserting a specific figure we did not measure.",
+      "example": "§4.2",
+      "line": 106
+    },
+    {
+      "section": "C",
+      "group": "C3 未测量说明（关键纪律）",
+      "label": "明示待审",
+      "template": "We note this explicitly because it is the central [question] for the field, and it deserves a dedicated full-text audit in future work.",
+      "example": "§4.2",
+      "line": 107
+    },
+    {
+      "section": "D",
+      "group": "D1 含义推导",
+      "label": "三分含义",
+      "template": "Three implications follow from our results. First, ... Second, ... Third, ...",
+      "example": "§5.1",
+      "line": 116
+    },
+    {
+      "section": "D",
+      "group": "D1 含义推导",
+      "label": "否定式强化",
+      "template": "The [X] documented in [section] is not merely a matter of style.",
+      "example": "§5.1",
+      "line": 117
+    },
+    {
+      "section": "D",
+      "group": "D1 含义推导",
+      "label": "机理链",
+      "template": "When [X], a difference between [A] and [B] cannot be distinguished from [噪声], and the literature accumulates claims that later work quietly fails to reproduce.",
+      "example": "§5.1",
+      "line": 118
+    },
+    {
+      "section": "D",
+      "group": "D2 建议/清单",
+      "label": "建议引入",
+      "template": "Based on [证据] and the [结果], we propose a short checklist for [对象]. It is deliberately minimal; we intend it as a floor, not a ceiling.",
+      "example": "§5.2",
+      "line": 123
+    },
+    {
+      "section": "D",
+      "group": "D2 建议/清单",
+      "label": "不越界建议",
+      "template": "We deliberately avoid prescribing a specific [标准], because the evidence base is not yet mature enough for a single standard; we recommend, instead, that [期刊/作者] [动作].",
+      "example": "§5.2",
+      "line": 124
+    },
+    {
+      "section": "D",
+      "group": "D2 建议/清单",
+      "label": "清单条目",
+      "template": "**N. [动宾短语].** [一句说明 + 证据引用 [ref]].",
+      "example": "§5.2（1-5 条）",
+      "line": 125
+    },
+    {
+      "section": "D",
+      "group": "D3 局限性",
+      "label": "直陈局限",
+      "template": "Our review has limitations that we state plainly. First, ... Second, ... Third, ... Fourth, ... Fifth, ...",
+      "example": "§5.3",
+      "line": 130
+    },
+    {
+      "section": "D",
+      "group": "D3 局限性",
+      "label": "稳健性论证",
+      "template": "None of these limitations changes the main conclusions, which are negative in character and therefore robust to [corpus expansion]: [三点并列].",
+      "example": "§5.3",
+      "line": 131
+    },
+    {
+      "section": "D",
+      "group": "D3 局限性",
+      "label": "手动判断透明",
+      "template": "the mapping between [X] was done by hand and is reported in [附录] so that readers can disagree with it.",
+      "example": "§5.3",
+      "line": 132
+    },
+    {
+      "section": "D",
+      "group": "D4 展望/收尾",
+      "label": "双希望式",
+      "template": "We hope [A] is adopted by [对象] as a [要求], and we hope the next generation of [X] [动词]s [实践] rather than merely [编目架构].",
+      "example": "§6",
+      "line": 137
+    },
+    {
+      "section": "D",
+      "group": "D4 展望/收尾",
+      "label": "里程碑式收束",
+      "template": "The field will know its [X] are maturing when its [Y] become as reproducible as its [Z].",
+      "example": "§6",
+      "line": 138
+    },
+    {
+      "section": "E",
+      "group": "E1 判断动词分级",
+      "label": "等级",
+      "template": "动词",
+      "example": "适用场景",
+      "line": 145
+    },
+    {
+      "section": "E",
+      "group": "E1 判断动词分级",
+      "label": "强（自有测量）",
+      "template": "collected / account for / show",
+      "example": "自己采集的数据",
+      "line": 147
+    },
+    {
+      "section": "E",
+      "group": "E1 判断动词分级",
+      "label": "中（转述他人）",
+      "template": "found that / reported that / showed that / demonstrated that / noted that / argued that / proposed / introduced / described / catalogued / surveyed / distilled / observed",
+      "example": "引用他人研究",
+      "line": 148
+    },
+    {
+      "section": "E",
+      "group": "E1 判断动词分级",
+      "label": "弱（推断/未测）",
+      "template": "is unlikely to be / appears to / seems to / we refrain from asserting / we do not claim / we explicitly do not claim",
+      "example": "未直接测量的推断",
+      "line": 149
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "禁用绝对化副词：proves / clearly / definitely / obviously / certainly（本稿零出现）",
+      "example": "",
+      "line": 152
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "允许的强限定：`Taken together, ... establish that ...`（仅当多源证据支持时）",
+      "example": "",
+      "line": 153
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "常用软限定：`roughly` / `about` / `approximately` / `in relative terms` / `partly because` / `more concerningly`",
+      "example": "",
+      "line": 154
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "**本地补记 · JARVIS 2026-10-13（对抗测试后追加，非原文）**：本节原先只收**副词**。用一份故意写满绝对化断言的样稿做对抗测试后，**13 处违规只被抓到 7 处**，漏掉的全是**绝对化动词 / 断言式短语 / 最高级**。⇒ 纪律扩展为「**按绝对化强度收，不按词性收**」，补入：",
+      "example": "",
+      "line": 155
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "绝对化动词/短语：`definitively` · `completely eliminates` · `fully eliminates` · `eliminates the problem` · `fully understood` · `guaranteed` / `is guaranteed`",
+      "example": "",
+      "line": 156
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "断言式短语：`well known` / `it is well known` · `no other explanation` · `in all cases` · `under all conditions`",
+      "example": "",
+      "line": 157
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "最高级：`best available` · `the best possible`",
+      "example": "",
+      "line": 158
+    },
+    {
+      "section": "E",
+      "group": "E2 副词使用纪律",
+      "label": "bullet",
+      "template": "**实现同源**：`_phrase-lint.py` 的 `BOOSTERS` 表；并已为该扩展配**必失败夹具**（新词必须真被检测路径命中，否则是假绿）。",
+      "example": "",
+      "line": 159
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "文献动作",
+      "template": "推荐动词",
+      "example": "",
+      "line": 162
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "提出框架/分类",
+      "template": "propose / introduce / present",
+      "example": "",
+      "line": 164
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "实证发现",
+      "template": "find that / show that / demonstrate",
+      "example": "",
+      "line": 165
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "综述/梳理",
+      "template": "survey / consolidate / map / organise around",
+      "example": "",
+      "line": 166
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "批判/指出",
+      "template": "note that / argue that / flag",
+      "example": "",
+      "line": 167
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "量化/列数",
+      "template": "enumerate / catalogue / quantify",
+      "example": "",
+      "line": 168
+    },
+    {
+      "section": "E",
+      "group": "E3 引用动词 → 文献类型匹配",
+      "label": "建议",
+      "template": "recommend / suggest / propose",
+      "example": "",
+      "line": 169
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "LLM-based agents / autonomous agents / agent scaffold（智能体脚手架，区别于模型本体）",
+      "example": "",
+      "line": 176
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "backbone model family（骨干模型族）",
+      "example": "",
+      "line": 177
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "tool invocation / tool use / function calling",
+      "example": "",
+      "line": 178
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "instruction drift / long-horizon error accumulation / cascading hallucinations",
+      "example": "",
+      "line": 179
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "framework adoption / ecosystem concentration / developer attention",
+      "example": "",
+      "line": 180
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "evaluation practice / reporting norm / variance reporting / seed-level variance",
+      "example": "",
+      "line": 181
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "metadata-level coding / synthesis-level evidence（双级编码术语）",
+      "example": "",
+      "line": 182
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "single-date snapshot / point estimate（单日快照/点估计）",
+      "example": "",
+      "line": 183
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "re-collectable / re-taken（可重新采集）",
+      "example": "",
+      "line": 184
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "questionable research practices（可疑研究实践）",
+      "example": "",
+      "line": 185
+    },
+    {
+      "section": "F",
+      "group": "F1 领域术语（本稿高频）",
+      "label": "bullet",
+      "template": "cross-study comparison / cross-taxonomy mapping",
+      "example": "",
+      "line": 186
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "搭配",
+      "template": "例句",
+      "example": "",
+      "line": 189
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "map the design space of",
+      "template": "\"Dozens of survey papers now map the design space of these systems\"",
+      "example": "",
+      "line": 191
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "document a persistent gap",
+      "template": "\"documented a persistent gap between awareness of benchmark quality and actual practice\"",
+      "example": "",
+      "line": 192
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "distill N guidelines",
+      "template": "\"distilling 55 construction guidelines (HOW2BENCH)\"",
+      "example": "",
+      "line": 193
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "converge on",
+      "template": "\"converge on the same picture\"",
+      "example": "",
+      "line": 194
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "rest on uneven ground",
+      "template": "\"claims such as ... rest on uneven ground\"",
+      "example": "",
+      "line": 195
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "pin the stack",
+      "template": "\"Reproducibility therefore requires the entire stack to be pinned.\"",
+      "example": "",
+      "line": 196
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "couple ... to ...",
+      "template": "\"evaluation results are implicitly coupled to those scaffolds' default behaviours\"",
+      "example": "",
+      "line": 197
+    },
+    {
+      "section": "F",
+      "group": "F2 动词搭配",
+      "label": "trade off ... against ...",
+      "template": "\"an Effective Robustness Score to trade off safety against task effectiveness\"",
+      "example": "",
+      "line": 198
+    },
+    {
+      "section": "F",
+      "group": "F3 连接词/过渡（本稿使用）",
+      "label": "bullet",
+      "template": "递进：not merely ... but / and adds new ones / more concerningly / and, more concerningly",
+      "example": "",
+      "line": 201
+    },
+    {
+      "section": "F",
+      "group": "F3 连接词/过渡（本稿使用）",
+      "label": "bullet",
+      "template": "对比：in contrast / whereas / while the remainder",
+      "example": "",
+      "line": 202
+    },
+    {
+      "section": "F",
+      "group": "F3 连接词/过渡（本稿使用）",
+      "label": "bullet",
+      "template": "因果：partly because / therefore / because of",
+      "example": "",
+      "line": 203
+    },
+    {
+      "section": "F",
+      "group": "F3 连接词/过渡（本稿使用）",
+      "label": "bullet",
+      "template": "转折：however / but / yet",
+      "example": "",
+      "line": 204
+    },
+    {
+      "section": "F",
+      "group": "F3 连接词/过渡（本稿使用）",
+      "label": "bullet",
+      "template": "收束：Taken together / In line with / Taken together, these results establish that",
+      "example": "",
+      "line": 205
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "继承问题模板",
+      "template": "[Field] inherits these problems and adds new ones: [X1], [X2], and [X3].",
+      "example": "",
+      "line": 211
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "空白后果模板",
+      "template": "Without [A], [B] rest on uneven ground, and [C] have no shared [D] against which to judge [E].",
+      "example": "",
+      "line": 212
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "双级证据模板",
+      "template": "We answer [RQ] explicitly at two levels — what [来源] establish (..., reported as such) and what our own [方法] shows (..., restricted to [边界]).",
+      "example": "",
+      "line": 213
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "未测不报模板",
+      "template": "Whether [X] can be established from [来源] cannot; based on [证据], [判断], but we refrain from asserting a specific figure we did not measure.",
+      "example": "",
+      "line": 214
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "收敛模板",
+      "template": "[N] independent [研究], from different groups and years, converge on the same conclusion: [结论].",
+      "example": "",
+      "line": 215
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "清单引入模板",
+      "template": "Based on [证据], we propose a short checklist for [对象]. It is deliberately minimal; we intend it as a floor, not a ceiling.",
+      "example": "",
+      "line": 216
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "局限+稳健模板",
+      "template": "None of these limitations changes the main conclusions, which are [性质] in character and therefore robust to [扩张].",
+      "example": "",
+      "line": 217
+    },
+    {
+      "section": "G",
+      "group": "G 高频句式模板",
+      "label": "收束模板",
+      "template": "The field will know its [X] are maturing when its [Y] become as reproducible as its [Z].",
+      "example": "",
+      "line": 218
+    }
+  ]
+}

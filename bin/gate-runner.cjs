@@ -119,16 +119,57 @@ function interpreterFor(runtime, pipeline) {
   if (runtime === 'node') return process.execPath;
   if (runtime === 'python') {
     const list = ((pipeline.assets || {}).python_exe) || [];
-    for (const p of list) if (fs.existsSync(p)) return p;
-    return null; // 由调用方报「运行时不可用」
+    for (const p of list) if (String(p).indexOf('__LOCAL__') !== 0 && fs.existsSync(p)) return p;
+    /* ★ v3.2.54 **解释器自动探测**：干净安装（无本机路径表）时 python_exe 是未解析占位符 ⇒
+       5 道 python 门全部 precondition_fail、整条 preflight 判"不可投"。解释器没法随包走，
+       但可以**探测**：先环境变量，再 DSH 运行时（含版本目录的通配），最后 PATH 上的 python3/python。
+       探测到的每个候选都做一次 `-V` 实证（存在 ≠ 可执行）。 */
+    const cands = [];
+    if (process.env.DSH_PYTHON) cands.push(process.env.DSH_PYTHON);
+    const os = require('node:os');
+    const pathMod = require('node:path');
+    const rt = pathMod.join(os.homedir(), '.dsh', 'dsh-runtimes');
+    try {
+      for (const d of fs.readdirSync(rt)) {
+        for (const name of ['python.exe', 'python']) {
+          cands.push(pathMod.join(rt, d, 'dependencies', 'python', name));
+          cands.push(pathMod.join(rt, d, 'python', name));
+        }
+      }
+    } catch (e) { /* 没有该目录 ⇒ 跳过 */ }
+    cands.push('python3', 'python');
+    const { spawnSync } = require('node:child_process');
+    for (const c of cands) {
+      try {
+        if (c.indexOf(pathMod.sep) >= 0 && !fs.existsSync(c)) continue;
+        const r = spawnSync(c, ['-V'], { encoding: 'utf8', timeout: 15000 });
+        if (!r.error && r.status === 0) return c;
+      } catch (e) { /* 下一个候选 */ }
+    }
+    return null; // 全部探测失败 ⇒ 由调用方报「运行时不可用」（不假装可用）
   }
   return null;
 }
 
 function runOneGate(gate, inputs, pipeline, opts) {
   const wantOut = !!(opts && opts.capture); // 只有 report 模式才带出正文（正常 --json 保持精简）
-  const base = (pipeline.assets && pipeline.assets[gate.rel]) || '';
-  const script = base ? path.join(base, gate.entry) : '';
+  /* ★ v3.2.54 **统一脚本解析**：此前这里是自己拼路径（`assets[rel]` + entry），而 `doctor` 走的是
+     `resolveGateScript`（外置优先 → 内置回落）⇒ **两条路不一致**：干净安装（无本机路径表）时
+     `playbook_root` 未解析，doctor 报"12/12 内置副本 ✓"，而**真正执行时**多门却 precondition_fail、
+     整条 preflight 判"不可投"。实测抓出 —— 属"只照亮没接上"那一类。
+     现在运行路径与 doctor 用**同一个解析器**，并在回执里带来源列。 */
+  /* ① 显式外置路径优先（已解析成真实路径且文件在）—— 夹具与外部脚本都靠这一档；
+     ② 否则交给 resolveGateScript（外置占位符未解析 ⇒ 回落内置副本 ⇒ 再没有才 none）。 */
+  const baseExplicit = (pipeline.assets && pipeline.assets[gate.rel]) || '';
+  let res = null;
+  const explicitOk = baseExplicit && String(baseExplicit).indexOf('__LOCAL__') !== 0
+    && fs.existsSync(path.join(baseExplicit, gate.entry));
+  if (explicitOk) {
+    res = { script: path.join(baseExplicit, gate.entry), source: 'external', why: '显式 assets[' + gate.rel + ']' };
+  } else {
+    try { res = studio.resolveGateScript({ id: gate.id, entry: gate.entry }, pipeline); } catch (e) { res = null; }
+  }
+  const script = (res && res.script) || '';
   const rec = {
     id: gate.id,
     label: gate.label,
@@ -141,10 +182,11 @@ function runOneGate(gate, inputs, pipeline, opts) {
     stderr_head: '',
     verdict: '',
     note: '',
+    source: (res && res.source) || '',   // external / bundled / none（来源列，便于报告与排障）
   };
   if (!script || !fs.existsSync(script)) {
     rec.verdict = 'precondition_fail';
-    rec.note = '门脚本不存在' + hintIfLocal(script);
+    rec.note = '门脚本不存在（外置与内置副本都没有 ⇒ 这是真缺口）' + hintIfLocal(script);
     return rec;
   }
   const exe = interpreterFor(gate.runtime, pipeline);
@@ -415,6 +457,19 @@ function runSelftest() {
     return (r.verdict === 'skipped_missing_input' && r.rc === null) ? true : `verdict=${r.verdict} rc=${r.rc}`;
   });
 
+  check('v3.2.54·内置回落·真身回归：`playbook_root` 未解析（干净安装）时，门必须由**内置副本**执行，不得 precondition_fail', () => {
+    /* 修前：runOneGate 自己拼 assets[rel]+entry ⇒ 干净安装下多门 precondition_fail（doctor 却报 12/12 ✓）。
+       本夹具用真 pipeline 但把 playbook_root 换成未解析占位符，断言至少一条门以 bundled 来源执行成功。 */
+    const P2 = studio.readPipeline();
+    const p2 = JSON.parse(JSON.stringify(P2));
+    p2.assets = p2.assets || {};
+    p2.assets.playbook_root = '__LOCAL__/playbook_root';
+    const id = (p2.gates || []).find((x) => x.entry === '_journal-contract.cjs') || (p2.gates || [])[0];
+    if (!id) return '真 pipeline 里没有门，无法判定';
+    const r2 = runOneGate(id, {}, p2);
+    return (r2.source === 'bundled' && r2.verdict !== 'precondition_fail')
+      ? true : `source=${r2.source} verdict=${r2.verdict} note=${String(r2.note).slice(0, 80)}`;
+  });
   check('必失败夹具：门脚本不存在 ⇒ precondition_fail', () => {
     const p = fakePipeline([g('gone', '__no_such_gate__.cjs')]);
     const r = runOneGate(p.gates[0], {}, p);

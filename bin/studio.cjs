@@ -55,7 +55,16 @@ function localPaths() {
 /** 未解析占位符 ⇒ 可操作指引（命令侧与门侧统一措辞） */
 const LOCAL_HINT = '（该值是未解析的本机路径占位符 ⇒ 把 references/local-paths.example.json 复制成 '
   + '~/.dsh/paper-studio/local-paths.json（或设 DSH_PAPER_LOCAL_PATHS 指向你的表）并填真实路径）';
-function resolveLocals(node, table) {
+/** ★ v3.2.54 **内置素材目录**：与门同样的策略 —— 外置优先、内置回落。
+ *  为什么：门在 v3.2.49 随包走了，但**素材没随包走** ⇒ 干净安装（无本机路径表）时语言门拿不到短语库、
+ *  整条 preflight 判"不可投"。实检：`doctor` 12/12 全走内置副本，而 preflight 却红在这一步。 */
+const BUNDLED_ASSETS = path.join(ROOT, 'assets');
+/** key → 内置素材路径（`phrase_bank` ⇒ `assets/phrase-bank.json`）；不存在返回 '' */
+function bundledAsset(key) {
+  const cand = path.join(BUNDLED_ASSETS, String(key).replace(/_/g, '-') + '.json');
+  try { return fs.existsSync(cand) ? cand : ''; } catch (e) { return ''; }
+}
+function resolveLocals(node, table, used) {
   if (typeof node === 'string') {
     const m = /^__LOCAL__\/(.+)$/.exec(node);
     if (!m) return node;
@@ -64,8 +73,11 @@ function resolveLocals(node, table) {
     const seg = m[1].split('/');
     const key = seg.shift();
     const base = (table || {})[key];
-    if (typeof base !== 'string') return node;          // 取不到就保留占位符（不静默变空）
-    return seg.length ? path.join(base, ...seg) : base;
+    if (typeof base === 'string') return seg.length ? path.join(base, ...seg) : base;
+    /* 表里没有 ⇒ 回落**内置素材**（随包走）；命中时记进 used 供 doctor 报来源 */
+    const b = bundledAsset(key);
+    if (b && !seg.length) { if (used) used.push(key); return b; }
+    return node;                                       // 仍取不到 ⇒ 保留占位符（不静默变空）
   }
   if (Array.isArray(node)) return node.map((x) => resolveLocals(x, table));
   if (node && typeof node === 'object') {
@@ -5086,7 +5098,7 @@ function main(argv) {
   }
 }
 
-module.exports = { readPipeline, routeTask, resolveGate, intake, runSelftest, printRoute, readTemplates, readLessons, listMethod, scaffold, draftPlan, detectLang, detectGenre, titleAndAbstract, validateHandoff, findContract, crosscheck, crosscheckMaterial, crosscheckDocx, readDocxStructure, readSections, sectionForGate, primarySectionOf, judgeTypeOf, SUBCOMMANDS, STAGE_RULES, PIPELINE_PATH, ROOT };
+module.exports = { readPipeline, routeTask, resolveGate, resolveGateScript, intake, runSelftest, printRoute, readTemplates, readLessons, listMethod, scaffold, draftPlan, detectLang, detectGenre, titleAndAbstract, validateHandoff, findContract, crosscheck, crosscheckMaterial, crosscheckDocx, readDocxStructure, readSections, sectionForGate, primarySectionOf, judgeTypeOf, SUBCOMMANDS, STAGE_RULES, PIPELINE_PATH, ROOT };
 
 // ⚠ 入口守卫必须在 module.exports **之后**（与 gate-runner 同一条纪律）：
 //   它一执行就跑 main()，而 main 里的 report 分支会惰性 require('./gate-runner.cjs')，

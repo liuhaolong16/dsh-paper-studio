@@ -154,6 +154,13 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 > **L-12 没有单独的第三道门**（2026-10-14 复核）：它的两条判据已由 `docx-verify` + `artifact-sync` 覆盖，再建一门就是重复判据 —— 改为把缺陷修在既有的那一门上（见 L-13）。
 > **经验 → 门的映射**只写在一处：`references/pipeline.json` 的 `lessons_coverage`。
 
+**安装与"干净环境"承诺（v3.2.54 实测）**：本插件**不要求先配本机路径表**也能跑完投稿前总检 ——
+① 12 道门全部**随包走**（`gates/`），运行路径与 `doctor` 用**同一个解析器**（显式外置优先 → 内置回落 → 再没有才判真缺口，回执带来源列）；
+② 必需素材**随包走**（如语言门的短语库 `assets/phrase-bank.json`）；
+③ Python 解释器**自动探测**（`DSH_PYTHON` → DSH 运行时目录 → PATH 的 `python3`/`python`，每个候选做 `-V` 实证）。
+实测：把本机路径表指向空表（新装机语义）后，两篇真稿的 `preflight` 仍分别判 **可投（1 项提醒 / 2 项提醒）**。
+**仍需要本机路径表的只有**指向你其它技能的四个指针（`playbook_root` / `playbook_skill` / `polish_skill` / `writer_skill`），它们不是投稿前总检的必需件。
+
 **期刊契约门的检查族（v3.2.51–v3.2.52 补记 —— 此前实现加了、文档没跟上）**：
 
 | 族 | 检查项 | 判定依据 |
