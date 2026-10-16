@@ -440,6 +440,7 @@ function detectGenre(text, pipeline, override) {
 
 /** 阶段词汇表（骨干层）：chain 项必须能解析到真实实现，不许「只是名字」。 */
 const SUBCOMMANDS = [
+  'credit',
   'route',
   'gates',
   'intake',
@@ -1264,6 +1265,35 @@ function runSelftest() {
     return bad.length === 0 ? true : bad.join('；');
   });
 
+  // ★ v3.2.6：CRediT 官方角色资产 + 非官方写法判据（素材来自 credit.niso.org，CC-BY 4.0）
+  check('CRediT 资产：14 个官方角色、含 en dash 逐字、带取证信息与逐角色链接', () => {
+    let c = null;
+    try { c = JSON.parse(fs.readFileSync(path.join(ROOT, 'references', 'credit-roles.json'), 'utf8')); } catch (e) { return '读不到或不可解析（不得当通过）：' + String((e && e.message) || e); }
+    const roles = (c.roles || []).map((r) => r.name);
+    if (roles.length !== 14) return '角色数应为 14，实得 ' + roles.length;
+    const w = roles.filter((x) => /^Writing/.test(x));
+    if (w.length !== 2) return 'Writing 系列角色应为 2 个，实得 ' + w.length;
+    for (const x of w) if (!/\u2013/.test(x)) return '「' + x + '」缺 en dash（官方逐字为 Writing – …，不得改连字符）';
+    if (!(c.roles || []).every((r) => /^https:\/\//.test(String(r.url || '')))) return '有角色缺官方链接';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(c.verified_at || '')) || !String(c.verified_from || '').trim()) return '缺取证日期或来源';
+    if (!/NISO|ANSI/i.test(String(c.standard || ''))) return '缺标准号（ANSI/NISO Z39.104-2022）';
+    return true;
+  });
+  check('CRediT 正控：用官方写法写的贡献段必须判通过', () => {
+    const txt = '## Author contributions\n\nConceptualization: A. B.; Data curation: C. D.; Formal analysis: C. D.; Funding acquisition: A. B.; Investigation: C. D.; Methodology: A. B.; Supervision: A. B.; Visualization: C. D.; Writing \u2013 original draft: A. B.; Writing \u2013 review & editing: A. B.\n';
+    const r = creditScan(txt);
+    return r.ok === true ? true : JSON.stringify({ variants: r.variants, reasons: r.reasons, found: r.rolesFound.length });
+  });
+  check('必失败：非官方写法（Visualisation / Conceptualisation）必须被抓（不许静默通过）', () => {
+    const txt = '## CRediT\n\nConceptualisation: A. B.; Visualization: C. D.; Visualisation: C. D.; Supervision: A. B.\n';
+    const r = creditScan(txt);
+    return (!r.ok && r.variants.length >= 1 && r.variants.some((v) => /Visualisation|Conceptualisation/.test(v.found))) ? true : JSON.stringify(r.variants);
+  });
+  check('必失败：没有 CRediT 段必须判未通过（缺段不等于没问题）', () => {
+    const r = creditScan('# Manuscript\n\nAbstract...\n\n## Introduction\n\nWe studied X.\n');
+    return (!r.ok && r.reasons.some((x) => /未找到 CRediT/.test(x))) ? true : JSON.stringify(r.reasons);
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1725,6 +1755,68 @@ function contractSchemaProblems(c) {
   const famB = !!(c.verified_facts && (c.publisher_level_policies || c.implications_for_this_submission));
   if (!famA && !famB) bad.push('不属于已知契约族（需 limits+structure 或 verified_facts+publisher_level_policies/implications）—— 未知契约族');
   return bad;
+}
+
+/** CRediT 检查（v3.2.6 · 纯函数便于夹具注入）
+ *  为什么要它：PLOS/Elsevier/BMC 都按 CRediT 收作者贡献，而**非官方写法**（Visualisation、
+ *  Conceptualisation…）是常见退回原因；官方 14 角色名（含 en dash）来自 ANSI/NISO Z39.104-2022，
+ *  经 references/credit-roles.json 入包（CC-BY 4.0）。
+ *  判据强度分级：编辑距离 =1 ⇒ 硬判"疑似非官方写法"（失败）；=2 ⇒ 只记"相近词"提醒（不失败，
+ *  避免把 Supervisor/Supervision 这类正常写法误杀）。 */
+function creditRoles() {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'references', 'credit-roles.json'), 'utf8')).roles.map((r) => r.name); } catch { return []; }
+}
+function normDash(s) { return String(s).replace(/[\u2010-\u2015\u2212]/g, '-'); }
+function levDist(a, b) {
+  const m = a.length; const n = b.length;
+  if (!m) return n; if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j); let cur = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    const sw = prev; prev = cur; cur = sw;
+  }
+  return prev[n];
+}
+function creditScan(text) {
+  const roles = creditRoles();
+  const out = { ok: false, expected: roles.length, section: false, rolesFound: [], variants: [], nearVariants: [], reasons: [] };
+  if (roles.length !== 14) { out.reasons.push('读不到官方 14 角色（references/credit-roles.json）⇒ 前提不成立，不得当通过'); return out; }
+  const n = normDash(String(text || ''));
+  out.section = /CRediT|作者贡献|Author contributions?/i.test(n);
+  if (!out.section) out.reasons.push('未找到 CRediT / Author contributions 段（缺该段不判通过）');
+  const lower = n.toLowerCase();
+  for (const r of roles) if (lower.includes(normDash(r).toLowerCase())) out.rolesFound.push(r);
+  const cands = new Set();
+  for (const mm of n.matchAll(/(?:^|[\n,;·|])\s*([A-Z][A-Za-z]{2,}(?:[ -][A-Za-z&]{2,}){0,3})/g)) cands.add(mm[1].trim());
+  for (const c of cands) {
+    const cl = c.toLowerCase();
+    if (roles.some((r) => normDash(r).toLowerCase() === cl)) continue;
+    for (const r of roles) {
+      const d = levDist(cl, normDash(r).toLowerCase());
+      if (d === 1) { out.variants.push({ found: c, official: r, distance: d }); break; }
+      if (d === 2) { out.nearVariants.push({ found: c, official: r, distance: d }); break; }
+    }
+  }
+  if (out.section && out.rolesFound.length === 0) out.reasons.push('段落存在但未匹配到任何官方角色名（写法可能非官方）');
+  out.ok = out.section && out.variants.length === 0 && out.rolesFound.length > 0;
+  return out;
+}
+function cmdCredit(file) {
+  if (!file) { console.error('前提层失败：credit 需要一个文件参数（稿件或声明文件）'); return 2; }
+  const abs = path.resolve(file);
+  if (!fs.existsSync(abs)) { console.error('前提层失败：文件不存在 —— ' + abs); return 2; }
+  let text = '';
+  try { text = fs.readFileSync(abs, 'utf8'); } catch (e) { console.error('前提层失败：读不到 —— ' + String((e && e.message) || e)); return 2; }
+  const r = creditScan(text); r.file = abs;
+  if (JSON_OUT) { console.log(JSON.stringify(r, null, 2)); return r.ok ? 0 : 1; }
+  console.log('CRediT 检查：' + abs);
+  console.log('  官方角色 ' + r.expected + ' 个 · 文中匹配 ' + r.rolesFound.length + ' 个：' + (r.rolesFound.join(' · ') || '（无）'));
+  if (r.variants.length) { console.log('  ✘ 疑似非官方写法（会被期刊退回）：'); for (const v of r.variants) console.log('     - 「' + v.found + '」→ 官方为「' + v.official + '」'); }
+  if (r.nearVariants.length) { console.log('  · 相近词（仅提醒，不判失败）：' + r.nearVariants.map((v) => v.found + '≈' + v.official).join(' · ')); }
+  for (const why of r.reasons) console.log('  ✘ ' + why);
+  console.log(r.ok ? '  ✔ CRediT 通过（段落在、角色名皆为官方写法）' : '  ⇒ 未通过（修完再投）');
+  return r.ok ? 0 : 1;
 }
 
 // ── v3.1.9 三道新判据（都由 2026-10-16 生态日审的真实问题驱动）────────────
@@ -2260,6 +2352,7 @@ function main(argv) {
     if (cmd === 'claims') return cmdClaims();
     if (cmd === 'coverage') return cmdCoverage();
     if (cmd === 'compliance') return cmdCompliance(args[1] || '');
+    if (cmd === 'credit') return cmdCredit(args[1] || '');
     console.error(`未知子命令：${cmd}`);
     return 2;
   } catch (e) {

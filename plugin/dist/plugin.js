@@ -252,7 +252,7 @@ const INTENT_CASES = [
 
 const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 'scaffold', 'genre', 'sections', 'verify', 'stylecheck', 'polish', 'revise', 'figures', 'profile', 'coach', 'audit', 'state', 'lessons', 'method', 'handoff', 'crosscheck', 'docx', 'cost', 'selftest',
   // ★ v3.2.2：补上 CLI 已有、但工具面漏接的 4 个（合规门对其他宿主原本完全不可达——paper_studio 里 compliance 命中 0 次）
-  'compliance', 'hygiene', 'claims', 'coverage']
+  'compliance', 'hygiene', 'claims', 'coverage', 'credit']
 
 const PAPER_STUDIO_TOOL = {
   name: 'paper_studio',

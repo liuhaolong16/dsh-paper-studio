@@ -8,6 +8,18 @@
 
 
 
+
+## v3.2.6 —— 2026-10-16
+
+**上网找方向与素材（目标轮）：把 CRediT 官方角色做成资产 + 一条"非官方写法"判据。**
+
+- **素材来源（一手 · 可再分发）**：`https://credit.niso.org/`（HTTP 200，2026-10-16 本机取回）——CRediT 官方 14 角色，**ANSI/NISO Z39.104-2022**（2022 批准），**CC-BY 4.0 允许再分发**；角色名逐字入包（含 `Writing – original draft` 的 **en dash**）。
+- **新资产** `references/credit-roles.json`（14 角色 + 逐角色官方链接 + 标准号 + 许可 + `verified_at`/`verified_from`），登记进真源 `assets`（16 条）。
+- **新能力** `node bin/studio.cjs credit <文件>`：检查稿件/声明里的 CRediT 段——官方角色匹配数、**疑似非官方写法**（编辑距离 =1，如 `Visualisation`/`Conceptualisation` ⇒ 硬判失败）、相近词（距离 =2，如 `Supervisor≈Supervision` ⇒ 仅提醒，避免误杀）。缺 CRediT 段**不判通过**。
+- 接入面：CLI 子命令 + `agent_facing`（28 条）+ **插件工具面** `STUDIO_ACTIONS`（跨面判据同时要求，已一并接上）。
+- 新判据 4 条（含 2 必失败）：资产形态（14 角色 / en dash / 取证信息 / 逐角色链接）· 官方写法正控 · 非官方写法必被抓 · **缺段必须判未通过**。自检：CLI **93 → 97**。
+- **素材通道实测（如实记）**：`raw.githubusercontent.com` 四条全超时、`hub.docker.com` 解析到非公网 IP、`web_fetch` 不收 `application/pdf`（MIT 的角色表是 PDF）；`pandoc`/`citeproc` 本机未装；`cdn.jsdelivr.net` 可达但对 CSL 三条路径返回 **404**（通道通、路径与预期不符）。**CSL 样式库方向**（用 `citation-style-language/styles` + pandoc/citeproc 自动生成各刊参考文献制式）**记为待评估**，需先把通道/路径确认或装工具。
+
 ## v3.2.5 —— 2026-10-16
 
 **把在投刊的契约都做成插件可复用资产（搬运已取证件，不改数字），并加一条"契约通则"判据。**
