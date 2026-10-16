@@ -1,0 +1,43 @@
+# 用 npm Trusted Publishing (OIDC) 发布 —— **不需要任何长期 token**
+# 前置（在 npmjs.com 网站上一次即可，你的浏览器已登录）：
+#   Package → Settings → Trusted Publisher → 选 GitHub Actions
+#   填 Organization/user = liuhaolong16 · Repository = dsh-paper-studio · Workflow = publish-npm.yml
+# 之后每次手动触发本工作流即可发布，凭据由 OIDC 短时签发，仓库里不存任何 secret。
+name: publish-npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "只做打包与自检，不真正发布"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write          # OIDC 必需：换取 npm 短时凭据
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      # 自检先跑：不过就不发布（把门放在发布之前）
+      - name: Self-checks (must pass before publishing)
+        run: |
+          node bin/studio.cjs selftest
+          node bin/gate-runner.cjs --selftest
+          node plugin/selftest.mjs
+          node gates/_journal-contract.cjs --selftest
+      - name: Show what would be published
+        run: npm pack --dry-run
+      - name: Publish (dry-run)
+        if: ${{ inputs.dry_run }}
+        run: npm publish --dry-run --access public
+      - name: Publish (real, with provenance)
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --provenance --access public

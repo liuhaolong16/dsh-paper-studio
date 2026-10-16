@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.2.59 —— 2026-10-16
+
+**上架 npm 的两条通路落地（文档 + 免 token 的 OIDC 工作流），本机不再需要保存任何发布凭据。**
+
+- **新增 `.github/workflows/publish-npm.yml`**：GitHub Actions **Trusted Publishing (OIDC)** 发布 —— `permissions: id-token: write`，**工作流里不存任何 secret**；先跑四套自检（**不过就不发布**），默认 `dry_run=true`，确认后再以 `--provenance` 正式发布。
+- **新增 `PUBLISHING.md`**：两条通路各自的步骤、前置与回滚 —— ①OIDC（推荐，凭据短时签发）；②Granular Access Token（首次发布常用，**由用户本人在本机写 `.npmrc`，token 值不进对话/不进仓库**，用完即清）。回滚段写明 npm 的硬约束：**已发布版本不可改，只能 `unpublish`（且有窗口与下游引用限制）**，因此先 `--dry-run` 再正式发。
+- **本机实测（发布前必须全绿）**：studio **168/168** · 门执行器 **53/53** · 契约门 **69/69** · plugin **38/38**；`npm pack --dry-run` = **84 文件 · 643 kB tarball · 1.7 MB 解包**；`npm --version` 10.9.9；`npm whoami` = **ENEEDAUTH**（CLI 无凭据，属预期 —— 浏览器登录不等于 CLI 授权）。
+- **安全（如实记）**：上一轮对话历史里出现过一次 npm token 明文 ⇒ 已把落盘副本（`.dsh-project-memory/admission-shadow.jsonl`）就地**脱敏**（2 处 → 0，JSONL 仍逐行合法），并**建议该 token 立即作废重建**（它已进入对话历史，应视为泄露）。
+- **环境经验（本机）**：`npm` 的 `.ps1` 垫片被本机执行策略挡住（`PSSecurityException`）⇒ **一律用 `npm.cmd`**；用 PowerShell 传 JS 给 `node -e` 会被吞引号 ⇒ **写成临时 .cjs 文件再跑**。
+- 自检口径不变（无判据改动）；版本推进仅为随附文档/工作流。
+
 ## v3.2.58 —— 2026-10-16
 
 **上架前最后一关：把 npm 包做成"真自包含"，并用**发布产物本身**验证（不是用工作目录验证）。**
