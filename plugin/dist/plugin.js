@@ -260,7 +260,9 @@ const STUDIO_ACTIONS = ['modes', 'intent', 'route', 'gates', 'intake', 'draft', 
   //   「CLI 子命令 35 个，枚举缺：response」），说明该锁确实在拦新增能力静默进不了工具面。
   'response',
   // ★ v3.2.26：新增 cover（投稿信要素核对）—— **漂移锁第二次当轮抓到**（自检红：CLI 子命令 36 个，枚举缺：cover）。
-  'cover']
+  'cover',
+  // ★ v3.2.33：新增 report-check（报告陈旧检测）—— 漂移锁会在缺项时报错。
+  'report-check']
 
 const PAPER_STUDIO_TOOL = {
   name: 'paper_studio',
