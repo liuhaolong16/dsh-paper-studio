@@ -398,6 +398,37 @@ function runSelftest() {
     const r = out.results[0];
     return (r.verdict === 'skipped_not_applicable' && r.rc === null) ? true : `verdict=${r.verdict} rc=${r.rc}`;
   });
+  /* ★ v3.2.51 **反向锁**（放在这里而不是门里：契约与插件都在本侧，门是外部工具、不该假设本机目录结构）
+     此前只锁了「契约声明的键必须有门在管」；反方向没人管 —— 门实现了一条契约驱动的检查、
+     却**没有任何契约在声明它** ⇒ 它永远不会执行（死检查）。真身事故：`ai_declaration_present`
+     实现已久，而 6 份契约**无一声明** `ai_declaration_required` ⇒ 死检查（直到 v3.2.51 接通）。 */
+  const CONTRACTS_DIR = path.join(ROOT, 'references', 'contracts');
+  let rP = {};
+  try { rP = studio.readPipeline(); } catch (e) { rP = {}; }   // 本块在 P 定义之前 ⇒ 自行解析（用未定义变量会直接崩）
+  const rcands = [];
+  try { const gr = resolveGateScript({ id: 'journal-contract', entry: '_journal-contract.cjs' }, rP); if (gr && gr.script) rcands.push(gr.script); } catch (e) {}
+  if (rP.assets && rP.assets.playbook_root) rcands.push(path.join(rP.assets.playbook_root, '_journal-contract.cjs'));
+  let gateSrc = '';
+  for (const c of rcands) { if (c && fs.existsSync(c)) { gateSrc = fs.readFileSync(c, 'utf8'); break; } }
+  if (!gateSrc) { check('v3.2.51·反向锁：门脚本不可得 ⇒ 未检查（不假装通过）', false, '门脚本不可得'); }
+  else {
+  const tableM = gateSrc.match(/const CONTRACT_DRIVEN = \{([\s\S]*?)\n\};/);
+  const table = {};
+  if (tableM) {
+    for (const m of tableM[1].matchAll(/(\w+):\s*'([^']+)'/g)) table[m[1]] = m[2];
+  }
+  const contractsBlob = fs.readdirSync(CONTRACTS_DIR).filter((f) => f.endsWith('.json'))
+    .map((f) => fs.readFileSync(path.join(CONTRACTS_DIR, f), 'utf8')).join('\n');
+  const deadChecks = (tbl) => Object.keys(tbl).filter((id) => !String(tbl[id]).split('|')
+    .some((k) => contractsBlob.indexOf('"' + k.split('.').pop() + '"') >= 0));
+  check('v3.2.51·反向锁：门里每个契约驱动检查都必须被至少一份契约触发（防死检查）',
+    () => Object.keys(table).length > 0 && deadChecks(table).length === 0,
+    Object.keys(table).length === 0 ? '未能从门源码解析出 CONTRACT_DRIVEN 表（锁本身失效，必须修）'
+      : (deadChecks(table).length ? ('死检查（没有任何契约触发）：' + deadChecks(table).join(' · ')) : ('全部 ' + Object.keys(table).length + ' 项都有契约触发')));
+  check('v3.2.51·反向锁·必失败面：造一个没有契约触发的检查项 ⇒ 必须被判为死检查',
+    () => deadChecks(Object.assign({}, table, { __ghost__: 'limits.this_key_is_in_no_contract' })).indexOf('__ghost__') >= 0,
+    '必失败面没红');
+  }
   check('★契约声明 vs 门执行：每个 `limits.*` 键要么被门真的引用，要么在 informational 白名单里登记了原因（防"声明了却没人执行"）', () => {
     const P = studio.readPipeline();
     const info = ((P.contract_limits || {}).informational) || {};
@@ -405,7 +436,7 @@ function runSelftest() {
     const dir = path.join(ROOT, 'references', 'contracts');
     if (!fs.existsSync(dir)) return true;
     const cands = [];
-    try { const r = resolveGateScript({ id: 'journal-contract', entry: '_journal-contract.cjs' }, P); if (r && r.script) cands.push(r.script); } catch (e) {}
+    try { const r = resolveGateScript({ id: 'journal-contract', entry: '_journal-contract.cjs' }, rP); if (r && r.script) cands.push(r.script); } catch (e) {}
     if (P.assets && P.assets.playbook_root) cands.push(path.join(P.assets.playbook_root, '_journal-contract.cjs'));
     let gateSrc = '';
     for (const c of cands) { if (c && fs.existsSync(c)) { gateSrc = fs.readFileSync(c, 'utf8'); break; } }

@@ -534,6 +534,43 @@ if (process.argv.includes('--selftest')) {
     limits: { abstract_max_words: 50 }, checkable_ids: ['abstract_max_words', 'this_check_does_not_exist'] }));
   const unc = runJson(['--draft', draft, '--contract', cUncovered, '--json']);
   const cov = unc.j && unc.j.results.find((x) => x.id === 'checkable_ids_covered');
+  /* ★ v3.2.51 AI 使用披露（依据 Elsevier 生成式 AI 政策 + ICMJE 第 V 节；两页 2026-10-16 实抓） */
+  (() => {
+    const cAI = path.join(tmp, 'c-ai.json');
+    fs.writeFileSync(cAI, JSON.stringify({ journal: '样例', publisher: 'P', verified_at: '2026-10-16', verified_from: 'u',
+      structure: { ai_declaration_required: true }, checkable_ids: ['ai_declaration_present', 'ai_declaration_placeholders_filled', 'ai_not_listed_as_author'] }));
+    const mk = (name, body) => { const p = path.join(tmp, name); fs.writeFileSync(p, body); return p; };
+    // ① 推荐标题 + 填好的模板 ⇒ 通过
+    const okD = mk('ai-ok.md', '# T\n\n## Abstract\n\nA few words.\n\n## Declaration of generative AI and AI-assisted technologies in the manuscript preparation process\n\nDuring the preparation of this work, the author(s) used ChatGPT in order to improve language. After using this tool/service, the author(s) reviewed and edited the content as needed and take(s) full responsibility for the content of the published article.\n\n## References\n\n[1] x\n');
+    const r1 = runJson(['--draft', okD, '--contract', cAI, '--json']);
+    const g1 = (id) => (r1.j && r1.j.results || []).find((x) => x.id === id) || {};
+    add('v3.2.51·AI 披露·正控：推荐标题 + 填好的声明句 ⇒ ai_declaration_present 通过、占位符检查通过',
+      !!(g1('ai_declaration_present').ok === true && g1('ai_declaration_placeholders_filled').ok === true),
+      JSON.stringify([g1('ai_declaration_present').ok, g1('ai_declaration_placeholders_filled').ok]));
+    // ② 模板占位符没填 ⇒ 必须 FAIL（复制模板≠披露）
+    const phD = mk('ai-ph.md', '# T\n\n## Abstract\n\nA few words.\n\n## Declaration of generative AI and AI-assisted technologies\n\nDuring the preparation of this work, the author(s) used [NAME OF TOOL / SERVICE] in order to [REASON].\n\n[1] x\n');
+    const r2 = runJson(['--draft', phD, '--contract', cAI, '--json']);
+    const g2 = ((r2.j && r2.j.results) || []).find((x) => x.id === 'ai_declaration_placeholders_filled') || {};
+    add('v3.2.51·AI 披露·必失败面：模板占位符未替换（[NAME OF TOOL / SERVICE] / [REASON]）⇒ 必须 FAIL',
+      g2.ok === false && /占位符/.test(String(g2.detail)), String(g2.detail || '').slice(0, 90));
+    // ③ 只写声明句、没有推荐标题 ⇒ **不得**误报缺披露（放宽识别）
+    const stD = mk('ai-stmt.md', '# T\n\n## Abstract\n\nA few words.\n\n**Use of AI.** The authors used ChatGPT to polish the language.\n\n[1] x\n');
+    const r3 = runJson(['--draft', stD, '--contract', cAI, '--json']);
+    const g3 = ((r3.j && r3.j.results) || []).find((x) => x.id === 'ai_declaration_present') || {};
+    add('v3.2.51·AI 披露·放宽识别：只有声明句（无推荐标题）⇒ 判「在场」，不得误报缺披露', g3.ok === true, String(g3.detail || '').slice(0, 90));
+    // ④ 把 AI 列进作者块 ⇒ 必须 FAIL（Elsevier/ICMJE 同判）
+    const auD = mk('ai-author.md', '# T\n\nHaolong Liu, ChatGPT\n\n## Abstract\n\nA few words.\n\nDuring the preparation of this work, the author(s) used ChatGPT in order to improve language.\n\n[1] x\n');
+    const r4 = runJson(['--draft', auD, '--contract', cAI, '--json']);
+    const g4 = ((r4.j && r4.j.results) || []).find((x) => x.id === 'ai_not_listed_as_author') || {};
+    add('v3.2.51·AI 披露·必失败面：作者块出现 AI 工具名 ⇒ 必须 FAIL（AI 不得列为作者）',
+      g4.ok === false && /不得列为作者/.test(String(g4.detail)), String(g4.detail || '').slice(0, 90));
+    // ⑤ 定位不到作者块 ⇒ 记 WARN（未检查≠通过），不得静默判通过
+    const noAu = mk('ai-noauthor.md', '# T\n\n## Abstract\n\nA few words.\n\nDuring the preparation of this work, the author(s) used ChatGPT in order to improve language.\n\n[1] x\n');
+    const r5 = runJson(['--draft', noAu, '--contract', cAI, '--json']);
+    const g5 = ((r5.j && r5.j.results) || []).find((x) => x.id === 'ai_not_listed_as_author') || {};
+    add('v3.2.51·AI 披露·诚实面：作者块定位不到 ⇒ WARN 且写明「未检查」，不得当通过',
+      g5.level === 'WARN' && /未检查/.test(String(g5.detail)), String(g5.detail || '').slice(0, 60));
+  })();
   add('新检查·必失败面：契约声明了本门没执行的检查 ⇒ 必须 FAIL（登记过≠可机检）',
     !!(cov && cov.ok === false && /没执行/.test(cov.detail)), '实得 ' + JSON.stringify(cov && { ok: cov.ok, d: cov.detail }));
   const cCovered = path.join(tmp, 'c-covered.json');
@@ -665,6 +702,46 @@ const pkgHasText = (re) => re.test(pkgText);
 const ev = (inDraft, inPkg, what) => (inDraft ? '稿件内' : '') + (inPkg ? (inDraft ? ' + ' : '') + 'package:' + what : '') || '未找到';
 
 const results = [];
+/* ★ v3.2.51 **反向锁**：此前只锁了「契约声明的键必须有门在管」，但反过来没人管 ——
+ *  门实现了一条契约驱动的检查、却**没有任何契约在声明它** ⇒ 它永远不会被执行（死检查）。
+ *  实测正是如此：`ai_declaration_present` 实现已久，但 6 份契约无一声明 `ai_declaration_required`。
+ *  这张表登记「检查项 ← 触发它的契约键」，自检时遍历全部契约，要求每项至少被一份契约触发。 */
+const CONTRACT_DRIVEN = {
+  /* ★ 表本身必须与门里真实存在的 check id 对齐（首版我凭印象写了 `docs_before_refs` —— 门里根本没这条 ⇒ 反向锁当场判它"死检查"，红得对）。
+     匹配用的是键的**末段**（如 `limits.abstract_max_words` ⇒ 找 `"abstract_max_words"`）⇒ 偏宽松：
+     它的职责是抓"**永远不被触发**"的检查，不是证明触发键唯一。 */
+  ai_declaration_present: 'structure.ai_declaration_required',
+  ai_declaration_before_references: 'structure.ai_declaration_required',
+  ai_declaration_placeholders_filled: 'structure.ai_declaration_required',
+  ai_not_listed_as_author: 'structure.ai_declaration_required',
+  abstract_max_words: 'limits.abstract_max_words',
+  abstract_chars: 'limits.abstract_max_chars',
+  title_max_chars: 'limits.title_max_chars',
+  heading_max_chars: 'limits.heading_max_chars',
+  heading_levels_max: 'limits.heading_levels_max',
+  keywords_count: 'limits.keywords_min|limits.keywords_max',
+  highlights_present: 'limits.highlights|limits.highlights_required',
+  highlights_count: 'limits.highlights',
+  highlights_chars: 'limits.highlights',
+  highlights_separate_file: 'limits.highlights',
+  figure_spec: 'limits.figure_spec|limits.figure_format',
+  figure_caption_max_words: 'limits.figure_caption_max_words',
+  si_file_max_mb: 'limits.si_file_max_mb',
+  figures_tables_range: 'limits.figures_tables_min|limits.figures_tables_max|limits.figures_tables_limit',
+  manuscript_max_words: 'limits.manuscript_max_words|limits.word_limit',
+  short_title: 'limits.short_title_required|limits.short_title_max_chars',
+  abstract_no_citations: 'limits.abstract_no_citations',
+  figures_not_embedded: 'structure.figures_separate_files',
+  funding_not_in_manuscript: 'structure.funding_in_manuscript',
+  required_sections: 'structure.required_sections',
+  reference_entries_complete: 'structure.reference_entry_must_include|structure.references_style',
+  references_numbered_in_order: 'structure.references_style|structure.reference_entry_must_include',
+  writing_order: 'structure.writing_order',
+  credit_present: 'structure.credit_required',
+  acknowledgements_before_references: 'structure.acknowledgements_before_references',
+  required_terms_present: 'structure.required_terms_present|limits.abstract_required_terms',
+  appendix_not_supplementary: 'structure.appendix_for_replication_and_extra_results',
+};
 const check = (id, level, ok, detail, evidence) => results.push({ id, level, ok, detail, evidence: evidence || '' });
 
 const L = contract.limits || {};
@@ -886,22 +963,70 @@ if (S.acknowledgements_before_references && refsIdx >= 0) {
     ackIdx < 0 ? '未找到 Acknowledgments 节' : (ok ? '致谢节位于参考文献之前（合规）' : '致谢节位于参考文献之后（不合规）'));
 }
 
-/* C11 生成式 AI 使用声明（Elsevier 出版社级硬要求；置于参考文献之前）
-   ★ 与其余各项不同：此项**不是** JoES Guide 页面的摘录，而是出版社级政策的产物，
-     故在 contract JSON 里单独标了 ai_declaration_provenance 说明来源 —— 门只负责「有没有、位置对不对」，
-     不替作者判断「怎么声明才属实」（那必须作者自己认）。 */
+/* C11 生成式 AI 使用披露（**出版社级政策**，非刊物页摘录 ⇒ 契约里用 ai_declaration_provenance 记来源）
+   ★ v3.2.51 按官方原文补全（两份 2026-10-16 实抓）：
+     · Elsevier《Generative AI policies for journals》
+       https://www.elsevier.com/about/policies-and-standards/generative-ai-policies-for-journals
+       要求投稿时在稿件中给出**单独的 AI 声明**，记录 **工具名 / 用途 / 人监督程度**；推荐标题与逐字模板：
+       `Declaration of generative AI and AI-assisted technologies in the manuscript preparation process`
+       `During the preparation of this work, the author(s) used [NAME OF TOOL / SERVICE] in order to [REASON].
+        After using this tool/service, the author(s) reviewed and edited the content as needed and take(s) full
+        responsibility for the content of the published article.`
+       **不得把 AI 工具列为作者**；纯语法/拼写检查**无需**声明；研究过程用 AI 写进 Methods。
+     · ICMJE《Use of AI by Authors》
+       https://www.icmje.org/recommendations/browse/artificial-intelligence/ai-use-by-authors.html
+       投稿时须披露；**chatbot/LLM 不得列为作者**（无法承担责任）；不披露可能构成不当行为。
+   ★ 门只判四件事：**有没有 · 位置对不对 · 模板占位符有没有填 · 有没有把 AI 当作者**；
+     **不判"声明是否属实"**（那必须作者负责）。识别形态三类等价：标题行 / 行首加粗标签 / 声明句本身（含否定式）。 */
 if (S.ai_declaration_required) {
-  const aiIdx = noMeta.search(/^##+\s*.*(generative\s*AI|AI[- ]assisted\s*technologies).*$/im);
+  const AI_HEAD_RE = /generative\s*AI|AI[-\s]?assisted\s*technologies|AI\s+(?:use|declaration|statement)|AI\s*使用声明|生成式(?:人工)?智能|人工智能使用声明/i;
+  const AI_STMT_RE = /during the preparation of this work|the author\(s\) used|authors? (?:used|employed)[^.]{0,60}?(?:\bAI\b|\bLLMs?\b|ChatGPT|GPT-|Claude|Gemini|Copilot|LLaMA|LLM|文心|通义|豆包)|AI[-\s]?assisted technologies were used|no generative AI|not (?:used|use)[^.]{0,20}generative AI|未使用(?:生成式)?人工智能|使用了(?:生成式)?人工智能|借助(?:生成式)?人工智能/i;
+  const AI_PLACEHOLDER_RE = /\[\s*(?:NAME OF TOOL(?:\s*\/\s*SERVICE)?|TOOL NAME|SERVICE|REASON|工具名?|服务名?|用途|原因)[^\]]*\]/i;
+  const headLines = (noMeta.match(/^##+\s*.*$/gim) || []);
+  const aiHead = headLines.find((L) => AI_HEAD_RE.test(L)) || '';
+  const aiIdx = aiHead ? noMeta.indexOf(aiHead) : -1;
   const before = aiIdx >= 0 && (refsIdx < 0 || aiIdx < refsIdx);
   const aiFile = pkg.exists ? pkgFileHit(/(generative[-_ ]?ai|ai[-_ ]?(use|declaration|statement))/i) : '';
-  const aiDeclDraft = declLineIn(noMeta, /generative\s*AI|AI[- ]assisted\s*technologies/i);
-  const aiDeclPkg = pkg.exists ? declLineIn(pkgText, /generative\s*AI|AI[- ]assisted\s*technologies/i) : '';
+  const aiDeclDraft = declLineIn(noMeta, AI_HEAD_RE) || declLineIn(noMeta, AI_STMT_RE);
+  const aiDeclPkg = pkg.exists ? (declLineIn(pkgText, AI_HEAD_RE) || declLineIn(pkgText, AI_STMT_RE)) : '';
   const aiPkgText = !!aiDeclPkg;
-  const aiOk = aiDeclPkg ? true : (aiIdx >= 0 && !!aiDeclDraft) || !!aiFile;
+  /* ★ 识别形态放宽（v3.2.51）：作者可能只写 Elsevier 推荐的**声明句**而不写推荐标题 ⇒ 此前会误报"缺声明" */
+  const stmtLine = (noMeta.split('\n').find((L) => AI_STMT_RE.test(L)) || '');
+  const aiOk = aiPkgText ? true : (!!aiHead && !!aiDeclDraft) || !!aiFile || !!stmtLine;
+  const aiWhere = aiFile ? ('package:' + aiFile) : (aiPkgText ? 'package:标题/声明行' : (aiHead ? 'draft:标题行' : (stmtLine ? 'draft:声明句' : '')));
   check('ai_declaration_present', 'FAIL', aiOk,
-    aiOk ? '存在生成式 AI 使用声明（证据：' + ev(aiIdx >= 0, !!(aiFile || aiPkgText), aiFile || '正文关键词') + '）'
-         : '未找到生成式 AI 使用声明节（Elsevier 要求单独成节）' + (pkg.exists ? '' : '（**未给 --package，若声明在独立文件里会误报**）'),
-    aiFile ? 'package:' + aiFile : (aiPkgText ? 'package:标题行' : (aiIdx >= 0 ? 'draft:标题行' : '')));
+    aiOk ? '存在生成式 AI 使用披露（证据：' + ev(!!(aiHead || stmtLine), !!(aiFile || aiPkgText), aiFile || (aiHead ? '标题行' : '声明句')) + '）'
+         : '未找到生成式 AI 使用披露（出版社级要求：单独声明 · 记录工具名/用途/监督程度 · 或明确写明未使用）' + (pkg.exists ? '' : '（**未给 --package，若声明在独立文件里会误报**）'),
+    aiWhere);
+  /* ★ 新增必失败面①：推荐模板被原样复制、占位符没填 —— 那不是披露，是没填的表 */
+  const aiTextAll = [aiHead, stmtLine, declLineIn(noMeta, AI_HEAD_RE) || '', pkg.exists ? String(aiDeclPkg || '') : ''].join('\n');
+  const ph = (aiTextAll.match(AI_PLACEHOLDER_RE) || [])[0] || '';
+  check('ai_declaration_placeholders_filled', 'FAIL', !(aiOk && ph),
+    (aiOk && ph) ? ('AI 声明里保留了**未替换的模板占位符** ' + ph + '（须填真实工具名与用途）')
+                 : 'AI 声明未发现未替换的模板占位符（如 [NAME OF TOOL / SERVICE] / [REASON]）');
+  /* ★ 新增必失败面②：AI 工具不得列为作者（Elsevier 与 ICMJE 同判）—— **只在作者块范围内判**，
+     避免把 Methods 里正当提到的工具名误伤 */
+  /* ★ v3.2.51：作者块定位要覆盖**三种常见形态** —— ①`## Authors` 节 ②`**Authors:**` 行首标签 ③**题头区 byline**
+     （标题 → Abstract/Keywords 之间，实测真实稿件多用这种；此前只认前两种 ⇒ 真稿被记「未检查」）。 */
+  const abM = noMeta.match(/^##+\s*(?:Authors?|作者)\b[\s\S]{0,1500}?(?=\n##+\s|$)/im)
+    || noMeta.match(/(?:^|\n)\s*\*\*(?:Authors?|作者)\*\*[：:][^\n]*/i)
+    || noMeta.match(/(?:^|\n)\s*(?:Authors?|作者)\s*[：:][^\n]*/i)
+    || (() => {
+      const cut = noMeta.search(/^##+\s*(?:Abstract|摘要|Keywords|关键词)\b/im);
+      const head = cut > 0 ? noMeta.slice(0, cut) : noMeta.split('\n').slice(0, 25).join('\n');
+      return (head && /[A-Z][a-z]+\s+[A-Z][a-z]+|·|，|\bbyline\b/.test(head)) ? [head] : null;
+    })();
+  const abText = abM ? abM[0] : '';
+  const TOOL_RE = /\b(?:ChatGPT|GPT-[45](?:\.\d)?|Claude|Gemini|Copilot|LLaMA|ChatGLM|文心一言|通义千问|豆包)\b/i;
+  if (abText) {
+    const tool = (abText.match(TOOL_RE) || [])[0] || '';
+    check('ai_not_listed_as_author', 'FAIL', !tool,
+      tool ? ('作者块里出现了 AI 工具名 ' + tool + ' ⇒ **AI 不得列为作者**（Elsevier/ICMJE 同判）')
+           : '作者块未出现 AI 工具名（合规）', 'draft:作者块');
+  } else {
+    check('ai_not_listed_as_author', 'WARN', false,
+      '未定位到作者块（无 Authors/作者 标题或标签）⇒ **未检查**，不得当作通过', '');
+  }
   check('ai_declaration_before_references', 'WARN', before,
     aiIdx < 0 ? '未能定位声明节，位置检查跳过（已计入上一条 FAIL）'
       : (before ? 'AI 声明位于参考文献之前（合规）' : 'AI 声明位于参考文献之后（建议移到之前）'));

@@ -109,5 +109,6 @@
     "checkable_ids_covered"
   ],
   "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。",
-  "ported_from_note": "原值含**本机绝对路径**，按证据纪律 D（对外文本不得含路径分隔符/内网信息）改为相对描述；本地原始路径不入库、不入包。"
+  "ported_from_note": "原值含**本机绝对路径**，按证据纪律 D（对外文本不得含路径分隔符/内网信息）改为相对描述；本地原始路径不入库、不入包。",
+  "ai_declaration_provenance": "Elsevier《Generative AI policies for journals》（**出版社级政策**，非刊物页摘录）：投稿时须在稿件中给出**单独的** AI 使用声明，记录工具名/用途/监督程度；**AI 不得列为作者**；纯语法拼写检查无需声明；研究过程用 AI 写进 Methods。来源 https://www.elsevier.com/about/policies-and-standards/generative-ai-policies-for-journals （2026-10-16 实抓）"
 }

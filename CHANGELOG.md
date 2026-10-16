@@ -3,6 +3,21 @@
 
 # 变更记录
 
+## v3.2.51 —— 2026-10-16
+
+**接通一条"死检查"（AI 使用披露），并按 Elsevier / ICMJE 官方原文补齐三条缺口；同时新增一把"反向锁"，专门抓"永久不被触发的检查"。**
+
+- **★发现的死检查**：门里 `ai_declaration_present` 早就实现了，但**6 份契约无一声明** `ai_declaration_required` ⇒ 它从未被执行过（注释写着"Elsevier 出版社级硬要求"，契约里却没有这条）。这正是"登记过 ≠ 可机检"的**镜像**：此前只锁"契约声明的键必须有门在管"，**反方向没人管**。
+- **接通并补全（依据两份 2026-10-16 实抓的官方原文）**：
+  · [Elsevier《Generative AI policies for journals》](https://www.elsevier.com/about/policies-and-standards/generative-ai-policies-for-journals)：投稿时须在稿件中给出**单独的** AI 声明，记录**工具名 / 用途 / 监督程度**；给出**逐字推荐模板**；**不得把 AI 列为作者**；纯语法/拼写检查**无需**声明；研究过程用 AI 写进 Methods。
+  · [ICMJE《Use of AI by Authors》](https://www.icmje.org/recommendations/browse/artificial-intelligence/ai-use-by-authors.html)：投稿时须披露；**chatbot/LLM 不得列为作者**（无法承担责任）；不披露可能构成不当行为。
+  · 契约落点（**读对字段**）：`structure.ai_declaration_required: true` + `ai_declaration_provenance`（写明来源与实抓日期）。⚠ 首版我写进了 `limits.*` —— 而门是从 **`structure`** 读的 ⇒ 检查依旧不触发，被"声明 vs 执行"锁当场抓成"声明了没执行"。
+- **三条新缺口（都有夹具）**：① **模板占位符未替换**（`[NAME OF TOOL / SERVICE]` / `[REASON]`）⇒ FAIL —— 复制模板≠披露；② **作者块出现 AI 工具名** ⇒ FAIL（只**在作者块范围内**判，避免误伤 Methods 里正当提到的工具名；定位不到作者块记 **WARN「未检查」**，不当通过）；③ **识别形态放宽**：声明句本身（Elsevier 推荐句 / `The authors used <工具>` / 否定式 `no generative AI` / 中文）也算在场 —— 此前必须写出"generative AI"字样才算，真披露会被误报缺。
+- **★反向锁（放 `gate-runner`，不放门里）**：门导出 `CONTRACT_DRIVEN` 触发表（31 条检查 ← 触发它的契约键），`gate-runner` 遍历全部契约断言"每项至少被一份契约触发"，并带**必失败面**（造一个无契约的检查项必须判死）。为什么放这层：契约与插件都在 paper-studio 侧，门是外部工具、不该假设本机目录结构（首版放门里 ⇒ `ROOT is not defined` 直接崩）。
+- **实测收益**：**B 稿那个"唯一还没跑过的门"（RIPP 契约）跑通了 ⇒ 8 项全绿**；A 稿契约报告重生成 **22 项 · FAIL 0 · WARN 2**，A/B 总检均"可投"（A 1 项提醒 / B 2 项提醒），报告全 **FRESH**。
+- 自检：**契约门 60 → 65/65**（+5 夹具）· **门执行器 45 → 47/47**（反向锁 + 必失败面）· studio **168/168** · plugin **38/38** · audit 9/9 + 真跑全绿 · 数字对拍 PASS · MCP 探针 0 缺陷。
+- 过程教训（如实记）：① 表必须与真实 check id 对齐（我凭印象写了 `docs_before_refs`，门里根本没这条 ⇒ 反向锁当场判它死检查，**红得对**）；② `check()` 的第二个参数在 gate-runner 里收的是**函数**不是布尔；③ 插代码要看**作用域顺序**（我插在 `P` 定义之前 ⇒ `P is not defined`）。
+
 ## v3.2.50 —— 2026-10-16
 
 **新增「DOI 解析三态」判据 —— 专门用来防我自己刚犯的那个错：把「某个索引未收录」写成「该 DOI 值得核对」。**

@@ -70,5 +70,10 @@
   "ported_from": "论文仓（非本包）_refs/journal-contract-ripp.json（历史留档；本包内这份是规范件）",
   "ported_at": "2026-10-16",
   "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。",
-  "ported_from_note": "原值含**本机绝对路径**，按证据纪律 D（对外文本不得含路径分隔符/内网信息）改为相对描述；本地原始路径不入库、不入包。"
+  "ported_from_note": "原值含**本机绝对路径**，按证据纪律 D（对外文本不得含路径分隔符/内网信息）改为相对描述；本地原始路径不入库、不入包。",
+  "limits": {},
+  "ai_declaration_provenance": "ICMJE《Use of AI by Authors》（Springer Nature/BMC 遵循 ICMJE/COPE 口径）：投稿时须披露 AI 使用；**chatbot/LLM 不得列为作者**；不披露可能构成不当行为。来源 https://www.icmje.org/recommendations/browse/artificial-intelligence/ai-use-by-authors.html （2026-10-16 实抓）",
+  "structure": {
+    "ai_declaration_required": true
+  }
 }
