@@ -51,6 +51,7 @@ node bin/studio.cjs anchors --draft <稿.md> --resolve [--online] [--out <anchor
 node bin/studio.cjs anchors --draft <稿.md> --oa [--in <anchors.json>]   :: **查引用的开放获取可达性**（OpenAlex 免 key 批量）⇒ 得到"补页号原句"的起点清单（可免费读的带 PDF 直链）
 node bin/studio.cjs response --letter <回复信.md> --comments <审稿意见.md>   :: **返修回复信逐条核对**（覆盖/实质回应/**改动位置**；只核可机械判定的部分） ｜ `--comments <意见> --scaffold <骨架.md>`：**生成逐条待填骨架**（带「待填」哨兵 ⇒ 未填写前通不过核对）
 node bin/studio.cjs report-check --report <报告.md> [--draft <稿> --contract <契约> --package <包> --anchors <表> --cover <信> --letter <信> --comments <意见>]   :: **报告陈旧检测**（报告自带的运行指纹 vs 现在手上的输入；无指纹 ⇒ exit 2，未比对/已变 ⇒ exit 1）
+node bin/studio.cjs reports --scan <目录> [--all]   :: **零参数陈旧巡检**：按报告里记录的路径重算指纹，一次看清哪份结论还成立（FRESH / STALE / MISSING / 无指纹 ⇒ 任一不成立 exit 1）
 node bin/studio.cjs retract-check <稿件或参考文献文件>          :: 引用撤稿检查（OpenAlex is_retracted；撤稿须显式说明；取不到≠通过）
 node bin/criteria-abcd.cjs --check <报告> | --scan-only <文本> | --selftest   :: 证据纪律四条 A/B/C/D（可达性 / 未检查显形 / 失败分型 / 结论带位置+对外扫描）
                                                            ::  依据=references/compliance-checklist.md（含 Elsevier 在先发表一手原文 2026-10-16 取证）

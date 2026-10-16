@@ -500,6 +500,7 @@ const SUBCOMMANDS = [
   'response',
   'cover',
   'report-check',
+  'reports',
   'route',
   'gates',
   'intake',
@@ -1395,6 +1396,71 @@ function runSelftest() {
       || ('exit=' + r.status + ' out=' + out.replace(/\n/g, ' | ').slice(0, 280));
   });
   /* ★ v3.2.33：报告运行指纹（PROVENANCE）+ report-check。四条夹具的判据是「能不能回答属于哪一次运行」。 */
+  /* ★ v3.2.34：`reports --scan` 零参数陈旧巡检 —— 按**报告里记录的路径**重算，一次看清哪份结论还成立。 */
+  check('★reports·多声明：复合报告里**每一条**声明都要核 —— 第一条新鲜、第二条陈旧 ⇒ 整体仍是 STALE（只看第一条就会漏）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rs5-'));
+    const a = path.join(tmp, 'a.md'); const bf = path.join(tmp, 'b.md'); const r = path.join(tmp, '_复合报告.md');
+    fs.writeFileSync(a, 'AAA\n'); fs.writeFileSync(bf, 'BBB\n');
+    const mk = (tool, file, sha) => '<!-- PROVENANCE: ' + JSON.stringify({ tool, version: 'x', at: '2026-01-01T00:00:00Z', inputs: [{ role: 'draft', path: file, kind: 'file', sha12: sha, n: 4 }] }) + ' -->';
+    /* 第一条声明：指纹与当前文件**一致**（新鲜）；第二条声明：故意给错摘要（陈旧） */
+    const good = provenanceClaims(mk('toolA', a, digestOf(a).sha12)).length === 1;
+    fs.writeFileSync(r, '# 复合报告\n\n' + mk('toolA', a, digestOf(a).sha12) + '\n\n' + mk('toolB', bf, 'deadbeef0000') + '\n');
+    const out = spawnSync(process.execPath, [__filename, 'reports', '--scan', tmp, '--json'], { encoding: 'utf8' });
+    const so = String(out.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    const row = j && j.rows ? j.rows.find((x) => x.report === '_复合报告.md') : null;
+    const roles = row && row.bad ? row.bad.map((x) => x.role) : [];
+    return (good && out.status === 1 && row && row.state === 'STALE' && roles.length === 1 && /toolB/.test(roles[0]))
+      ? true : `good=${good} rc=${out.status} state=${row && row.state} bad=${JSON.stringify(roles)}`;
+  });
+  check('reports·正控：目录里一份新鲜报告 ⇒ FRESH / scan_code=ALL-FRESH / exit=0', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rs1-'));
+    const d = path.join(tmp, 'draft.md'); const k = path.join(ROOT, 'references', 'contracts', 'joes-elsevier.json'); const r = path.join(tmp, '_总检.md');
+    fs.writeFileSync(d, '# Draft\n\nBody for the scan fixture.\n');
+    spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', k, '--out', r], { encoding: 'utf8' });
+    const b = spawnSync(process.execPath, [__filename, 'reports', '--scan', tmp, '--json'], { encoding: 'utf8' });
+    const so = String(b.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    return (b.status === 0 && j && j.scan_code === 'ALL-FRESH' && j.counts && j.counts.FRESH === 1) ? true : `rc=${b.status} code=${j && j.scan_code} counts=${JSON.stringify(j && j.counts)}`;
+  });
+  check('★reports·判别力：报告记录的那个输入被改 ⇒ STALE 并点名角色，exit=1', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rs2-'));
+    const d = path.join(tmp, 'draft.md'); const k = path.join(ROOT, 'references', 'contracts', 'joes-elsevier.json'); const r = path.join(tmp, '_总检.md');
+    fs.writeFileSync(d, '# Draft\n\nFirst version.\n');
+    spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', k, '--out', r], { encoding: 'utf8' });
+    fs.appendFileSync(d, '\nChanged after the report.\n');
+    const b = spawnSync(process.execPath, [__filename, 'reports', '--scan', tmp, '--json'], { encoding: 'utf8' });
+    const so = String(b.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    const row = j && j.rows ? j.rows[0] : null;
+    const roles = row && row.bad ? row.bad.map((x) => x.role) : [];
+    return (b.status === 1 && row && row.state === 'STALE' && roles.length >= 1 && roles.every((r) => /draft$/.test(r))) ? true : `rc=${b.status} state=${row && row.state} bad=${JSON.stringify(roles)}`;
+  });
+  check('reports·必失败面：报告记录的路径被删 ⇒ MISSING（**按报告里记录的路径核**，不是按命令行给的），exit=1', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rs3-'));
+    const d = path.join(tmp, 'draft.md'); const k = path.join(ROOT, 'references', 'contracts', 'joes-elsevier.json'); const r = path.join(tmp, '_总检.md');
+    fs.writeFileSync(d, '# Draft\n\nTo be deleted.\n');
+    spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', k, '--out', r], { encoding: 'utf8' });
+    fs.unlinkSync(d);
+    const b = spawnSync(process.execPath, [__filename, 'reports', '--scan', tmp, '--json'], { encoding: 'utf8' });
+    const so = String(b.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    const row = j && j.rows ? j.rows[0] : null;
+    return (b.status === 1 && row && row.state === 'MISSING') ? true : `rc=${b.status} state=${row && row.state}`;
+  });
+  check('reports·反控：没有指纹的报告 ⇒ 计 UNSTAMPED 且 exit=1（不得当新鲜）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rs4-'));
+    fs.writeFileSync(path.join(tmp, '_手写报告.md'), '# 手写\n\n结论：可投\n');
+    const b = spawnSync(process.execPath, [__filename, 'reports', '--scan', tmp, '--json'], { encoding: 'utf8' });
+    const so = String(b.stdout); const i0 = so.indexOf('\n{');
+    let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    return (b.status === 1 && j && j.counts && j.counts.UNSTAMPED === 1) ? true : `rc=${b.status} counts=${JSON.stringify(j && j.counts)}`;
+  });
   check('report-check·正控：报告带运行指纹（含工具版本 + 逐输入 sha256 前 12 位），同输入核对为 FRESH 且 exit=0', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rc1-'));
@@ -1410,9 +1476,14 @@ function runSelftest() {
        从第一处行首花括号起到末尾整块解析。 */
     const so = String(b.stdout); const i0 = so.indexOf('\n{');
     let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
-    const roles = prov && prov.inputs ? prov.inputs.map((x) => x.role).sort().join(',') : '';
-    return (a.status === 0 || a.status === 1) && prov && prov.version === ver && roles === 'contract,draft' && b.status === 0 && j && j.verdict_code === 'FRESH'
-      ? true : `preflight=${a.status} stamp=${!!prov} ver=${prov && prov.version}/${ver} roles=${roles} rc=${b.status} verdict=${j && j.verdict}`;
+    /* ★ v3.2.34：报告里**可能有不止一条声明**（preflight 会把契约门报告正文内联进来）⇒ 看「有没有我方那条章」。 */
+    const claims0 = provenanceClaims(txt);
+    const mine = claims0.find((c) => c.tool === 'paper-studio' && c.version === ver);
+    const roles = mine && mine.inputs ? mine.inputs.map((x) => x.role).sort().join(',') : '';
+    /* ★ v3.2.34：多声明 ⇒ 判「存在一条 paper-studio@当前版本 且覆盖 draft+contract」，再看整体核对结论。
+       （补救说明：上一轮局部替换把这一行的 return 吃掉了 ⇒ 夹具返回 undefined；已补回。） */
+    return ((a.status === 0 || a.status === 1) && mine && roles === 'contract,draft' && b.status === 0 && j && j.verdict_code === 'FRESH')
+      ? true : `preflight=${a.status} 我方章=${!!mine} roles=${roles} rc=${b.status} code=${j && j.verdict_code}`;
   });
   check('★report-check·判别力：输入改了之后必须判 STALE、点名是哪个输入变了（这就是「属于哪一次运行」的机器判据）', () => {
     const { spawnSync } = require('node:child_process');
@@ -1427,7 +1498,7 @@ function runSelftest() {
     const so = String(b.stdout); const i0 = so.indexOf('\n{');
     let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
     const changed = j && j.rows ? j.rows.filter((x) => x.state === 'changed').map((x) => x.role) : [];
-    return (b.status === 1 && j && j.verdict_code === 'STALE' && changed.length === 1 && changed[0] === 'draft')
+    return (b.status === 1 && j && j.verdict_code === 'STALE' && changed.length >= 1 && changed.every((r) => /draft$/.test(r)))
       ? true : `rc=${b.status} verdict=${j && j.verdict} changed=${JSON.stringify(changed)}`;
   });
   check('report-check·必失败面：报告**没有**运行指纹 ⇒ exit=2（核不了属于哪一次运行，不得当通过）', () => {
@@ -1450,7 +1521,7 @@ function runSelftest() {
     const so = String(b.stdout); const i0 = so.indexOf('\n{');
     let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
     const un = j && j.rows ? j.rows.filter((x) => x.state === 'uncompared').map((x) => x.role) : [];
-    return (b.status === 1 && j && j.verdict_code === 'PARTIAL' && un.length === 1 && un[0] === 'contract') ? true : `rc=${b.status} code=${j && j.verdict_code} un=${JSON.stringify(un)}`;
+    return (b.status === 1 && j && j.verdict_code === 'PARTIAL' && un.length >= 1 && un.every((r) => /contract$/.test(r))) ? true : `rc=${b.status} code=${j && j.verdict_code} un=${JSON.stringify(un)}`;
   });
   check('scaffold·正控：按 --comments 生成逐条待填骨架（每条的原文逐字带入 + 两处填写位 + 待填哨兵）', () => {
     const { spawnSync } = require('node:child_process');
@@ -2646,6 +2717,17 @@ function digestOf(p) {
   walk(p, '');
   return { kind: 'dir', sha12: sha12(rows.join('\n')), n: rows.length };
 }
+/** ★★ v3.2.34：**一份报告可能有不止一条运行指纹** —— `preflight` 会把契约门的报告正文**内联**进来，
+ *   于是同文件里既有契约门盖的章、又有 preflight 自己的章。**只看第一条就是读错声明**（真事故：夹具当场红了）。
+ *   所以一律取出**全部**声明逐一核，整体判定取最坏。 */
+function provenanceClaims(txt) {
+  const out = [];
+  for (const m of String(txt).matchAll(/<!-- PROVENANCE: ([\s\S]*?) -->/g)) {
+    try { out.push(JSON.parse(m[1])); } catch { out.push({ tool: '(unparsable)', inputs: [] }); }
+  }
+  return out;
+}
+function claimLabel(c) { return (c.tool || '?') + ' ' + (c.version || '?'); }
 function provenanceLine(pairs) {
   const rows = [];
   for (const [role, v] of (pairs || [])) {
@@ -2687,6 +2769,63 @@ function reportHome(inputFile) {
  *  三条不许含糊的语义：① 报告没有指纹 ⇒ **exit 2**（核不了它属于哪一次运行，不得当通过）；
  *  ② 某个角色本次没提供 ⇒ **未比对（不等于新鲜）**，退出码 1；③ 指纹不一致 ⇒ **STALE**，退出码 1 并点名是哪个输入变了。
  */
+/**
+ * ★★ v3.2.34 `reports --scan [<目录>] [--all]` —— **零参数陈旧巡检**：把目录里各份报告，按**报告里记录的路径**
+ *   重算指纹，一次看清「手上哪份结论还成立」。
+ *   ★ 关键点：**不要求调用方重新给输入** —— 报告自己记了它读的是哪些文件，就按那些路径核。
+ *   语义：记录路径不存在 ⇒ `MISSING`（不是新鲜）· 报告没有指纹 ⇒ `UNSTAMPED`（不得当新鲜）· 指纹坏 ⇒ `BADSTAMP`。
+ *   默认只看 `_*.md`（本工具的落点约定；避免把稿子正文当成报告）；`--all` 才扫全部 .md。
+ */
+function cmdReports(args, argv) {
+  const A = argv || [];
+  const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
+  const dir = path.resolve(val('scan') || val('dir') || '.');
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) { console.error('前提层失败：--scan 需要一个存在的目录 —— ' + dir); return 2; }
+  const all = A.includes('--all');
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && (all || f.startsWith('_'))).sort();
+  const rows = [];
+  for (const f of files) {
+    const abs = path.join(dir, f);
+    const txt = fs.readFileSync(abs, 'utf8');
+    const claims = provenanceClaims(txt);
+    /* ★ 信噪比：**只有判定类报告才该盖章**。工作单/清单/笔记类（包清单、检查表、notes）即便没有指纹也不是缺陷，
+       单列为「非判定类」并**不计入不成立**；判定类却没指纹 ⇒ 仍是 UNSTAMPED（不得当新鲜）。 */
+    const isJudgment = /(报告|总检|核对|report)/i.test(f);
+    if (!claims.length) {
+      rows.push(isJudgment
+        ? { report: f, state: 'UNSTAMPED', why: '判定类报告没有运行指纹 ⇒ 核不了它属于哪一次运行（不得当新鲜）' }
+        : { report: f, state: 'N/A', why: '非判定类（工作单/清单/笔记）⇒ 本就不该盖章' });
+      continue;
+    }
+    const bad = [];
+    for (const prov of claims) {
+      for (const r of (prov.inputs || [])) {
+        const who = claimLabel(prov) + '·' + r.role;
+        if (!r.path || r.missing) { bad.push({ role: who, why: '生成时就缺' }); continue; }
+        if (!fs.existsSync(r.path)) { bad.push({ role: who, why: '记录路径已不存在' }); continue; }
+        if (digestOf(r.path).sha12 !== r.sha12) bad.push({ role: who, why: '内容已变' });
+      }
+    }
+    const state = bad.length ? (bad.some((x) => x.why === '记录路径已不存在') ? 'MISSING' : 'STALE') : 'FRESH';
+    rows.push({ report: f, state, claims: claims.map(claimLabel), bad });
+  }
+  console.log('报告陈旧巡检 · ' + dir + (all ? '（全部 .md）' : '（只看 _*.md）'));
+  for (const r of rows) {
+    const tag = { FRESH: '✓ FRESH  ', STALE: '✘ STALE  ', MISSING: '✘ MISSING', UNSTAMPED: '· 无指纹 ', BADSTAMP: '· 指纹坏 ', 'N/A': '· 非判定类' }[r.state];
+    console.log('  ' + tag + ' ' + r.report + (r.claims ? '  [' + r.claims.join(' + ') + ']' : '')
+      + (r.bad && r.bad.length ? '  ⇒ ' + r.bad.map((x) => x.role + '(' + x.why + ')').join(', ') : (r.why ? '  ⇒ ' + r.why : '')));
+  }
+  const counts = {};
+  for (const r of rows) counts[r.state] = (counts[r.state] || 0) + 1;
+  /* 不成立 = 除 FRESH 以外的一切，但「非判定类」不算（它本就不该盖章）。 */
+  const realRows = rows.filter((r) => r.state !== 'N/A');
+  const red = realRows.filter((r) => r.state !== 'FRESH');
+  const code = realRows.length === 0 ? 'EMPTY' : (red.length ? 'HAS-STALE' : 'ALL-FRESH');
+  console.log('  合计：' + rows.length + ' 份 · ' + JSON.stringify(counts));
+  console.log('  结论：**' + (red.length ? red.length + ' 份不成立（STALE / MISSING / 无指纹 / 指纹坏）⇒ 须重跑或补章' : '全部成立') + '**（scan_code=' + code + '）');
+  if (JSON_OUT) console.log(JSON.stringify({ dir, scan_code: code, counts, rows }, null, 2));
+  return red.length ? 1 : 0;
+}
 function cmdReportCheck(args, argv) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -2695,24 +2834,26 @@ function cmdReportCheck(args, argv) {
   const rAbs = path.resolve(rep);
   if (!fs.existsSync(rAbs)) { console.error('前提层失败：报告不存在 —— ' + rAbs); return 2; }
   const txt = fs.readFileSync(rAbs, 'utf8');
-  const m = /<!-- PROVENANCE: ([\s\S]*?) -->/.exec(txt);
-  if (!m) { console.error('前提层失败：报告里没有运行指纹（PROVENANCE）⇒ **核不了它属于哪一次运行**，不得当通过'); return 2; }
-  let prov; try { prov = JSON.parse(m[1]); } catch (e) { console.error('前提层失败：运行指纹无法解析 —— ' + String((e && e.message) || e)); return 2; }
+  const claims = provenanceClaims(txt);
+  if (!claims.length) { console.error('前提层失败：报告里没有运行指纹（PROVENANCE）⇒ **核不了它属于哪一次运行**，不得当通过'); return 2; }
   const now = { draft: val('draft'), contract: val('contract'), package: val('package'), anchors: val('anchors'), cover: val('cover'), letter: val('letter'), comments: val('comments') };
   const rows = [];
-  for (const r of (prov.inputs || [])) {
-    const cur = now[r.role];
-    if (!cur) { rows.push({ role: r.role, state: 'uncompared', stamped: r.sha12 }); continue; }
-    const abs = path.resolve(cur);
-    if (!fs.existsSync(abs)) { rows.push({ role: r.role, state: 'missing', path: abs, stamped: r.sha12 }); continue; }
-    const d = digestOf(abs);
-    rows.push({ role: r.role, state: d.sha12 === r.sha12 ? 'same' : 'changed', stamped: r.sha12, current: d.sha12, path: abs });
+  for (const prov of claims) {
+    for (const r of (prov.inputs || [])) {
+      const base = { claim: claimLabel(prov), at: prov.at, role: r.role, stamped: r.sha12 };
+      const cur = now[r.role];
+      if (!cur) { rows.push(Object.assign({ state: 'uncompared' }, base)); continue; }
+      const abs = path.resolve(cur);
+      if (!fs.existsSync(abs)) { rows.push(Object.assign({ state: 'missing', path: abs }, base)); continue; }
+      const d = digestOf(abs);
+      rows.push(Object.assign({ state: d.sha12 === r.sha12 ? 'same' : 'changed', current: d.sha12, path: abs }, base));
+    }
   }
   const changed = rows.filter((x) => x.state === 'changed');
   const un = rows.filter((x) => x.state === 'uncompared' || x.state === 'missing');
   const ZH = { same: '与本次输入一致', changed: '**已改变**（报告已陈旧）', uncompared: '**未比对**（不等于新鲜）', missing: '本次输入不存在' };
-  console.log('报告运行指纹核对 · ' + path.basename(rAbs));
-  console.log('  报告署名：tool=' + prov.tool + ' version=' + prov.version + ' at=' + prov.at);
+  console.log('报告运行指纹核对 · ' + path.basename(rAbs) + '（声明 ' + claims.length + ' 条）');
+  for (const c of claims) console.log('  声明署名：' + claimLabel(c) + ' at=' + c.at);
   for (const x of rows) console.log('    ' + (x.state === 'same' ? '✓' : (x.state === 'changed' ? '✘' : '·')) + ' ' + x.role + ' · ' + ZH[x.state]
     + (x.stamped ? ' · 报告=' + x.stamped : '') + (x.current ? ' · 现在=' + x.current : ''));
   /* ★ 机器可读判定码与人类可读结论**并存**（只给中文长句时，外层脚本只能做子串匹配 —— 那正是脆断言）。 */
@@ -2720,7 +2861,7 @@ function cmdReportCheck(args, argv) {
   const verdict = code === 'STALE' ? 'STALE（输入已变 ⇒ 报告过期，须重跑）'
     : (code === 'PARTIAL' ? '部分未比对（不得当新鲜）' : 'FRESH（与本次输入一致）');
   console.log('  结论：**' + verdict + '**（verdict_code=' + code + '）');
-  if (JSON_OUT) console.log(JSON.stringify({ report: rAbs, tool: prov.tool, version: prov.version, at: prov.at, verdict, verdict_code: code, rows }, null, 2));
+  if (JSON_OUT) console.log(JSON.stringify({ report: rAbs, claims: claims.map(claimLabel), verdict, verdict_code: code, rows }, null, 2));
   return (changed.length || un.length) ? 1 : 0;
 }
 function cmdCover(args, argv) {
@@ -3869,6 +4010,7 @@ function main(argv) {
     if (cmd === 'response') return cmdResponse(args, argv);
     if (cmd === 'cover') return cmdCover(args, argv);
     if (cmd === 'report-check') return cmdReportCheck(args, argv);
+    if (cmd === 'reports') return cmdReports(args, argv);
     if (cmd === 'retract-check') return cmdRetractCheck(args, argv.includes('--dois'));
     console.error(`未知子命令：${cmd}`);
     return 2;
