@@ -593,11 +593,53 @@ function sectionForGate(gateId, genre, t) {
 
 function pipeline0() { return readPipeline(); }
 
+function scaffoldFormPlan(form) {
+  /* 形态骨架（纯函数）：**每个形态的骨架不同**，由该形态真源的 framework 推导，不另写一份清单。
+     骨架＝`00-输入.md`（把启动问答的答案落盘）＋ 逐节一个文件（必备节标注「必填」）＋ `99-自检.md`（怎么跑本形态的门）。 */
+  const items = ((form && form.framework) || []).filter((x) => x && x.id);
+  const out = [{ target: '00-输入.md', title: '输入（启动问答答案）', kind: 'answers', required: true }];
+  items.forEach((it, i) => {
+    out.push({ target: String(i + 1).padStart(2, '0') + '-' + it.id + '.md', title: it.label || it.id, required: !!it.required, note: it.note || '' });
+  });
+  out.push({ target: '99-自检.md', title: '自检（本形态适用的门）', kind: 'selfcheck', required: true });
+  return out;
+}
+
 function scaffold(outDir, name, opts = {}) {
   if (!outDir) { const e = new Error('前提层失败：scaffold 需要 --out <目录>'); e.code = 'NO_OUT'; throw e; }
   const t = readTemplates();
   const { set, stages, attribution } = stageSetFor(opts.genre, t);
   const dir = path.resolve(outDir);
+  if (opts.form) {
+    /* 形态骨架分支：清单与内容都由该形态真源推导（每个形态不同）；旧用法（不传 form）完全不变。 */
+    const files = scaffoldFormPlan(opts.form);
+    const fplan = files.map((f) => f.target);
+    if (opts.dryRun) return { dir, dryRun: true, plan: fplan, created: [], skipped: [], missing: [], set: 'form:' + opts.form.id, form: opts.form.id, genre: opts.genre || null };
+    fs.mkdirSync(dir, { recursive: true });
+    const fcreated = [], fskipped = [];
+    const ans = (opts.answers && typeof opts.answers === 'object') ? opts.answers : {};
+    for (const f of files) {
+      const target = path.join(dir, f.target);
+      if (fs.existsSync(target)) { fskipped.push(f.target); continue; }
+      let body = '';
+      if (f.kind === 'answers') {
+        body = '# 输入（启动问答答案 · 由 form gate 校验通过后落盘）\n\n' + (name ? '> 稿名：' + name + '\n\n' : '') +
+          '| 键 | 值 |\n|---|---|\n' + Object.keys(ans).map((k) => '| ' + k + ' | ' + String(ans[k]) + ' |').join('\n') +
+          '\n\n> 这些答案决定：本形态的骨架、适用的门、字数与时间口径。改答案要重跑 `form gate`。\n';
+      } else if (f.kind === 'selfcheck') {
+        body = '# 自检（形态：' + (opts.form.label || opts.form.id) + '）\n\n' +
+          '```\nnode bin/studio.cjs form check --form ' + opts.form.id + ' --draft <合并稿.md>\n' +
+          'node bin/studio.cjs form budget --form ' + opts.form.id + ' --draft <合并稿.md> --answers <答案.json>' + (opts.answers && opts.answers.talk_minutes ? ' --minutes ' + opts.answers.talk_minutes : '') + '\n```\n\n' +
+          '本形态适用的门：' + ((opts.form.gates || []).join(' / ') || '（未声明）') + '\n\n' +
+          '篇幅口径：' + (((opts.form.norms || {}).length) || '（未声明）') + '\n';
+      } else {
+        body = '# ' + f.title + (f.required ? ' ★必备' : '（可选）') + '\n\n' + (f.note ? '> ' + f.note + '\n\n' : '') + '（在此撰写）\n';
+      }
+      fs.writeFileSync(target, body, 'utf8');
+      fcreated.push(f.target);
+    }
+    return { dir, dryRun: false, plan: fplan, created: fcreated, skipped: fskipped, missing: [], set: 'form:' + opts.form.id, form: opts.form.id, genre: opts.genre || null };
+  }
   const plan = [...stages.map((s) => s.target), ...(t.templates || []).map((x) => x.target)];
   if (opts.dryRun) return { dir, dryRun: true, plan, created: [], skipped: [], missing: [], set, genre: opts.genre || null };
   fs.mkdirSync(dir, { recursive: true });
@@ -3473,6 +3515,90 @@ function runSelftest() {
           if (s2 !== 0) return '区间内应退 0，实退 ' + s2;
           if (s3 !== 2) return '课堂演讲缺时长应退 2，实退 ' + s3;
           return true;
+        });
+
+
+        // ── v3.2.72 · 按形态出骨架 ─────────────────────────────────────
+        check('v3.2.72·scaffold·形态骨架由真源推导：学位论文骨架必须含摘要/致谢/原创性声明/成果（且逐节一文件）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const plan = scaffoldFormPlan(f).map((x) => x.target);
+          for (const id of ['abstract_zh', 'acknowledgements', 'originality', 'achievements', 'toc']) if (!plan.some((t) => t.includes('-' + id + '.md'))) return '骨架缺节：' + id;
+          if (!plan.includes('00-输入.md') || !plan.includes('99-自检.md')) return '骨架缺输入或自检文件';
+          const req = scaffoldFormPlan(f).filter((x) => x.required).length;
+          if (req < 13) return '必备节数偏少：' + req;
+          return true;
+        });
+
+        check('v3.2.72·scaffold·★差异化：课堂演讲骨架含「结论先行/问答预备」且**不得含**学位论文专属节', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'class-talk');
+          const plan = scaffoldFormPlan(f).map((x) => x.target);
+          for (const id of ['takeaway', 'qna', 'results']) if (!plan.some((t) => t.includes('-' + id + '.md'))) return '课堂演讲骨架缺节：' + id;
+          for (const bad of ['acknowledgements', 'originality', 'achievements']) if (plan.some((t) => t.includes('-' + bad + '.md'))) return '混入了学位论文专属节：' + bad;
+          return true;
+        });
+
+        check('v3.2.72·scaffold·★未收齐答案不许开写：带 --form 但不给 --answers 必须退 2（子进程）', () => {
+          const { execFileSync } = require('child_process');
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-sc-'));
+          const run = (args) => { try { execFileSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs')].concat(args), { stdio: ['ignore', 'ignore', 'ignore'] }); return 0; } catch (e) { return (e && e.status) || 1; } };
+          const s1 = run(['scaffold', '--out', path.join(dir, 'a'), '--form', 'thesis']);
+          fs.writeFileSync(path.join(dir, 'bad.json'), JSON.stringify({ form: 'thesis', lang: 'zh' }), 'utf8');
+          const s2 = run(['scaffold', '--out', path.join(dir, 'b'), '--form', 'thesis', '--answers', path.join(dir, 'bad.json')]);
+          const created = fs.existsSync(path.join(dir, 'a')) || fs.existsSync(path.join(dir, 'b'));
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+          if (s1 !== 2) return '不给答案应退 2，实退 ' + s1;
+          if (s2 !== 2) return '答案不齐应退 2，实退 ' + s2;
+          if (created) return '★被拒时仍写出了目录 —— 未收齐答案却开了工';
+          return true;
+        });
+
+        check('v3.2.72·scaffold·真生成（答案齐）：文件数＝骨架数，且 00-输入.md 必须落了答案', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'proposal');
+          const answers = { form: 'proposal', lang: 'zh', target: 'campus', carrier: 'template', mode: 'assist', deadline: '12 月底', resources: '实验室数据 + 2 人' };
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-sc2-'));
+          let res;
+          try { res = scaffold(dir, '开题示例', { form: f, answers }); }
+          catch (e) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e2) { /* ignore */ } return '生成抛错：' + String((e && e.message) || e); }
+          const files = fs.readdirSync(dir);
+          const plan = scaffoldFormPlan(f).map((x) => x.target);
+          const inp = fs.readFileSync(path.join(dir, '00-输入.md'), 'utf8');
+          const selfc = fs.readFileSync(path.join(dir, '99-自检.md'), 'utf8');
+          const feas = files.some((x) => x.includes('-feasibility.md'));
+          const sched = files.some((x) => x.includes('-schedule.md'));
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+          if (files.length !== plan.length) return '文件数 ' + files.length + ' ≠ 骨架数 ' + plan.length;
+          if (!/proposal/.test(inp) || !/实验室数据/.test(inp)) return '00-输入.md 没把答案落盘';
+          if (!/form check --form proposal/.test(selfc)) return '99-自检.md 没给出本形态的自检命令';
+          if (!feas || !sched) return '开题骨架缺可行性或进度安排节';
+          return true;
+        });
+
+        check('v3.2.72·scaffold·★兼容面：不传 --form 时旧行为一字不变（默认模板骨架仍照旧）', () => {
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-sc3-'));
+          let res;
+          try { res = scaffold(dir, '旧用法示例', {}); }
+          catch (e) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e2) { /* ignore */ } return '旧用法抛错：' + String((e && e.message) || e); }
+          const files = fs.readdirSync(dir).sort();
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+          if (!files.length) return '旧用法没生成任何文件';
+          if (!files.includes('00-输入.md')) return '旧用法丢了 00-输入.md：' + files.join(' / ');
+          if (res.set && String(res.set).startsWith('form:')) return '旧用法被误判为形态分支';
+          return true;
+        });
+
+        check('v3.2.72·scaffold·形态骨架必须与形态数一致（6 个形态各自可生成，且互不相同）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const sigs = new Map();
+          for (const f of r.list) {
+            const plan = scaffoldFormPlan(f).map((x) => x.target).join('|');
+            if (sigs.has(plan)) return '形态 ' + f.id + ' 与 ' + sigs.get(plan) + ' 的骨架完全相同（差异化失败）';
+            sigs.set(plan, f.id);
+            if (plan.split('|').length < 8) return f.id + ' 骨架节数过少：' + plan.split('|').length;
+          }
+          return sigs.size >= 6 ? true : '可生成骨架的形态只有 ' + sigs.size + ' 个';
         });
 
   const failed = results.filter((r) => !r.ok);
@@ -6353,7 +6479,27 @@ function main(argv) {
     if (cmd === 'scaffold') {
       const rest = argv.slice(1);
       const flag = (k) => { const i = rest.indexOf(k); return i > -1 ? rest[i + 1] : ''; };
-      const r = scaffold(flag('--out'), flag('--name'), { dryRun: rest.includes('--dry-run'), genre: flag('--genre') || null });
+      const formId = flag('--form');
+      const ansPath = flag('--answers');
+      let formObj = null, answers = {};
+      if (formId) {
+        const forms = loadForms(ROOT);
+        if (!forms.ok) { console.error('前提层失败：形态真源不可用 —— ' + forms.reason); return 2; }
+        formObj = forms.list.find((x) => x.id === formId);
+        if (!formObj) { console.error('前提层失败：未知形态「' + formId + '」——可选：' + forms.list.map((x) => x.id).join(' / ')); return 2; }
+        if (!ansPath) { console.error('前提层失败：用 --form 时必须给 --answers <答案.json> —— **未收齐答案不许开写**（先跑 form ask / form gate）'); return 2; }
+        if (!fs.existsSync(ansPath)) { console.error('前提层失败：答案文件不存在 ' + ansPath); return 2; }
+        try { answers = JSON.parse(fs.readFileSync(ansPath, 'utf8')) || {}; }
+        catch (e) { console.error('前提层失败：答案文件不是合法 JSON —— ' + String((e && e.message) || e).slice(0, 90)); return 2; }
+        const gref = formGateReport(answers, formObj, readPipeline());
+        if (!gref.ok) {
+          console.error('前提层失败：启动问答未收齐 —— **不许开写**');
+          for (const m of gref.missing) console.error('  ✘ 还缺 ' + m);
+          for (const u of gref.unknown) console.error('  ✘ 值不在选项里 ' + u);
+          return 2;
+        }
+      }
+      const r = scaffold(flag('--out'), flag('--name'), { dryRun: rest.includes('--dry-run'), genre: flag('--genre') || null, form: formObj, answers });
       if (json) console.log(JSON.stringify(r, null, 2));
       else {
         console.log(`目标目录：${r.dir}${r.dryRun ? '（dry-run：未写文件）' : ''}`);
