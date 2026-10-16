@@ -439,7 +439,37 @@ function detectGenre(text, pipeline, override) {
 }
 
 /** 阶段词汇表（骨干层）：chain 项必须能解析到真实实现，不许「只是名字」。 */
-const SUBCOMMANDS = ['route', 'gates', 'intake', 'lessons', 'coach', 'method', 'scaffold', 'draft', 'report', 'verify', 'stylecheck', 'polish', 'profile', 'schemacheck', 'revise', 'figures', 'audit', 'state', 'genre', 'sections', 'docx', 'handoff', 'crosscheck', 'cost', 'selftest'];
+const SUBCOMMANDS = [
+  'route',
+  'gates',
+  'intake',
+  'lessons',
+  'coach',
+  'method',
+  'scaffold',
+  'draft',
+  'report',
+  'verify',
+  'stylecheck',
+  'polish',
+  'profile',
+  'schemacheck',
+  'revise',
+  'figures',
+  'audit',
+  'state',
+  'genre',
+  'sections',
+  'docx',
+  'handoff',
+  'crosscheck',
+  'cost',
+  'selftest',
+  'hygiene',
+  'claims',
+  'coverage',
+  'compliance',
+];
 const STAGE_RULES = [
   { rx: /^subcommand:([a-z0-9-]+)$/, need: (m) => SUBCOMMANDS.includes(m[1]), why: (m) => `子命令 ${m[1]} 未实现` },
   { rx: /^gate:([a-z0-9-]+)$/, need: null, why: () => '门 id 未在 gates 表里' },
@@ -1105,6 +1135,32 @@ function runSelftest() {
     return (da && da.state === 'hit') || ('未命中：' + JSON.stringify(da));
   });
 
+  // ★ v3.2.1：接口面一致性门（由用户一问"你是以 skill 放进去的吗"追问出的真漂移）
+  check('接口面：分派支持的命令必须都在 SUBCOMMANDS 登记（不许加了命令忘登记）', () => {
+    const r = subcommandGaps(fs.readFileSync(__filename, 'utf8'), SUBCOMMANDS);
+    return (r.missing.length === 0 && r.phantom.length === 0) || ('未登记: ' + r.missing.join(',') + ' ｜ 幽灵登记: ' + r.phantom.join(','));
+  });
+  check('必失败：未登记的分派命令必须被抓出（不许静默通过）', () => {
+    const r = subcommandGaps("    if (cmd === 'ghost-cmd') return 0;", ['route', 'selftest']);
+    return (r.missing.length === 1 && r.missing[0] === 'ghost-cmd') || ('未抓到：' + JSON.stringify(r));
+  });
+  check('必失败：登记了但没实现（幽灵命令）也必须被抓出', () => {
+    const r = subcommandGaps("    if (cmd === 'route') return 0;", ['route', 'phantom-cmd']);
+    return (r.phantom.length === 1 && r.phantom[0] === 'phantom-cmd') || ('未抓到：' + JSON.stringify(r));
+  });
+
+  check('接口面：SUBCOMMANDS 的每个命令必须在根 SKILL.md 出现（文档面不许漏命令）', () => {
+    let sk = '';
+    try { sk = fs.readFileSync(path.join(ROOT, 'SKILL.md'), 'utf8'); } catch { return '读不到根 SKILL.md ⇒ 不得当通过'; }
+    const miss = SUBCOMMANDS.filter((c) => sk.indexOf('studio.cjs ' + c) === -1);
+    return miss.length === 0 || ('根 SKILL.md 未出现: ' + miss.join(', '));
+  });
+  check('必失败：SKILL.md 漏命令必须被抓出', () => {
+    const sk = 'node bin/studio.cjs route "x"';
+    const miss = ['route', 'verify'].filter((c) => sk.indexOf('studio.cjs ' + c) === -1);
+    return (miss.length === 1 && miss[0] === 'verify') || ('未抓到：' + JSON.stringify(miss));
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1768,6 +1824,21 @@ function cmdCompliance(dirArg) {
   return 1;
 }
 
+/** 判据四（v3.2.1）：接口面一致性 —— 分派里支持的命令必须都登记在 SUBCOMMANDS，
+ *  否则"加了实现忘了登记"就会一路漂（本方实证：v3.1.9 与 v3.2.0 新增的 4 个命令全部漏登记，
+ *  用法行也停在 13 个）。用法行已改为由 SUBCOMMANDS 生成 ⇒ 只查分派 ↔ 登记 两处即可。 */
+function subcommandGaps(srcText, subList) {
+  const disp = new Set();
+  // 只认**行首**的分派（夹具里作为字符串注入的命令名不算真分派——第一版就踩了这个假阳性）
+  const re = /^[ \t]*if \(cmd === '([a-z-]+)'\)/gm;
+  let x;
+  while ((x = re.exec(srcText))) { if (x[1] !== '--help' && x[1] !== '-h') disp.add(x[1]); }
+  const reg = new Set(subList || SUBCOMMANDS);
+  const missing = [...disp].filter((c) => !reg.has(c)).sort();
+  const phantom = [...reg].filter((c) => !disp.has(c)).sort();
+  return { missing, phantom, dispatched: [...disp].sort(), registered: [...reg].sort() };
+}
+
 function main(argv) {
   const cmd = argv[0];
   const json = argv.includes('--json');
@@ -1775,7 +1846,7 @@ function main(argv) {
   const args = argv.filter((a) => !a.startsWith('--'));
   try {
     if (!cmd || cmd === '--help' || cmd === '-h') {
-      console.log('用法：node bin/studio.cjs <route|gates|intake|lessons|method|scaffold|draft|genre|report|selftest|hygiene|claims|coverage> [参数] [--json]');
+      console.log('用法：node bin/studio.cjs <' + SUBCOMMANDS.join('|') + '> [参数] [--json]');
       console.log('  hygiene  ⇒ 残留件门（备份/临时件不得留在技能树内；应归档到树外）');
       console.log('  claims   ⇒ 文档数字一致性门（文档里写的 N/N 必须与实跑一致）');
       console.log('  coverage ⇒ 自检覆盖门（bin/*.cjs 含自检者必须在 pipeline.json.selfchecks 登记）');
