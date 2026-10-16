@@ -3,6 +3,22 @@
 
 # 变更记录
 
+## v3.2.85 —— 2026-10-17
+
+**第三方扫描件全部下载 + 机器盘点 + 吸收矩阵（下载 → 拆解 → 吸收的第一步）。**
+
+- **下载落盘**：`E:\DeepSeek\third_party\scan-20261017\` —— **7 个 git 仓库**（GitHub 走 git 通路、Gitee 走克隆，全部成功）：
+  `paperdebugger` 352 文件 · `lifecycle-skills` 258 · `kalaris-skills` 3157 · `academic-research-skills` 2845 · `dsh-sci-fault-diag-paper` 687 · `awesome-ai-research-writing` 4 · `auto-empirical-research-skills` 4603；
+  **5 个 npm 包解包**：`ai4paper-dsh-ipaper` · `dsh-lit-search` · `ggboy123-dsh-paper-reader` · `paper-figure-validator` · `postext-citeproc`。
+- **机器盘点**（`_INVENTORY.md`，脚本生成不手抄）：逐源的许可 / 规模 / 语言分布 / SKILL.md 清单 / 提示词与 agent 目录 / UI 文件。
+- **★许可判定（读 LICENSE 原文，不猜）**：
+  · **可复制（带署名）**：`kalaris-skills`（**MIT**，281 个 SKILL）· `lifecycle-skills`（**Apache-2.0**，42 个生命周期技能）· `auto-empirical-research-skills`（**CC-BY**，1172 个 SKILL）· `dsh-sci-fault-diag-paper`（**木兰宽松许可证第 2 版**；它 `package.json` 写 MIT 属标注不准确，以 LICENSE 原文为准）。
+  · **只能学思想/架构，不搬代码**：`paperdebugger`（**AGPL-3.0**，传染性）· `academic-research-skills`（**CC-BY-NC**）· `awesome-ai-research-writing` 与三个 DSH 侧 npm 包（**均无 License ⇒ 默认保留全部权利**）。
+  · **不采纳**：`postext-citeproc`（我们用 citation-js + citeproc(MIT) + Zotero 官方 CSL，重复）。
+- **吸收矩阵入库**：`references/absorption-matrix-20261017.md` —— 许可表 + 42 个生命周期技能逐条对照（**启发式**判定我方差 10 项：`assess-paper` / `benchmark-paper` / `draft-survey` / `make-poster` / `parse-cfp` / `prepare-camera-ready` / `reflect-paper` / `rehearse-qa` / `study-exemplars` / `tailor-to-venue`）+ kalaris 通用子集 37 项 + 我方基线（48 子命令 / 12 门）+ **按"缺口×可复制性"排序的 backlog**。
+- **backlog P0**：呈现与讲授类（`make-slides` / `write-talk-script` / `rehearse-qa`）接我方课堂演讲形态；审稿类（`simulate-reviewers` / `triage-reviews`）接我方 `revise`。
+- **明确不做**：`work-with-overleaf`（LaTeX 通路登记为 known_gap）· `render-workspace-html`（用户已定去面板）· `refactor-research-code`（不属论文插件职责）；paperdebugger 的多智能体/Overleaf 集成**只作架构参考记录，不复制任何代码**。
+
 ## v3.2.84 —— 2026-10-17
 
 **修 v3.2.83 自己引入的一处违规：`package-audit` 直读真源（被自家 single-source 审查器抓）；并让身份绑定真正生效。**
