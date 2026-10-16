@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.2.42 —— 2026-10-16
+
+**关掉台账里唯一挂着的 known_gap：契约用它自己的写法声明的图件规格，门现在真的会执行了。**
+
+- **背景**：v3.2.38 的「契约声明 vs 门执行」机械锁抓出 —— `plos-one.json` 把图件要求**直接写在 `limits.*` 下**（`figure_format` / `figure_dpi` / `figure_file_max_mb` / `figure_width_px` / `figure_height_px_max` / `figure_caption_max_words` / `si_file_max_mb` / `highlights_required`），而门只读 `limits.figure_spec` ⇒ **这批声明整块被跳过**（`if (L.figure_spec && pkg.exists)` 直接不成立）⇒ 等于没有门在管。
+- **本轮实现**：新增 `figureSpecFromLimits(L)` 把**扁平写法归一到 `figure_spec` 形状**后**复用同一套判据**（不复制逻辑），单位换算 MB→KB；并给判据补上此前缺的三类：**dpi 上限**（`max_dpi`）、**像素上下限**（`min_width_px`/`max_width_px`/`max_height_px`）、**图注词数上限**、**补充材料体积上限**；`highlights_required` 作为 `limits.highlights.required` 的**别名**接通。触发条件改为「归一后非空」——否则扁平写法仍会被跳过。
+- **真数据验证**（PLOS 契约 + 造包）：`✗ figure_spec 图件 1 张 …格式 png 不在允许列表 TIFF/EPS`（**此前这一块整块不执行**）· `✓ si_file_max_mb 补充材料 1 件 / 上限 20 MB`（新）· `✓ figure_caption_max_words 图注 1 条 / 每条上限 15 词`（新）。
+- **台账收口**：`figure_format` / `figure_height_px_max` / `figure_file_max_mb` / `figure_caption_max_words` / `si_file_max_mb` / `highlights_required` **移出 `known_gaps`**（已实现）；只剩两条**真做不了**的并写明原因：`figure_text_fonts` 与 `figure_text_pt`（图内字体名/字号无法从位图机械判定，需解析内嵌字体 ⇒ 人工核对）。
+- 自检：契约门 **55 → 60/60**（+5 夹具：扁平格式 FAIL · 扁平格式正控 · dpi 上限 + px 上下限 · 补充材料体积 · 图注词数）。
+- 两处自身失误（诚实记）：① **我把 `highlights_required` 移出台账却没实现它** —— 「声明 vs 执行」锁在下一次运行**立刻抓住**（`✗ plos-one.json:highlights_required`）⇒ 台账与实现必须同一批改完；② 正控夹具我写了**名为 `.tif`、内容却是 PNG 字节**的文件，门按**魔数**判格式 ⇒ 判 png ⇒ 合理地 FAIL —— **是夹具错了，不是功能错**（顺手确认：门的格式判据**以内容为准，不以扩展名为准**，这是更可信的口径）。⇒ 记：**新夹具的"正控"必须让被测对象真的处于合规状态**，别只改名字。
+
 ## v3.2.41 —— 2026-10-16
 
 **第三处"同一件事两套实现"：`anchors` 从不透传锚点表 ⇒ 报的是"无锚点态"的 HIGH 数，而我一直把那个数当"A 稿的门结论"报给你。已修 + 加行为对拍锁。**
