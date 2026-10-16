@@ -21,7 +21,7 @@ on:
         default: true
 
 permissions:
-  contents: read
+  contents: write          # ★ v3.2.81：需要把运行结果推回 ci-status 分支（本机读不到 Actions 日志）
   id-token: write          # OIDC 必需：换取 npm 短时凭据
 
 jobs:
@@ -37,6 +37,7 @@ jobs:
       # ★ Trusted Publishing 的硬前提（npm 官方文档）：npm CLI ≥ 11.5.1 + Node ≥ 22.14.0。
       #   setup-node 附带的 npm 是 10.x ⇒ 必须显式升级，否则发布会在鉴权处失败。
       - name: Use npm CLI >= 11.5.1 (trusted publishing requirement)
+        id: npm11
         run: |
           npm install -g npm@11
           node --version
@@ -44,19 +45,65 @@ jobs:
       # ★ v3.2.79：CI 上必须先把依赖装上 —— 此前漏了这一步，citeproc 缺失让 3 条 refs 自检
       #   如实报「未安装 ⇒ 不算通过」⇒ 8 次标签触发全部在 20 余秒内红。锁文件已入库 ⇒ 用 npm ci。
       - name: Install dependencies (package-lock.json committed)
+        id: npmci
         run: npm ci --no-audit --no-fund
       # 自检先跑：不过就不发布（把门放在发布之前）
       - name: Self-checks (must pass before publishing)
+        id: selfchecks
         run: |
           node bin/studio.cjs selftest
           node bin/gate-runner.cjs --selftest
           node plugin/selftest.mjs
           node gates/_journal-contract.cjs --selftest
       - name: Show what would be published
+        id: pack
         run: npm pack --dry-run
       - name: Publish (dry-run)
         if: ${{ inputs.dry_run }}
         run: npm publish --dry-run --access public
       - name: Publish (real, with provenance)
+        id: publish
         if: ${{ !inputs.dry_run }}
         run: npm publish --provenance --access public
+
+      # ★ v3.2.81：把本次运行的**结果与各步 outcome** 推回 ci-status 分支。
+      #   动因：本机 api.github.com / github.com 网页都不可达（只有 git 通路），
+      #   于是"CI 到底红在哪一步"无法自查 —— 让流水线自己把答案写进仓库，用 git 取回。
+      - name: Report outcome back via git (ci-status branch)
+        if: always()
+        id: report
+        env:
+          JOB_STATUS: ${{ job.status }}
+          S_NPM11: ${{ steps.npm11.outcome }}
+          S_NPMCI: ${{ steps.npmci.outcome }}
+          S_SELF: ${{ steps.selfchecks.outcome }}
+          S_PACK: ${{ steps.pack.outcome }}
+          S_PUB: ${{ steps.publish.outcome }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+          mkdir -p ci-status
+          cat > ci-status/publish-npm.json <<JSON
+          {
+            "ref": "${REF_NAME}",
+            "sha": "${SHA}",
+            "job_status": "${JOB_STATUS}",
+            "steps": {
+              "npm11": "${S_NPM11}",
+              "npmci": "${S_NPMCI}",
+              "selfchecks": "${S_SELF}",
+              "pack": "${S_PACK}",
+              "publish": "${S_PUB}"
+            },
+            "runner": "ubuntu-latest",
+            "npm": "$(npm --version 2>/dev/null || echo unknown)",
+            "node": "$(node --version 2>/dev/null || echo unknown)"
+          }
+          JSON
+          git config user.name "ci-status-bot"
+          git config user.email "ci-status-bot@users.noreply.github.com"
+          git checkout -B ci-status
+          git add ci-status/publish-npm.json
+          git commit -m "ci-status: ${REF_NAME} job=${JOB_STATUS} publish=${S_PUB}" || echo "nothing to commit"
+          git push -f origin ci-status

@@ -3,6 +3,16 @@
 
 # 变更记录
 
+## v3.2.81 —— 2026-10-17
+
+**★给 CI 装一个「自报结果」通道（用 git 回传），因为本机读不到 Actions 日志。**
+
+- 动因：本机 `api.github.com` 与 `github.com` 网页**都不可达**（只有 git 协议通），于是"CI 红在哪一步"长期只能靠人肉截图——这既慢又不可复跑。
+- 做法：`publish-npm` 末尾加一个 **`if: always()`** 步骤，把 **job 状态 + 五个步骤各自的 `outcome`**（npm11 / npmci / selfchecks / pack / publish）+ runner/node/npm 版本写成
+  `ci-status/publish-npm.json`，**推回 `ci-status` 分支**；`permissions` 由 `contents: read` 改为 `write`（仅为此）。
+- 意义：此后每次标签触发后，本机 `git fetch origin ci-status` 就能读到**确切的失败步骤**，不必再等截图 ⇒ 诊断从此可复跑。
+- 上游修复（v3.2.80）已由 `selftest` 工作流证实有效：**main 与 v3.2.80 标签两次运行均绿**（插件自检在干净 runner 上 38/38）。
+
 ## v3.2.80 —— 2026-10-17
 
 **★修「本机绿 ≠ CI 绿」：8 次标签触发的 CI 全部在 20 余秒内红，本轮把五条根因全部修掉。**
