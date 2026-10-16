@@ -1416,6 +1416,44 @@ function runSelftest() {
       ? true : `good=${good} rc=${out.status} state=${row && row.state} bad=${JSON.stringify(roles)}`;
   });
   /* ★ v3.2.35：投稿门户填写单 —— 核心不变量是「**每个值必须在来源里逐字存在**」。 */
+  /* ★★ v3.2.39：**跨实现对拍** —— 同一个指标如果有两套实现（我的 submission-fields vs 契约门），
+     两边读数必须一致。加上这条锁的直接原因：我新写的计数器把 `---` 分隔线算成一条亮点，
+     报出「6 条 / 上限 5」的**假超限**，而契约门一直算的是 5 —— **同一目录里两套实现，我没对拍**。 */
+  check('★跨实现对拍：submission-fields 与契约门对同一稿的 Highlights 条数、摘要词数必须同值', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'xc-'));
+    const d = path.join(tmp, 'd.md'); const c = path.join(tmp, 'c.json');
+    fs.writeFileSync(d, ['# T', '', '## Abstract', '', 'Body sentence one. Body sentence two. Body sentence three.', '', '### Highlights', '', '- first bullet', '- second bullet', '- third bullet', '', '---', '', '## 1. Introduction', '', 'Body.'].join('\n'));
+    fs.writeFileSync(c, JSON.stringify({ journal: 'J', article_type: 'review', verified_at: '2026-01-01', verified_from: 'selftest', limits: { abstract_max_words: 500, highlights: { required: true, min: 1, max: 5, max_chars_each: 85 } } }));
+    const mine = spawnSync(process.execPath, [__filename, 'submission-fields', '--draft', d, '--contract', c, '--json'], { encoding: 'utf8' });
+    const so = String(mine.stdout); const i0 = so.indexOf('\n{');
+    let jm = null; try { jm = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
+    const myHl = jm && jm.rows ? ((jm.rows.find((r) => /Highlights/.test(r.field)) || {}).items) : null;
+    const myAbs = jm && jm.rows ? ((jm.rows.find((r) => /Abstract/.test(r.field)) || {}).words) : null;
+    const P = readPipeline();   // ★ 本文件自检里没有 `studio` 这个名字（那是 gate-runner 对本模块的称呼）
+    /* ★ 用 pipeline 里的**门定义**去解析（本文件注释里就记着：给 resolveGateScript 传空对象会拿到空结果）。
+       解析不到要把**尝试过的路径**打出来 —— 否则这条锁会以「跳过」的形式静默失效。 */
+    const tried = [];
+    let gate = '';
+    const gd = (P.gates || []).find((x) => x.id === 'journal-contract');
+    try { const r = gd ? resolveGateScript(gd, P) : null; if (r && r.script) gate = r.script; } catch (e) { tried.push('resolveGateScript:' + String(e && e.message || e)); }
+    if (!gate && P.assets && P.assets.playbook_root) gate = path.join(P.assets.playbook_root, '_journal-contract.cjs');
+    if (!fs.existsSync(gate)) return '门脚本不可得 ⇒ 本锁跳过（不假装通过）。尝试过：' + (gate || '(空)') + ' · ' + tried.join(' / ');
+    const g = spawnSync(process.execPath, [gate, '--draft', d, '--contract', c, '--json'], { encoding: 'utf8' });
+    /* ★ 稳健提取：门的 JSON 可能**在最前**（studio 的输出在最后）⇒ 取「首个 `{` 到最后一个 `}`」，
+       不要假设「行首花括号出现在中间」（首版就是这么错的）。 */
+    const gout = String(g.stdout);
+    const bs = gout.indexOf('{'); const be = gout.lastIndexOf('}');
+    let jg = null; try { jg = (bs >= 0 && be > bs) ? JSON.parse(gout.slice(bs, be + 1)) : null; } catch {}
+    if (!jg) return '契约门 JSON 解析失败：' + gout.slice(0, 120);
+    const rowHl = (jg.results || []).find((x) => x.id === 'highlights_count') || {};
+    const rowAbs = (jg.results || []).find((x) => x.id === 'abstract_max_words') || {};
+    const gHl = (String(rowHl.detail || '').match(/实测\s*(\d+)\s*条/) || [])[1];
+    const gAbs = (String(rowAbs.detail || '').match(/实测\s*(\d+)\s*词/) || [])[1];
+    const okHl = myHl !== null && gHl !== undefined && Number(myHl) === Number(gHl);
+    const okAbs = myAbs !== null && gAbs !== undefined && Number(myAbs) === Number(gAbs);
+    return (okHl && okAbs) ? true : `我的 highlights=${myHl} 门=${gHl} · 我的 abstract=${myAbs} 门=${gAbs}`;
+  });
   check('submission-fields·正控：逐字段抽出，且**每个非缺失值都在其来源里逐字存在**，exit=0', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'sf1-'));
@@ -2983,17 +3021,28 @@ function cmdSubmissionFields(args, argv) {
       }
     }
   }
-  const hlItems = hlText ? hlText.split(/\r?\n/).map((s) => s.replace(/^\s*[-*+]\s*/, '').trim()).filter(Boolean) : [];
+  /* ★ v3.2.39 修假阳性：**只取 bullet 行**（与契约门 `highlights_count` 同一口径）。
+     首版把所有非空行都算成「条」 ⇒ 稿件里的 `---` 分隔线被算成一条 ⇒ 报出「6 条 / 上限 5」的**假超限**。 */
+  const hlItems = hlText ? hlText.split(/\r?\n/).map((s) => s.trim())
+    .filter((s) => /^[-*+]\s+/.test(s))
+    .map((s) => s.replace(/^[-*+]\s+/, '').trim())
+    .filter(Boolean) : [];
   push('Highlights 亮点', hlText, hlSrcText, hlSrc, { items: hlItems.length });
   /* ⑥ 作者块 / 通讯作者 */
-  const au = findEvidence(draft, [/^\s*(?:\*\*)?(?:Authors?|作者|作者姓名)\s*[:：]\s*(.+)$/i]);
   const AU_PATS = [/^\s*(?:\*\*)?(?:Authors?|作者|作者姓名)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i];
+  const au = findEvidence(draft, AU_PATS);
   const auPkg = au ? null : findInPackage(pkgDir, AU_PATS);
   push('Authors 作者块', au ? au.value : (auPkg ? auPkg.value : ''),
     au ? draft : (auPkg ? auPkg.text : null),
     au ? ('稿件 L' + au.line) : (auPkg ? ('包内 ' + auPkg.file + ' L' + auPkg.line) : ''), { req: true });
-  const ca = findEvidence(draft, [/^\s*(?:\*\*)?(?:Corresponding author|通讯作者|通信作者)\s*[:：]\s*(.+)$/i]);
-  const CA_PATS = [/^\s*(?:\*\*)?(?:Corresponding author|通讯作者|通信作者)\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i];
+  const CA_PATS = [
+    /^\s*(?:\*\*|__)?\s*(?:Corresponding author|通讯作者|通信作者)\s*(?:e-?mail(?:\s*address)?)?\.?\s*(?:\*\*|__)?\s*[:：]\s*(.+)$/i,
+    /^.{0,140}?\(\s*corresponding author\s*\)\s*$/i,
+    /^\s*(?:\*\*|__)?\s*(?:Author for correspondence|通讯作者|通信作者)\b[^\n]*$/i,
+  ];
+  const ca = findEvidence(draft, CA_PATS);
+  /* ★ v3.2.39 修假阳性：真实稿件的写法比我的正则宽得多 —— `**Haolong Liu**¹ (corresponding author)` 与
+     `Corresponding author e-mail: x@y` 都被首版漏掉 ⇒ 报出「缺失」的**假阳性**。这里按真实形态补三条。 */
   const caPkg = ca ? null : findInPackage(pkgDir, CA_PATS);
   push('Corresponding author 通讯作者', ca ? ca.value : (caPkg ? caPkg.value : ''),
     ca ? draft : (caPkg ? caPkg.text : null),
@@ -3055,6 +3104,80 @@ function cmdSubmissionFields(args, argv) {
     if (limits.length) { console.log('  契约限额对照：'); for (const x of limits) console.log('    ' + (x.ok === false ? '✘ 超限' : (x.ok === true ? '✓ 未超' : '· 无对应读数')) + ' ' + x.key + ' 声明=' + x.declared + (x.measured === null ? '' : ' 实测=' + x.measured)); }
     console.log('  结论：' + (bad ? (missing.length + nonVerbatim.length + over.length) + ' 项待处理（必填缺失 ' + missing.length + ' · 非逐字 ' + nonVerbatim.length + ' · 超限 ' + over.length + '）' : '必填字段齐、全部可逐字粘贴、无超限') + '（fields_code=' + code + '）');
     if (absent.length) console.log('  可选未提供 ' + absent.length + ' 项（不判红，是否必须由期刊契约/门决定）：' + absent.join(' / '));
+  }
+  /* ★★ v3.2.39 `--proposal`：**改动建议书**。三条自我约束（都可在夹具里机械核对）：
+     ① 只给「逐字原文 + 明确改法」，**绝不造字**（凡引用的原文都能在来源里找到）；
+     ② **绝不代选**（要删哪条 Highlights、要补什么邮箱 —— 都由作者定夺，工具只列候选）；
+     ③ **不修改稿件**（本命令只写建议书；稿件字节不变）。 */
+  const proposalArg = val('proposal');
+  if (proposalArg !== '') {
+    const pAbs = path.resolve(proposalArg);
+    const P2 = [];
+    P2.push('# 改动建议书（待作者确认）· ' + path.basename(dAbs), '');
+    P2.push('> 本文件**只给建议与逐字原文，不修改稿件**；每条改动都要你确认。');
+    P2.push('> 凡标 `__待…__` 的占位符，必须由你替换 —— **本工具不代填、不代选**。', '');
+    let nIssue = 0;
+    /* ① 必填缺失 */
+    const reqMissing = rows.filter((r) => r.req && r.state === 'missing');
+    if (reqMissing.length) {
+      P2.push('## 一、必填字段缺失（门户会要）', '');
+      for (const r of reqMissing) {
+        nIssue++;
+        P2.push('### ' + r.field, '');
+        P2.push('- 现状：稿件里找不到该字段（抽不出 ⇒ 列入缺失）。');
+        if (r.field.indexOf('Corresponding') >= 0 || r.field.indexOf('Authors') >= 0) {
+          const src = auPkg || caPkg || null;
+          if (src) {
+            P2.push('- 包内线索：`' + src.file + '` L' + src.line + '（**逐字**）——`, `' + src.value + '`');
+            P2.push('- 建议在稿件声明区附近补一行（**占位符待你替换**）：');
+            P2.push('');
+            P2.push('  ```markdown');
+            P2.push('  **Corresponding author:** ' + src.value + ' （邮箱：__待作者填写__）');
+            P2.push('  ```');
+          } else {
+            P2.push('- 稿件与包内都没有可用的作者线索 ⇒ **须你从零填写**（工具不编）。');
+          }
+        } else {
+          P2.push('- 建议：按门户提示补写（本工具不代写内容）。');
+        }
+        P2.push('');
+      }
+    }
+    /* ② 超限 */
+    const over2 = limits.filter((x) => x.ok === false);
+    if (over2.length) {
+      P2.push('## 二、超出契约限额', '');
+      for (const x of over2) {
+        nIssue++;
+        P2.push('### `' + x.key + '`：实测 ' + x.measured + ' / 上限 ' + x.declared, '');
+        if (x.key.indexOf('highlights') >= 0 && hlItems.length) {
+          const must = Math.max(0, hlItems.length - (typeof x.declared === 'number' ? x.declared : hlItems.length));
+          P2.push('- 当前 **' + hlItems.length + ' 条**（逐字列出，编号供你指定删哪条）：');
+          hlItems.forEach((it, i) => P2.push('  ' + (i + 1) + '. ' + it));
+          P2.push('- 须删 **' + must + ' 条**才不超限；**删哪条由你定夺**（本工具不代选 —— 亮点取舍是学术判断）。');
+        } else {
+          P2.push('- 建议：按上限删减或改写对应部分（本工具不代改）。');
+        }
+        P2.push('');
+      }
+    }
+    /* ③ 余量警示（通过了但很紧） */
+    const tight = limits.filter((x) => x.ok === true && typeof x.measured === 'number' && typeof x.declared === 'number')
+      .filter((x) => { const h = x.declared - x.measured; return h >= 0 && h <= Math.max(1, Math.ceil(x.declared * 0.05)); });
+    if (tight.length) {
+      P2.push('## 三、余量警示（当前通过，但很紧）', '');
+      for (const x of tight) {
+        nIssue++;
+        P2.push('- `' + x.key + '`：实测 **' + x.measured + '** / 上限 ' + x.declared + ' ⇒ **只剩 ' + (x.declared - x.measured) + ' 的余量**，再加一句就可能超限。');
+      }
+      P2.push('');
+    }
+    P2.push('---', '');
+    P2.push('共 **' + nIssue + '** 条待确认。改完请重跑：`node bin/studio.cjs submission-fields --draft <稿> --package <包> --contract <契约>`。');
+    P2.push('');
+    P2.push('<!-- PROVENANCE: ' + JSON.stringify({ tool: 'paper-studio', version: toolVersion(), at: new Date().toISOString(), inputs: [{ role: 'draft', path: dAbs, kind: 'file', sha12: digestOf(dAbs).sha12, n: fs.statSync(dAbs).size }] }) + ' -->');
+    fs.writeFileSync(pAbs, P2.join('\n') + '\n', 'utf8');
+    console.log('  改动建议书：' + pAbs + '（' + nIssue + ' 条待确认；**未修改稿件**）');
   }
   const outArg = val('out');
   if (outArg) {
