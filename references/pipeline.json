@@ -13,7 +13,17 @@
       "word_limit": "plos-one.json 的正文上限键，值为 null（＝未设限额）⇒ 由锁跳过；若将来给非 null 值需实现该键名",
       "figures_tables_limit": "同上：plos-one.json 的图表数量键，值 null（未设）⇒ 锁跳过",
       "figure_text_fonts": "图内字体名无法从位图/矢量文件机械判定（需解析内嵌字体）⇒ 仍为 known_gap；人工核对",
-      "figure_text_pt": "图内字号无法从位图机械判定（矢量可读但不通用）⇒ 仍为 known_gap；人工核对"
+      "figure_text_pt": "图内字号无法从位图机械判定（矢量可读但不通用）⇒ 仍为 known_gap；人工核对",
+      "double_spaced": "PLOS 要求双倍行距：版面属性，Markdown 稿里没有行距信息 ⇒ 只能人工在 Word 里核",
+      "multi_column": "PLOS 禁止分栏：同上，属排版属性，无法从 Markdown 判定",
+      "page_numbers": "PLOS 要求页码：Word/PDF 版式属性，Markdown 无页码 ⇒ 人工核",
+      "continuous_line_numbers": "PLOS 要求连续行号：同上，属版式属性 ⇒ 人工核",
+      "latex_via_pdf": "LaTeX 投稿须转 PDF：已作为 file_formats 的 pdf 允许分支参与判定，本身不再单独判",
+      "figure_caption_in_manuscript": "图题须在正文内：与 figure_table_xref 部分重叠，但\"题注是否在图下/正文内\"尚未机检 ⇒ 待实现",
+      "figure_caption_after_first_cite": "图题须在首次引用之后：现有 figure_table_xref 只判\"声明↔引用\"双向一致，未判题注**位置** ⇒ 待实现",
+      "tables_in_manuscript": "表格须在正文内：判\"表在正文还是附录\"需要区分附录区，尚未机检 ⇒ 待实现",
+      "table_caption_above": "表题须在表上方：Markdown 表格块的上下关系未机检 ⇒ 待实现",
+      "si_captions_at_end_of_manuscript": "SI 题注须在正文末尾：需先能切出\"末尾区\"，尚未机检 ⇒ 待实现"
     }
   },
   "assets": {

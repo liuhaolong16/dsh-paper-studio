@@ -154,6 +154,15 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 > **L-12 没有单独的第三道门**（2026-10-14 复核）：它的两条判据已由 `docx-verify` + `artifact-sync` 覆盖，再建一门就是重复判据 —— 改为把缺陷修在既有的那一门上（见 L-13）。
 > **经验 → 门的映射**只写在一处：`references/pipeline.json` 的 `lessons_coverage`。
 
+**期刊契约门的检查族（v3.2.51–v3.2.52 补记 —— 此前实现加了、文档没跟上）**：
+
+| 族 | 检查项 | 判定依据 |
+|---|---|---|
+| **生成式 AI 披露**（v3.2.51；依据 Elsevier 生成式 AI 政策 + ICMJE 第 V 节，均可点开原文） | `ai_declaration_present` · `ai_declaration_before_references` · `ai_declaration_placeholders_filled` · `ai_not_listed_as_author` | 由契约 `structure.ai_declaration_required: true` 驱动（**读 `structure`，不是 `limits`**），来源写在 `ai_declaration_provenance`；识别**三类等价形态**（推荐标题行 / 行首加粗标签 / 声明句本身，含"未使用"否定式与中文）；**模板占位符没替换**（`[NAME OF TOOL / SERVICE]`/`[REASON]`）⇒ FAIL；**作者块出现 AI 工具名** ⇒ FAIL（只在作者块范围内判，不误伤 Methods；定位不到作者块记 **WARN「未检查」**，不当通过） |
+| **包结构与版面**（v3.2.52 · C18） | `file_formats` · `footnotes_allowed` · `tail_order` · `cover_letter_separate` · `title_page_first` · `si_item_naming` | 全部由 `structure.*` 开关驱动。**能从 Markdown 稿 + 投稿包判出来的已实现**；纯版面属性（行距 / 分栏 / 行号 / 页码 / LaTeX 通路）**无法从 Markdown 判定** ⇒ 如实登记在 `references/pipeline.json` 的 `contract_limits.known_gaps`（**登记即可见，绝不等于通过**） |
+| **双向锁**（都在 `gate-runner` 自检里，各自带必失败面） | ①`limits.*` 方向 ②`structure.*` 方向（v3.2.52）③反向锁（v3.2.51） | ①契约声明的每个 `limits.*` 键要么被门引用、要么在台账登记原因；②**镜像**：`structure.*` 同理 —— 防**死配置**（契约里写了、门里根本不读，人却以为生效了）；③**反方向**：门实现的每条契约驱动检查必须**至少被一份契约触发** —— 防**死检查**（代码写了、没有任何契约在用，永远不执行） |
+
+
 **执行纪律（每条都由一次真实事故换来）**：
 1. **逐门打印退出码 + stdout 是否为空**；`rc≠0 且 stdout 为空` 一律归**前提层失败**（不是"结果为空"）。
 2. 跑门前**无条件断言**解释器与脚本存在 —— 本机出现过子进程缺系统模块目录导致 `Get-FileHash` 不存在、探针把"取不到"读成零的先例。

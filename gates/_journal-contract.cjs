@@ -571,6 +571,48 @@ if (process.argv.includes('--selftest')) {
     add('v3.2.51·AI 披露·诚实面：作者块定位不到 ⇒ WARN 且写明「未检查」，不得当通过',
       g5.level === 'WARN' && /未检查/.test(String(g5.detail)), String(g5.detail || '').slice(0, 60));
   })();
+  /* ★ v3.2.52 C18：把 `structure.*` 里能机检的开关真正执行（镜像锁抓出 PLOS 17 条死配置后补的实现） */
+  (() => {
+    const cPL = path.join(tmp, 'c-plos.json');
+    fs.writeFileSync(cPL, JSON.stringify({ journal: 'PLOS 样例', publisher: 'P', verified_at: '2026-10-16', verified_from: 'u',
+      limits: { abstract_max_words: 80 },
+      structure: { file_formats: ['DOC', 'DOCX', 'RTF'], footnotes_allowed: false,
+        tail_order: ['Acknowledgments', 'References'], cover_letter_separate: true,
+        title_page_first: true, abstract_after_title_page: true, si_item_naming: 'S+编号' } }));
+    const mkf = (n, b) => { const p = path.join(tmp, n); fs.writeFileSync(p, b); return p; };
+    // ① 正控：题头页在上 + 无脚注 + 尾部顺序正确 + 包内有 docx 与投稿信
+    const okD = mkf('pl-ok.md', '# Real Title Here\n\nAuthors: A, B\n\n## Abstract\n\nShort one.\n\n## Acknowledgments\n\nThanks.\n\n## References\n\n[1] x\n');
+    const okPkg = path.join(tmp, 'pl-pkg'); fs.mkdirSync(okPkg);
+    fs.writeFileSync(path.join(okPkg, 'manuscript.docx'), 'x');
+    fs.writeFileSync(path.join(okPkg, 'Cover-Letter.md'), 'Dear editor');
+    fs.writeFileSync(path.join(okPkg, 'S1 Table.docx'), 'x');
+    const r1 = runJson(['--draft', okD, '--contract', cPL, '--package', okPkg, '--json']);
+    const byId1 = {}; for (const x of (r1.j && r1.j.results) || []) byId1[x.id] = x;
+    add('v3.2.52·C18 正控：可上传格式在场 / 无脚注 / 尾部顺序对 / 投稿信独立 / 题头页在前 / SI 命名合规 ⇒ 六项全通过',
+      ['file_formats', 'footnotes_allowed', 'tail_order', 'cover_letter_separate', 'title_page_first', 'si_item_naming']
+        .every((k) => byId1[k] && byId1[k].ok === true),
+      JSON.stringify(Object.keys(byId1).filter((k) => ['file_formats','footnotes_allowed','tail_order','cover_letter_separate','title_page_first','si_item_naming'].indexOf(k) >= 0).map((k) => k + '=' + (byId1[k].ok ? 'ok' : 'FAIL'))));
+    // ② 必失败面：出现脚注 + 尾部顺序颠倒 + 包内无允许格式 + 无投稿信 ⇒ 四项都必须 FAIL
+    const badD = mkf('pl-bad.md', '# Real Title Here\n\nAuthors: A, B\n\n## Abstract\n\nShort one[^1].\n\n[^1]: a footnote\n\n## References\n\n[1] x\n\n## Acknowledgments\n\nThanks.\n');
+    const badPkg = path.join(tmp, 'pl-pkg-bad'); fs.mkdirSync(badPkg);
+    fs.writeFileSync(path.join(badPkg, 'manuscript.md'), 'x');
+    const r2 = runJson(['--draft', badD, '--contract', cPL, '--package', badPkg, '--json']);
+    const byId2 = {}; for (const x of (r2.j && r2.j.results) || []) byId2[x.id] = x;
+    add('v3.2.52·C18 必失败面：脚注 / 尾部顺序颠倒 / 包内无可上传格式 / 缺投稿信 ⇒ 四项都必须 FAIL',
+      ['footnotes_allowed', 'tail_order', 'file_formats', 'cover_letter_separate'].every((k) => byId2[k] && byId2[k].ok === false),
+      JSON.stringify(['footnotes_allowed','tail_order','file_formats','cover_letter_separate'].map((k) => k + '=' + (byId2[k] ? (byId2[k].ok ? 'ok' : 'FAIL') : 'MISSING'))));
+    // ③ 诚实面：Abstract 之前没有实质标题行 ⇒ 题头页检查必须 FAIL（不得因为「有 Abstract」就放行）
+    const noTitleD = mkf('pl-notitle.md', '## Abstract\n\nShort one.\n\n## References\n\n[1] x\n');
+    const r3 = runJson(['--draft', noTitleD, '--contract', cPL, '--json']);
+    const g3 = ((r3.j && r3.j.results) || []).find((x) => x.id === 'title_page_first') || {};
+    add('v3.2.52·C18 诚实面：Abstract 之前无实质标题 ⇒ title_page_first 必须 FAIL', g3.ok === false, String(g3.detail || '').slice(0, 80));
+    // ④ 未检查 ≠ 通过：不给 --package 时，包相关三项必须记 WARN/FAIL 并写明未检查，不得静默通过
+    const r4 = runJson(['--draft', okD, '--contract', cPL, '--json']);
+    const byId4 = {}; for (const x of (r4.j && r4.j.results) || []) byId4[x.id] = x;
+    add('v3.2.52·C18 诚实面：未给 --package ⇒ 格式/投稿信记为未通过（不得当通过）',
+      byId4.file_formats && byId4.file_formats.ok === false && /未检查/.test(String(byId4.file_formats.detail)),
+      String((byId4.file_formats || {}).detail || '').slice(0, 80));
+  })();
   add('新检查·必失败面：契约声明了本门没执行的检查 ⇒ 必须 FAIL（登记过≠可机检）',
     !!(cov && cov.ok === false && /没执行/.test(cov.detail)), '实得 ' + JSON.stringify(cov && { ok: cov.ok, d: cov.detail }));
   const cCovered = path.join(tmp, 'c-covered.json');
@@ -1027,9 +1069,75 @@ if (S.ai_declaration_required) {
     check('ai_not_listed_as_author', 'WARN', false,
       '未定位到作者块（无 Authors/作者 标题或标签）⇒ **未检查**，不得当作通过', '');
   }
+
   check('ai_declaration_before_references', 'WARN', before,
     aiIdx < 0 ? '未能定位声明节，位置检查跳过（已计入上一条 FAIL）'
       : (before ? 'AI 声明位于参考文献之前（合规）' : 'AI 声明位于参考文献之后（建议移到之前）'));
+}
+/* ── C18（v3.2.52）：`structure.*` 里**能机检**的那几项 ──
+   为什么加：镜像锁抓出 PLOS 契约声明了 17 条 `structure.*` 开关，而门**一个都不读** ⇒ 死配置
+   （契约写了、人以为生效了、实际毫无作用）。这里把能从 Markdown 稿 + 投稿包判出来的实现掉，
+   纯版面属性（行距/分栏/行号/页码/LaTeX 通路）无法从 Markdown 判定 ⇒ 如实登记 known_gaps。 */
+if (S.file_formats) {
+  /* 判据取"包内**存在**至少一个可上传的稿件格式"，而不是去猜哪一份是主稿（后者在同时放 .md 与 .docx 的包里
+     会误报）。latex_via_pdf=true 时允许 pdf 作为 LaTeX 通路。 */
+  const allow = (Array.isArray(S.file_formats) ? S.file_formats : [S.file_formats]).map((x) => String(x).toLowerCase());
+  if (S.latex_via_pdf) allow.push('pdf');
+  const hits = pkg.exists ? pkg.files.filter((f) => allow.indexOf((String(f).match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase()) >= 0) : [];
+  const ok = pkg.exists ? hits.length > 0 : false;
+  check('file_formats', 'FAIL', ok,
+    !pkg.exists ? ('**未给 --package ⇒ 未检查**（契约要求可上传格式：' + allow.join('/') + '）')
+      : (ok ? ('包内存在可上传格式：' + hits.slice(0, 4).join(' , ')) : ('包内**没有**契约允许的稿件格式（' + allow.join('/') + '）')),
+    hits.length ? ('package:' + hits[0]) : '');
+}
+if (S.footnotes_allowed === false) {
+  const fn = (noMeta.match(/\[\^[^\]]{1,40}\]/g) || []);
+  check('footnotes_allowed', 'FAIL', fn.length === 0,
+    fn.length ? ('契约不允许脚注，但稿件里出现 ' + fn.length + ' 处脚注标记（如 ' + fn[0] + '）⇒ 改为正文括注或尾注')
+              : '未发现脚注标记（契约不允许脚注）',
+    fn.length ? ('draft:' + fn[0]) : '');
+}
+if (Array.isArray(S.tail_order) && S.tail_order.length >= 2) {
+  const pos = S.tail_order.map((name) => {
+    const re = new RegExp('^(?:##+\\s*|[^\\n]*\\*\\*)' + String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'im');
+    const m = noMeta.match(re);
+    return { name, i: m ? noMeta.indexOf(m[0]) : -1 };
+  }).filter((x) => x.i >= 0);
+  if (pos.length < 2) {
+    check('tail_order', 'WARN', false, '尾部小节定位到 ' + pos.length + ' 个（少于 2）⇒ **未检查**，不得当作通过', '');
+  } else {
+    const want = S.tail_order.filter((n) => pos.some((p) => p.name === n));
+    const got = pos.slice().sort((a, b) => a.i - b.i).map((p) => p.name);
+    const ok = JSON.stringify(want) === JSON.stringify(got);
+    check('tail_order', 'FAIL', ok, ok ? ('尾部顺序合规：' + got.join(' → ')) : ('尾部顺序不符（契约：' + S.tail_order.join(' → ') + '；实测：' + got.join(' → ') + '）'), '');
+  }
+}
+if (S.cover_letter_separate === true) {
+  const cl = pkg.exists ? pkgFileHit(/cover[-_ ]?letter/i) : '';
+  check('cover_letter_separate', 'FAIL', !!cl,
+    !pkg.exists ? '**未给 --package ⇒ 未检查**（契约要求投稿信独立成件）'
+      : (cl ? ('投稿信独立成件：' + cl) : '契约要求投稿信独立成件，但包内未找到'),
+    cl ? ('package:' + cl) : '');
+}
+if (S.title_page_first === true || S.abstract_after_title_page === true) {
+  const absRe = /^(?:##+\s*|\*\*\s*)?Abstract\b/im;
+  const m = noMeta.match(absRe);
+  const before = m ? noMeta.slice(0, noMeta.indexOf(m[0])) : '';
+  const hasTitle = before.split('\n').some((L) => L.trim().length > 3 && !/^#\s*$/.test(L.trim()));
+  const ok = !!m && hasTitle;
+  check('title_page_first', 'FAIL', ok,
+    !m ? '未找到 Abstract 段 ⇒ 无法判定题头页顺序'
+      : (ok ? '题头页（标题在上）位于 Abstract 之前（合规）' : 'Abstract 之前没有实质标题行（不符合"题头页在前"）'), '');
+}
+if (typeof S.si_item_naming === 'string' && S.si_item_naming) {
+  const si = pkg.exists ? pkg.files.filter((f) => /(?:^|\/)(?:suppl|si|s\d+)/i.test(f) && !/\.(png|jpe?g|pdf)$/i.test(f)) : [];
+  if (!si.length) {
+    check('si_item_naming', 'WARN', false, (pkg.exists ? '包内未识别到 SI 件 ⇒ **未检查**' : '**未给 --package ⇒ 未检查**'), '');
+  } else {
+    const bad = si.filter((f) => !/^S\d+[\s._-]/i.test(path.basename(f)) && !/[Ss]\d+\s+(Table|Appendix|Fig)/.test(path.basename(f)));
+    check('si_item_naming', 'FAIL', bad.length === 0,
+      bad.length ? ('SI 件命名未按契约「' + S.si_item_naming + '」：' + bad.slice(0, 3).join(' , ')) : ('SI 件命名合规（' + si.length + ' 件）'), '');
+  }
 }
 
 /* ── C12–C17（v3.2.8 新增 · 全部契约驱动）：把契约里声明过的量**真正执行** ──

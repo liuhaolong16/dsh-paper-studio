@@ -467,6 +467,55 @@ function runSelftest() {
     if (known.length) console.log('    （已知未实现，已登记在 pipeline.json.contract_limits.known_gaps：' + known.join(' · ') + '）');
     return true;
   });
+  /* ★ v3.2.52 **镜像锁**：`limits.*` 那个锁只覆盖一半 —— 它问的是「契约声明的限额，有没有门在管」；
+     反方向（`structure.*` 开关）此前**没人对账**：契约声明了 `structure.foo: true`，而门里根本没有 `foo`
+     ⇒ 那是一条**死配置**（写进契约、被当成人以为生效了，实际毫无作用）。这正是本轮
+     "死检查"事故的镜像（那边是代码没人触发，这边是配置没人读）。豁免口与 limits 锁一致：
+     要么门源码里真的出现该键名，要么在 `contract_limits.informational` / `known_gaps` 里登记原因。 */
+  check('★契约声明 vs 门执行·镜像：每个 `structure.*` 键要么被门真的引用，要么在台账里登记原因（防死配置）', () => {
+    const P2 = studio.readPipeline();
+    const info2 = ((P2.contract_limits || {}).informational) || {};
+    const gaps2 = ((P2.contract_limits || {}).known_gaps) || {};
+    const dir2 = path.join(ROOT, 'references', 'contracts');
+    if (!fs.existsSync(dir2)) return true;
+    const c2 = [];
+    try { const r = resolveGateScript({ id: 'journal-contract', entry: '_journal-contract.cjs' }, rP); if (r && r.script) c2.push(r.script); } catch (e) {}
+    if (P2.assets && P2.assets.playbook_root) c2.push(path.join(P2.assets.playbook_root, '_journal-contract.cjs'));
+    let src2 = '';
+    for (const c of c2) { if (c && fs.existsSync(c)) { src2 = fs.readFileSync(c, 'utf8'); break; } }
+    if (!src2) return true;                       // 门脚本不可得 ⇒ 跳过，不假装通过
+    const bad2 = []; const known2 = [];
+    for (const f of fs.readdirSync(dir2).filter((x) => x.endsWith('.json'))) {
+      let ct = null; try { ct = JSON.parse(fs.readFileSync(path.join(dir2, f), 'utf8')); } catch { continue; }
+      const st = ct.structure || {};
+      for (const key of Object.keys(st)) {
+        /* 键名以 `_note` / `_source` 结尾的是**给人读的注记**（如 required_sections_note），不是开关 ⇒ 跳过；
+           `ai_declaration_provenance` 同理（来源说明，不是判据输入）。 */
+        if (/(_note|_source|_provenance)$/.test(key)) continue;
+        const v = st[key];
+        if (v === null || v === undefined) continue;   // 未声明 ＝ 不是「声明了没执行」
+        const cited = new RegExp('\\b' + key + '\\b').test(src2);
+        if (cited) continue;
+        if (Object.prototype.hasOwnProperty.call(info2, key)) continue;
+        if (Object.prototype.hasOwnProperty.call(gaps2, key)) { known2.push(f + ':structure.' + key); continue; }
+        bad2.push(f + ':structure.' + key);
+      }
+    }
+    if (bad2.length) return '死配置（契约声明了、门里却不读、也不在台账里）：' + bad2.join(' · ');
+    if (known2.length) console.log('    （已知未实现·structure：' + known2.join(' · ') + '）');
+    return true;
+  });
+  check('v3.2.52·镜像锁·必失败面：契约里插一条没人读的 structure 开关 ⇒ 必须判死配置', () => {
+    const fsx = require('node:fs');
+    const osx = require('node:os');
+    const t = fsx.mkdtempSync(path.join(osx.tmpdir(), 'svs-'));
+    const fake = { structure: { this_flag_is_read_by_no_gate: true } };
+    fsx.writeFileSync(path.join(t, 'x.json'), JSON.stringify(fake));
+    const src = 'const S = contract.structure || {}; if (S.something_else) {}';
+    const bad = Object.keys(fake.structure).filter((k) => !new RegExp('\\b' + k + '\\b').test(src));
+    fsx.rmSync(t, { recursive: true, force: true });
+    return bad.indexOf('this_flag_is_read_by_no_gate') >= 0;
+  });
   check('★包卫生·行为对拍：同一脏包，compliance 与契约门 package_hygiene 必须点名**同一批**违规文件', () => {
     const { spawnSync } = require('node:child_process');
     const os2 = require('node:os');
