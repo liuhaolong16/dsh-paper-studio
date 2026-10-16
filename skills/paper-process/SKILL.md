@@ -33,6 +33,7 @@ description: |
 
 - `plugin/hub/*（跨会话中枢）`
 - `references/lessons-from-first-draft.md`
+- `bin/bakeoff.cjs（真对拍判分：中性机检 / 自家门单列 / 人读项标判者）· run/bakeoff/`
 
 ## 边界（这些事本模块不做）
 
