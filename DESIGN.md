@@ -85,7 +85,7 @@
 
 ## 3. 外部调研（能不能逆向 / 借鉴什么）
 
-已把 4 个仓库**浅克隆到本地**做结构级逆向：`E:\DeepSeek\_refs\external-paper-skills\`
+已把 4 个仓库**浅克隆到本地**做结构级逆向：`<外部参考克隆>\`
 
 | 仓库 | 许可 | 结构 | 可借鉴 | 红旗 |
 |---|---|---|---|---|
@@ -102,7 +102,7 @@
 
 ## 4. 本机存量盘点与治理裁决
 
-**已有论文类技能 16 个**（`E:\DeepSeek\skills\`），其中与本次直接相关的四个：
+**已有论文类技能 16 个**（`<技能根>\`），其中与本次直接相关的四个：
 
 | 技能 | 规模 | 定位（据其 description） | 许可 |
 |---|---|---|---|
@@ -144,7 +144,7 @@
 ### 5.2 目录（拟）
 
 ```
-E:\DeepSeek\skills\paper-studio\
+<包根>\
 ├── SKILL.md              # 入口描述（何时用/不用于/示例/许可声明）
 ├── DESIGN.md             # 本文件
 ├── bin\
@@ -208,5 +208,5 @@ intake（把稿子/主题收进来）
 - [yanlin-cheng/skill-thesis-writer](https://github.com/yanlin-cheng/skill-thesis-writer)（木兰宽松 v2；含须拒绝的 `ai_humanizer`）
 - [Leooo-Huang/academic-research-skills](https://github.com/Leooo-Huang/academic-research-skills)（CC BY-NC；交接契约思路来源）
 - [Xtra-Computing/XtraGPT](https://github.com/Xtra-Computing/XtraGPT)（ACL 2026；无许可，仅学架构）
-- 本地克隆：`E:\DeepSeek\_refs\external-paper-skills\`
-- 本地真源：`D:\DeepSeek\research-paper-playbook\`（138 条检查表 + 14 道门）
+- 本地克隆：`<外部参考克隆>\`
+- 本地真源：`<playbook 仓>\`（138 条检查表 + 14 道门）

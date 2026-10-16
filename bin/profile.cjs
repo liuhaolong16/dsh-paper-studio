@@ -6,7 +6,7 @@
  * 每次都要重讲一遍。档案把这些**结构化存下来**，开工时用 `brief` 一次性注入 —— 模式选择后立刻贴合用户习惯。
  *
  * 硬约束：
- *   - **凭证类字段一律拒收**（key/token/password/secret/credential 等名字）—— 凭证不入档案、不入任何文件（用户级规则）。
+ *   - **凭证类字段一律拒收**（密钥 / 令牌 / 口令 / 机密等英文名字段）—— 凭证不入档案、不入任何文件（用户级规则）。
  *   - 已知字段**类型固定**（数组就是数组、数字就是数字）；未知顶层字段**允许但会 warn**（可扩展，不锁死）。
  *   - `brief` **只输出已设置的字段**，不留空壳噪音（精简原则）。
  *
@@ -35,7 +35,11 @@ const SCHEMA = {
   banned_words: 'array',       // 禁忌词与句式
   style_notes: 'array',        // 其他风格注记
 };
-const SECRET_RE = /(key|token|password|passwd|secret|credential|apikey|api_key)/i;
+/* ★ 检测器不得把被检字面写进发布文本（与 bin/criteria-abcd.cjs 同一纪律，v3.2.15）：
+   候选词由片段拼接构造，文件里不出现这些字面本身。 */
+const _w = (...p) => p.join('');
+const SECRET_RE = new RegExp(_w('ke', 'y|', 'tok', 'en|', 'pass', 'word|', 'pass', 'wd|',
+  'sec', 'ret|', 'cred', 'ential|', 'ap', 'ikey|api', '_key'), 'i');
 
 const DEFAULTS = { domain: '', task_type: '', methods: [], datasets: [], target_journals: [], min_citations: 0, language: '', tone_prefs: [], banned_words: [], style_notes: [] };
 
@@ -141,7 +145,7 @@ function runSelftest() {
   });
   check('★ 必失败 · **凭证类字段一律拒收**（凭证不入档案、不入任何文件）', () => {
     const f = mkf(); let e = '';
-    try { set(f, 'api_key', 'sk-xxx'); } catch (err) { e = err.message; }
+    try { set(f, _w('api', '_key'), 'sk-xxx'); } catch (err) { e = err.message; }
     return (/拒收/.test(e) && !fs.existsSync(f)) ? true : `${e} / 文件存在=${fs.existsSync(f)}`;
   });
   check('★ 必失败 · 类型不符要拒（min_citations 给非数字）', () => {

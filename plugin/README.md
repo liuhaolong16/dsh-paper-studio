@@ -69,7 +69,7 @@ node bin\studio.cjs audit     :: 出厂审查 6 项（完整性 + 重复性 + �
 |---|---|---|
 | `node bin/studio.cjs selftest --json` | **机器可读计数出口** | 下游（登记表 / 文档 / 数字侧车）只能手抄中文输出 ⇒ 抄错无人发现（本插件真漂过一整版：登记表写 53/53，脚本实报 61/61） |
 | `node bin/studio.cjs claims` | **文档数字一致性门** | 文档里写了「N/N 通过」就必须与**实跑**一致；历史文档用 `<!-- claims: snapshot -->` 标为快照（CHANGELOG 与 V1 验收报告已标） |
-| `node bin/studio.cjs hygiene` | **残留件门** | 备份/临时件（`.bak-*`/`~`/`.tmp`/`__pycache__`）**不得留在技能树内**——本插件真被生态的「残留文件」判据抓过；备份一律归档到技能树外（`E:\DeepSeek\_archive\<日期>\`），**只归档不删除** |
+| `node bin/studio.cjs hygiene` | **残留件门** | 备份/临时件（`.bak-*`/`~`/`.tmp`/`__pycache__`）**不得留在技能树内**——本插件真被生态的「残留文件」判据抓过；备份一律归档到技能树外（`<归档根>\<日期>\`），**只归档不删除** |
 | `node bin/studio.cjs coverage` | **自检覆盖门** | `bin/*.cjs` 里凡含自检的脚本必须在真源 `references/pipeline.json` 的 `selfchecks` 登记（登记的是**取数命令**，不是冻结数字） |
 
 **纪律**：任何"当前状态类的数字"都不写在文档里只写一次——**文档写数字就必须被 `claims` 盯住**；历史记录一律标快照标记。

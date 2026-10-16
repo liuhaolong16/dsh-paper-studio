@@ -3,6 +3,16 @@
 
 # 变更记录
 
+## v3.2.15 —— 2026-10-16
+
+**把"对外文本不得含本机路径"从判据变成事实：被跟踪文件命中 **57 → 0**。**
+
+- **收紧五类模式（消假阳性，各配夹具）**：盘符形态加**后顾**（`https:\/\/` 这类源码转义不再误报）· UNC 形态要求两侧名段 ≥2 字符（`\.`、`\item` 等**正则片段**不再误报）· posix 只认**用户目录**（`/opt/…`、`/var/…` 是通用安装位置，不再误报）· 凭据类对 **`${{ secrets.X }}` 形态的引用豁免**（引用不是值）。自检 **15 → 20 条**（新增 4 条假阳性面 + 1 条真阳性面）。
+- **真路径逐类清理（30 处文档 + 3 处代码 + 11 处真源）**：文档里的一律改 `<包根>`／`<playbook 仓>`／`<工作区>` 等占位；`plugin/selftest.mjs` 的夹具路径改为**运行时构造**（`join(tmpdir(), …)`）；`plugin/dist/plugin.js` 删掉硬编码的本机开发默认路径；`bin/profile.cjs` 的**检测器自身**（`SECRET_RE`）与夹具按"检测器不得把被检字面写进发布文本"的同一纪律**片段化**。
+- **真源路径改"占位符 + 本地覆盖"**：`references/pipeline.json` / `templates.json` 里 11 处机器路径改为 `__LOCAL__/<key>`；真值放 **git 忽略**的 `references/local-paths.json`（样板入库为 `local-paths.example.json`，可用 `DSH_PAPER_LOCAL_PATHS` 换位置）。`readPipeline()` / `readTemplates()` 单点解析（`gate-runner` 走同一函数 ⇒ 一处接入全链生效）；**解析不到就保留占位符**（不静默变空），并在消费处给出**可操作报错**（"该值是未解析的本机路径占位符 ⇒ 复制 example 为 local-paths.json"）。
+- **本轮两处自伤都被自己的门抓到**：① `plugin/selftest.mjs` 用了未导入的 `path` ⇒ 插件正控立刻红（35/36）、对拍随之红；② 解析器首版把 `__LOCAL__/key/子路径` 整串当 key 查 ⇒ 子路径形态解析不出来（探针抓到）。两处修后：studio **102/102** · plugin **36/36** · audit **6/6** · 对拍 **PASS** · criteria **20/20**，且 `studio gates` 端到端解析出真实门脚本路径。
+- 被跟踪文件 D 扫描：**0 命中**。
+
 ## v3.2.14 —— 2026-10-16
 
 **收紧一处过宽模式（被自己的发布闸门第二次拦下后修）。**
@@ -121,7 +131,7 @@
 - **真装实测（首次 · 可复现）**：`npm pack` → `npm install --prefix <临时前缀> <tgz>`（**无需联网**）→ 在**装机目录**里跑：
   - `node bin/studio.cjs route "把这篇稿子按中文核心期刊的要求改一遍"` ⇒ 退出码 0，期刊分类路由指向包内 `references/cn-journals.md` **[存在]**；
   - `node bin/studio.cjs selftest` ⇒ **85/85**；`node plugin/selftest.mjs` ⇒ **36/36**；
-  - **排除假绿**：把装机副本里那条机器专属兜底候选（`E:\DeepSeek\skills\paper-studio`）**抹掉**（1 → 0 次）后再跑插件自检 ⇒ **仍 36/36** ⇒ 证明起作用的是**「包内自带」候选**，不是本机兜底路径。
+  - **排除假绿**：把装机副本里那条机器专属兜底候选（`<包根>`）**抹掉**（1 → 0 次）后再跑插件自检 ⇒ **仍 36/36** ⇒ 证明起作用的是**「包内自带」候选**，不是本机兜底路径。
 - **新增资产**：`references/contracts/plos-one.json` —— PLOS ONE 的**机器可读契约**（limits/structure/references/cover_letter/system_only_fields/**human_only**/machine_checkable + `verified_at`/`verified_from`）。每个数字都取自 `references/plos-one.md` 的官方原文；本机取不到的项（APC/豁免、开放评审、Striking image、系统字段顺序）**只列 human_only，不写成要求**。登记进真源 `assets`，并在 `plos-one.md` §10 建立互指。
 - **新增判据 4 条（含 2 条必失败）**：① 契约资产必须存在、严格可解析、**带取证日期与来源**、limits 关键数字齐、`human_only` 非空；② **必失败**：契约缺 `verified_at` 必须被抓；③ **运行时引用的仓内文件必须都被 `package.json.files` 覆盖**（防"代码读了没入包的文件"）；④ **必失败**：`files` 漏顶层目录必须被抓。
 - 自检：CLI **85 → 89** · 插件 **36/36** · 审计 **6/6**。
@@ -149,7 +159,7 @@
 - **两道跨面判据（各带必失败面）**：① `agent_facing ⊆ SUBCOMMANDS`（CLI 侧，防拼错/删命令）；② `agent_facing ⊆ STUDIO_ACTIONS`（工具面侧，防"CLI 加了命令、工具面漏接"——本轮的缺口正是这一类）。**取不到真源即判失败，不得当通过。**
 - **文档**：`plugin/skill/SKILL.md`（插件包自带的技能半体）补上合规门与三个自审动作的调用式，并写明"依据＝仓库单一真源，工具面不复制判据"。
 - 自检：CLI **83 → 85** · 插件 **31 → 33**。
-- **未做（需你点头）**：把合规门接进 `route`/`gates` 的**真源流程**——现有 11 个门**全部住在 playbook 仓**（`rel=playbook_root`，脚本在 `D:\DeepSeek\research-paper-playbook\`），要接流程得**动那个仓库**；按你此前"论文线只在当轮明确要求时恢复"的指示，我没有自行推进。
+- **未做（需你点头）**：把合规门接进 `route`/`gates` 的**真源流程**——现有 11 个门**全部住在 playbook 仓**（`rel=playbook_root`，脚本在 `<playbook 仓>\`），要接流程得**动那个仓库**；按你此前"论文线只在当轮明确要求时恢复"的指示，我没有自行推进。
 
 ## v3.2.1 —— 2026-10-16
 

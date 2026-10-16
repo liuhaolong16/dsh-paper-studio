@@ -6,28 +6,28 @@
     {
       "id": "fill-in-outline",
       "label": "论文写作填空模板（★ 可直接复制开写）",
-      "source": "D:\\DeepSeek\\research-paper-playbook\\论文写作填空模板.md",
+      "source": "__LOCAL__/playbook_root/论文写作填空模板.md",
       "target": "0-填空模板.md",
       "why": "逐格填空 + 每格自带验收判据注释；含答辮/SCI 两条线差异标记"
     },
     {
       "id": "quick-reference",
       "label": "一页速查（66 KB 全流程速查）",
-      "source": "D:\\DeepSeek\\research-paper-playbook\\一页速查.md",
+      "source": "__LOCAL__/playbook_root/一页速查.md",
       "target": "0-一页速查.md",
       "why": "开会/写作时随手查的单一入口"
     },
     {
       "id": "pre-submit-checklist",
       "label": "投稿前总检查表（138 条）",
-      "source": "D:\\DeepSeek\\research-paper-playbook\\投稿前总检查表.md",
+      "source": "__LOCAL__/playbook_root/投稿前总检查表.md",
       "target": "9-投稿前总检查表.md",
       "why": "投稿前必过；与本插件的门互补（表是人读，门是机检）"
     },
     {
       "id": "journal-requirements",
       "label": "期刊投稿要求核实清单",
-      "source": "D:\\DeepSeek\\research-paper-playbook\\期刊投稿要求核实清单.md",
+      "source": "__LOCAL__/playbook_root/期刊投稿要求核实清单.md",
       "target": "9-期刊投稿要求核实清单.md",
       "why": "目标刊 Guide for Authors 的逐项摘录与核实状态"
     },
@@ -210,7 +210,7 @@
   ],
   "methodology_index": {
     "note": "11 维方法论真源（不复制，指路径）",
-    "root": "D:\\DeepSeek\\research-paper-playbook\\research\\",
+    "root": "__LOCAL__/playbook_root/research",
     "dimensions": [
       {
         "id": "01",

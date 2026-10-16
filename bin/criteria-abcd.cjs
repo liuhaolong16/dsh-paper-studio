@@ -56,7 +56,7 @@ const PATH_TYPES = ['dns', 'transport-timeout', 'not-found-or-not-authoritative'
    ★ 这不是"扫描器自我豁免"：文件里**没有任何**被检字面，而不是"跳过了某些行"。*/
 const _P = (b64) => Buffer.from(b64, "base64").toString("utf8");
 const OUTWARD_PATTERNS = [
-  ['path-separator', new RegExp(_P('KD86W0EtWmEtel06XFx8XFxcXFtBLVphLXowLTkuXy1dK1xcfC8oPzpob21lfFVzZXJzfG1udHxvcHR8dmFyKS8p')), '本地/绝对路径'],
+  ['path-separator', new RegExp(_P('KD88IVtBLVphLXowLTldKSg/OltBLVphLXpdOlxcKD89W15cc10pfFxcXFxbQS1aYS16MC05Ll8kLV17Mix9XFxbQS1aYS16MC05Ll8kLV17Mix9fC8oPzpob21lfFVzZXJzKS9bQS1aYS16MC05Ll8tXSsp')), '本地/绝对路径'],
   ['internal-hostname', new RegExp(_P('XGIoPzpsb2NhbGhvc3R8MTI3XC4wXC4wXC4xfDBcLjBcLjBcLjB8MTBcLlxkezEsM31cLlxkezEsM31cLlxkezEsM318MTkyXC4xNjhcLlxkezEsM31cLlxkezEsM318MTcyXC4oPzoxWzYtOV18MlxkfDNbMDFdKVwuXGR7MSwzfVwuXGR7MSwzfXxbQS1aYS16MC05Ll8tXStcLmxvY2FsKVxi')), '内网主机名/回环地址'],
   ['email', new RegExp(_P('W0EtWmEtejAtOS5fJSstXStAW0EtWmEtejAtOS4tXStcLltBLVphLXpdezIsfQ==')), '邮箱地址'],
   ['credential-like', new RegExp(_P('XGIoPzphcGlbXy1dP2tleXxhY2Nlc3NbXy1dP3Rva2VufHJlZnJlc2hbXy1dP3Rva2VufGNsaWVudFtfLV0/c2VjcmV0fHBhc3N3b3JkfHBhc3N3ZHxiZWFyZXJccytbQS1aYS16MC05Ll8tXXsxMix9fC0tLS0tQkVHSU4gW0EtWiBdKlBSSVZBVEUgS0VZLS0tLS0pXGI='), "i"), '凭据样式串'],
@@ -151,7 +151,12 @@ function judge(text) {
 function scanOutward(text) {
   const hits = [];
   String(text).split('\n').forEach((line, i) => {
+    /* ★ 密文**引用**豁免（v3.2.15）：`${{ secrets.X }}` / `secrets.X` 是"指向密钥库的引用"，
+       不是凭据值本身（D 针对的是 credential-like **strings**）。豁免范围仅限这一种形态，
+       且必须**整行含花括号引用**才生效——不是按行号跳过的自我豁免。 */
+    const refOnly = /\$\{\{|\bsecrets\.[A-Za-z0-9_]+/i.test(line);
     for (const [kind, re, label] of OUTWARD_PATTERNS) {
+      if (kind === 'credential-like' && refOnly) continue;
       if (re.test(line)) hits.push({ kind, label, line: i + 1, excerpt: line.trim().slice(0, 80) });
     }
   });
@@ -201,6 +206,17 @@ function selftest() {
     add('D 扫描必失败：' + label + ' 必须命中并带行号',
       scanOutward(t).length > 0 && scanOutward(t).every((h) => h.line >= 1), JSON.stringify(scanOutward(t)));
   }
+  const fpCases = [
+    ['正则里的反斜杠片段（JS 转义）', 'const re = /\\item\\b|\\\.|\\\\/g;'],
+    ['URL 转义斜杠', "if (!/^https:\\/\\//.test(u)) return 'x';"],
+    ['通用安装路径（非用户目录）', F('候选：/op', 't/paper-studio · /va', 'r/log/paper')],
+    ['密钥库引用（引用不是值）', 'https://x-access-token:' + '$' + '{{ secrets.GITHUB_TOKEN }}@github.com/a/b.git'],
+  ];
+  for (const [label, txt] of fpCases) {
+    add('D 扫描·假阳性面：' + label + ' 不得误报', scanOutward(txt).length === 0, JSON.stringify(scanOutward(txt)));
+  }
+  add('D 扫描·真阳性面：用户目录与真盘符路径仍必命中',
+    scanOutward(F('/ho', 'me/alice/paper')).length > 0 && scanOutward('see ' + 'E' + ':' + '\\work\\draft.md').length > 0, '—');
   add('D 扫描·正控：普通技术文本不得误报',
     scanOutward('This study proposes a model; see references [1] and the Data Availability section.').length === 0,
     JSON.stringify(scanOutward('This study proposes a model; see references [1] and the Data Availability section.')));

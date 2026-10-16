@@ -3,7 +3,7 @@
 > 定位：把**国内中文期刊**与**国外英文期刊**分开，各自成章。本文件只管中文刊：收录体系、投稿平台与**逐字操作步骤**、来稿体例、国内特有材料、审稿规则、逐刊档案。
 > 姊妹文件：`references/journal-taxonomy.md`（两轴分类与路由）· `references/submission-runbook.md`（投稿执行手册）· `references/journal-contract-*.json`（逐刊硬指标契约）。
 > **证据纪律**：每条带**来源 + 取用日期**；商业中介站点（代发/代写类）**一律不作为依据**。
-> **本轮一手取证（已下载 + 抽文本，存 `D:\deep seek工作区1\research\cn-journals\`）**：
+> **本轮一手取证（已下载 + 抽文本，存 `<工作区>\research\cn-journals\`）**：
 > 腾云期刊采编平台作者操作指南（PDF 1.47 MB）· 作者投稿操作指南（PDF 627 KB）· **《编辑学报》参考文献著录细则 2026-06-01（PDF）** · 《推进技术》投稿指南（PDF）· 《储能科学与技术》征稿简则（DOCX）· 著作权转让协议样张（DOCX）· 《河南工业大学学报（自然科学版）》投稿须知（DOCX）· 《中国预防医学杂志》稿约（DOCX）
 > 取用方式：`urllib` + 浏览器 UA 直下 → PyMuPDF / python-docx 抽文本（**fetch 工具不支持 PDF/DOCX，这是唯一可复现的通路**）
 

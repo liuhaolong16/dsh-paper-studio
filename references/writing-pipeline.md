@@ -1,6 +1,6 @@
 # 初稿生产流水线（S0–S7）· 从真实 run 抽出
 
-> 来源：`D:\DeepSeek\research-paper-playbook\run\2026-10-10-NASA电池SOH预测\` 的**真实产物形态**（不是设想）。
+> 来源：`<playbook 仓>\run\2026-10-10-NASA电池SOH预测\` 的**真实产物形态**（不是设想）。
 > 用法：`node bin/studio.cjs scaffold --out <目录> --name <稿名>` 会按本流水线生成阶段文件骨架。
 > 真源：本文件与 `pipeline.json` 的 `write` 链路配合；阶段产物名与必填字段以本文件为准。
 

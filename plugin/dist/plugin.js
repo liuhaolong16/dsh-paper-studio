@@ -35,7 +35,7 @@ function resolveRoot() {
     join(homedir(), '.dsh', 'skills', 'paper-studio'),
     join(homedir(), 'paper-studio'),
     '/opt/paper-studio',
-    'E:\\DeepSeek\\skills\\paper-studio',   // 本机开发默认（最后兜底）
+    // 本机开发默认路径**不入库**（v3.2.15）：需要时用 DSH_PAPER_STUDIO_ROOT，或用包内自带候选
   ].filter(Boolean)
   for (const c of cands) {
     try { if (existsSync(join(c, 'bin', 'studio.cjs')) && existsSync(join(c, 'references', 'pipeline.json'))) return c } catch { /* 继续找 */ }

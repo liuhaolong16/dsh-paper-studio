@@ -7,14 +7,14 @@
     "cn_journals": "references/cn-journals.md",
     "journal_taxonomy": "references/journal-taxonomy.md",
     "plos_one": "references/plos-one.md",
-    "playbook_root": "D:\\DeepSeek\\research-paper-playbook",
-    "playbook_skill": "E:\\DeepSeek\\skills\\research-paper-playbook",
-    "writer_skill": "E:\\DeepSeek\\skills\\paper-writer",
-    "polish_skill": "E:\\DeepSeek\\skills\\paper-polish",
+    "playbook_root": "__LOCAL__/playbook_root",
+    "playbook_skill": "__LOCAL__/playbook_skill",
+    "writer_skill": "__LOCAL__/writer_skill",
+    "polish_skill": "__LOCAL__/polish_skill",
     "python_exe": [
-      "D:\\DeepSeek\\research-paper-playbook\\.venv\\Scripts\\python.exe"
+      "__LOCAL__/python_exe"
     ],
-    "phrase_bank": "E:\\DeepSeek\\skills\\ai-workbench\\references\\phrase-bank.json",
+    "phrase_bank": "__LOCAL__/phrase_bank",
     "note": "只引用路径，不复制内容；第三方许可各自保留。python_exe = 首选解释器（playbook 自带 venv）；PATH 上的 python/python3 在本机是 WindowsApps 商店占位符，不是真解释器，须跳过。",
     "compliance_checklist": "references/compliance-checklist.md（投稿合规与许可清单：在先发表/预印本 · 第三方许可 · 地图政治正确性 · 伦理声明 · 清样）",
     "plos_contract": "references/contracts/plos-one.json（PLOS ONE 机器可读契约：limits/structure/references/cover_letter/system_only_fields/human_only/machine_checkable；每个数字取自 plos-one.md 的官方原文，带 verified_at/verified_from）",
@@ -27,7 +27,8 @@
     "cn_contract_hjnu": "references/contracts/cn-hjnu.json（中文刊机读契约：汉江师范学院学报；**归档二手口径** provenance=archived-secondary · 验证码阻断待人工重核 · human_only 列不推定的项）",
     "contract_provenance": "references/contract-provenance.md（契约来源分级与重核纪律：provenance_level / needs_official_recheck / 不推定 / 重核步骤）",
     "declarations_templates": "references/declarations-templates.md（声明段模板：CRediT / 利益冲突 / 资助 / 中文刊页脚；含\"三处必须作者提供\"红线）",
-    "criteria_abcd_gate": "bin/criteria-abcd.cjs（**A/B/C/D 证据纪律四条的单一文件实现**：零依赖 · 自带 15 条自检 · `--list/--check/--scan-only/--selftest`；来源＝公开承诺 issue #1）"
+    "criteria_abcd_gate": "bin/criteria-abcd.cjs（**A/B/C/D 证据纪律四条的单一文件实现**：零依赖 · 自带 20 条自检 · `--list/--check/--scan-only/--selftest`；来源＝公开承诺 issue #1）",
+    "local_paths": "references/local-paths.example.json（机器本地路径表样板：真源用 __LOCAL__/<key> 占位符引用，真值放 git 忽略的 references/local-paths.json）"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",

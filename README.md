@@ -92,3 +92,16 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 ## 相关仓
 
 - 论文方法本体（11 维判据 · 机器门 · 投稿前检查表）：`research-paper-playbook`
+
+## 机器本地路径（装包后**必做一步**）
+
+真源 `references/pipeline.json` / `references/templates.json` 里**不含任何本机绝对路径**，只放 `__LOCAL__/<key>` 占位符
+（证据纪律：对外文本不得含路径分隔符）。真值放在 **git 忽略**的 `references/local-paths.json`：
+
+```bash
+cp references/local-paths.example.json references/local-paths.json   # 然后按你的机器填
+# 或：export DSH_PAPER_LOCAL_PATHS=/path/to/your/local-paths.json
+```
+
+需要填的 key：`playbook_root` · `playbook_skill` · `writer_skill` · `polish_skill` · `python_exe` · `phrase_bank`。
+**取不到时不会静默变成空串**——运行时会明确提示"该值是未解析的本机路径占位符"，并给出上面这一步。

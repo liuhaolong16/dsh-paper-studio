@@ -40,7 +40,7 @@ MCP 服务器（`bin/mcp-server.mjs`）**不复制任何判据**：模式菜单�
 
 ```bat
 :: 1) 注册 MCP 服务器（官方入口；node 需在 PATH，否则写 node 的绝对路径）
-codex mcp add paper-studio -- node E:\path\to\paper-studio\plugin\bin\mcp-server.mjs
+codex mcp add paper-studio -- node <包根>\plugin\bin\mcp-server.mjs
 :: 2) 复核（应看到 paper-studio 一行且 Status=enabled）
 codex mcp list
 ```
@@ -61,7 +61,7 @@ paper-studio  node.exe     ...\plugin\bin\mcp-server.mjs                 enabled
 codex mcp remove paper-studio          :: 撤销 Codex 注册
 :: 若手改过 config.toml：用 ~/.codex/config.toml.bak-paperstudio-<时间戳> 覆盖回去
 ```
-DSH 侧回退：`node E:\DeepSeek\tools\dsh-paper-plugin.cjs off`（行级开关，见根 README）。
+DSH 侧回退：`node <工具根>\dsh-paper-plugin.cjs off`（行级开关，见根 README）。
 
 ---
 

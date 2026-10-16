@@ -280,7 +280,7 @@ asyncChecks.push(['★★ 正控 · cost 子命令（交付后成本总结）经
   if (!r || r.exit_code !== 0) return 'cost --selftest 经插件失败：' + JSON.stringify(r).slice(0, 300)
   if (!/10\/10/.test(String(r.stdout || ''))) return 'cost 自检输出里没有 10/10：' + String(r.stdout || '').slice(0, 200)
   // ③ 失败面：给一个不存在的文件 ⇒ 必须**非 0 退出**（不能静默"成功"）
-  const r2 = await studio.execute({ action: 'cost', args: ['--file', 'E:\\__不存在__\\nope.jsonl.zstd'] })
+  const r2 = await studio.execute({ action: 'cost', args: ['--file', join(tmpdir(), 'dsh-no-such-' + Date.now(), 'nope.jsonl.zstd')] })
   if (!r2 || r2.exit_code === 0) return '给不存在的文件竟然退出码 0（静默成功）'
   return true
 }])

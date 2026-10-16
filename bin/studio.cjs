@@ -32,6 +32,45 @@ const VERSION = (() => { try { return require(path.join(ROOT, 'plugin', 'package
 const SNAPSHOT_MARK = '<!-- claims: snapshot -->';
 const PIPELINE_PATH = path.join(ROOT, 'references', 'pipeline.json');
 
+/* ── 机器本地路径解析（v3.2.15）──────────────────────────────────────────────
+   背景：真源 references/pipeline.json 与 templates.json 里原先写着**本机绝对路径**
+   （playbook 仓、python 解释器、短语库…），这些路径随包进了公开仓 ⇒ 违反证据纪律 D
+   （对外文本不得含路径分隔符）。改法：真源里只放 **__LOCAL__/<key> 占位符**，
+   真实值放 **git 忽略** 的 references/local-paths.json（可用环境变量 DSH_PAPER_LOCAL_PATHS 换位置）。
+   ★ 取不到就**保留占位符**（不静默变成空串）——空串会让下游"看起来配好了"，是最坏的失败态。 */
+const LOCAL_PATHS_FILE = path.join(ROOT, 'references', 'local-paths.json');
+function localPaths() {
+  const f = process.env.DSH_PAPER_LOCAL_PATHS || LOCAL_PATHS_FILE;
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return {}; }
+}
+function resolveLocals(node, table) {
+  if (typeof node === 'string') {
+    const m = /^__LOCAL__\/(.+)$/.exec(node);
+    if (!m) return node;
+    /* 占位符形态：__LOCAL__/<key> 或 __LOCAL__/<key>/<子路径>
+       ★ 首段才是表里的 key，其余按子路径拼在后面（首版把整串当 key 查 ⇒ 子路径形态解析不出来）。 */
+    const seg = m[1].split('/');
+    const key = seg.shift();
+    const base = (table || {})[key];
+    if (typeof base !== 'string') return node;          // 取不到就保留占位符（不静默变空）
+    return seg.length ? path.join(base, ...seg) : base;
+  }
+  if (Array.isArray(node)) return node.map((x) => resolveLocals(x, table));
+  if (node && typeof node === 'object') {
+    const o = {}; for (const k of Object.keys(node)) o[k] = resolveLocals(node[k], table); return o;
+  }
+  return node;
+}
+
+
+/* 占位符未解析 ⇒ 给出**可操作**的修复指引（而不是让下游报一句没头没尾的缺文件） */
+function localPathHint(v) {
+  return String(v || '').indexOf('__LOCAL__') === 0
+    ? '（该值是未解析的本机路径占位符 ⇒ 复制 references/local-paths.example.json 为 references/local-paths.json 并填真实路径，'
+      + '或用环境变量 DSH_PAPER_LOCAL_PATHS 指向你的路径表）'
+    : '';
+}
+
 function readPipeline(p = PIPELINE_PATH) {
   if (!fs.existsSync(p)) {
     const e = new Error(`前提层失败：找不到真源 ${p}`);
@@ -47,6 +86,7 @@ function readPipeline(p = PIPELINE_PATH) {
     e.code = 'PIPELINE_BAD_JSON';
     throw e;
   }
+  json = resolveLocals(json, localPaths());
   if (!json.task_types || !Array.isArray(json.task_types) || json.task_types.length === 0) {
     const e = new Error('前提层失败：真源里没有 task_types');
     e.code = 'PIPELINE_INCOMPLETE';
@@ -290,11 +330,13 @@ function printRoute(res, pipeline) {
 // ── 经验库 / 方法论索引 / 骨架生成 ───────────────────────────────
 const os = require('os');
 const TEMPLATES_PATH = path.join(ROOT, 'references', 'templates.json');
+/* templates.json 同样可能有 __LOCAL__ 占位符（source/root 指向论文仓的模板原件） */
 const LESSONS_PATH = path.join(ROOT, 'references', 'lessons-from-first-draft.md');
 
 function readTemplates(p = TEMPLATES_PATH) {
   if (!fs.existsSync(p)) { const e = new Error(`前提层失败：找不到模板清单 ${p}`); e.code = 'TEMPLATES_MISSING'; throw e; }
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+  /* 与 readPipeline 同一处理：templates.json 的 source/root 里可能有 __LOCAL__ 占位符 */
+  return resolveLocals(JSON.parse(fs.readFileSync(p, 'utf8')), localPaths());
 }
 
 /** 经验库的唯一真源就是那个 md（不另存一份 json，避免双份分叉） */
@@ -625,7 +667,7 @@ function crosscheckMaterial() {
   const py = ((p.assets || {}).python_exe || [])[0];
   const pbRoot = (p.assets || {}).playbook_root || '';
   const gate = path.join(pbRoot, '_gate-author-material.py');
-  if (!py || !fs.existsSync(py)) { const e = new Error('前提层失败：真源里没有可用的 python_exe：' + py); e.code = 'NO_PY'; throw e; }
+  if (!py || !fs.existsSync(py)) { const e = new Error('前提层失败：真源里没有可用的 python_exe：' + py + localPathHint(py)); e.code = 'NO_PY'; throw e; }
   if (!fs.existsSync(gate)) { const e = new Error('前提层失败：门脚本不存在 ' + gate); e.code = 'NO_GATE'; throw e; }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-crosscheck-'));
   const big = path.join(tmp, 'material.md');
@@ -745,7 +787,7 @@ function crosscheckDocx(files) {
   const py = ((p.assets || {}).python_exe || [])[0];
   const pbRoot = (p.assets || {}).playbook_root || '';
   const verifier = path.join(pbRoot, '_verify-docx.py');
-  if (!py || !fs.existsSync(py)) { const e = new Error('前提层失败：真源里没有可用的 python_exe：' + py); e.code = 'NO_PY'; throw e; }
+  if (!py || !fs.existsSync(py)) { const e = new Error('前提层失败：真源里没有可用的 python_exe：' + py + localPathHint(py)); e.code = 'NO_PY'; throw e; }
   if (!fs.existsSync(verifier)) { const e = new Error('前提层失败：核验器不存在 ' + verifier); e.code = 'NO_VERIFIER'; throw e; }
   const rows = [];
   for (const f of files) {

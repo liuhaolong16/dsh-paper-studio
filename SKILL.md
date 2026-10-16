@@ -35,7 +35,7 @@ metadata:
 ## 1. 快速开始
 
 ```bat
-cd /d E:\DeepSeek\skills\paper-studio
+cd /d <包根>
 node bin/studio.cjs route "给这篇稿子做投稿前体检"     :: 判类型 + 出链路 + 出必过门 + 出**期刊分类路由**（该读哪份资产 + 存在性 + 边界）
 node bin/studio.cjs selftest --json                        :: 机器可读计数（下游一律引用本命令，别手抄数字）
 node bin/studio.cjs hygiene                                :: 残留件门（备份/临时件不得留在技能树内）
@@ -184,7 +184,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 ## 8. 许可与归属（摘要）
 
 本编排层为自建（MIT，见 `LICENSE`）；它**引用的第三方技能与仓库各自保留原许可**，本仓只登记路径与用途、**不分发其内容**（三分类口径见 `NOTICE.md`）。
-- Python 门需要真解释器：本机**优先用 playbook 自带 venv**（`D:\DeepSeek\research-paper-playbook\.venv\Scripts\python.exe`，列在 `pipeline.json` 的 `assets.python_exe`）；
+- Python 门需要真解释器：本机**优先用 playbook 自带 venv**（`<playbook 仓>\.venv\Scripts\python.exe`，列在 `pipeline.json` 的 `assets.python_exe`）；
   **PATH 上的 `python`/`python3` 在 Windows 上常是 Microsoft Store 占位符，脚本会跳过它**。真缺解释器时 `gates` 如实标注「运行时不可用 + 已试过哪些」，**不假装通过**。
 
 ## 9. 期刊分类与投稿路由（国内/国外 × 中文/外文）

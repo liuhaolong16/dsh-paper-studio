@@ -1,0 +1,9 @@
+{
+  "_note": "把本机真实路径填进 references/local-paths.json（该文件被 .gitignore 忽略，不入公开仓）。真源里用 __LOCAL__/<key> 占位符引用这里；取不到时**保留占位符**，不会静默变空。",
+  "playbook_root": "<你的 research-paper-playbook 仓路径>",
+  "playbook_skill": "<该仓的 skill 副本路径（可留空）>",
+  "writer_skill": "<paper-writer 技能路径（可留空）>",
+  "polish_skill": "<paper-polish 技能路径（可留空）>",
+  "python_exe": "<带 python-docx / python-pptx 的解释器路径>",
+  "phrase_bank": "<短语库 JSON 路径>"
+}

@@ -146,7 +146,7 @@ const TOOLS = [
       properties: {
         action: { type: 'string', enum: STUDIO_ACTIONS, description: '要执行的动作' },
         text: { type: 'string', description: 'action=intent 时要判定的用户原话' },
-        args: { type: 'array', items: { type: 'string' }, description: '转发给 CLI 的附加参数（如 ["--genre","review","--out","D:\\\\run\\\\x"]）' },
+        args: { type: 'array', items: { type: 'string' }, description: '转发给 CLI 的附加参数（如 ["--genre","review","--out","<输出目录>"]）' },
       },
       required: ['action'],
       additionalProperties: false,

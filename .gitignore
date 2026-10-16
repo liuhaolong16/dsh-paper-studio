@@ -24,3 +24,5 @@ Thumbs.db
 desktop.ini
 # 打包产物（曾被误提交：二进制且可能夹带内容）
 *.tgz
+# 机器本地路径（真源用 __LOCAL__ 占位符引用；真值不入库）
+references/local-paths.json
