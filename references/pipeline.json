@@ -1140,6 +1140,7 @@
   "selfchecks": {
     "studio.cjs": "node bin/studio.cjs selftest --json",
     "gate-runner.cjs": "node bin/gate-runner.cjs --selftest",
+    "keys-store.cjs": "node bin/keys-store.cjs --selftest",
     "schema-check.cjs": "node bin/schema-check.cjs selftest",
     "stylecheck.cjs": "node bin/stylecheck.cjs selftest",
     "polish.cjs": "node bin/polish.cjs selftest",

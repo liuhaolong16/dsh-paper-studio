@@ -2782,6 +2782,95 @@ function runSelftest() {
       return (r.status === 0 && /成立/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 120));
     });
   })();
+  /* ★ v3.2.65 夹具：面板凭据存储（停用优先于环境变量 · 掩码不泄露 · 损坏不许当成功 · 不落仓库） */
+  (() => {
+    const tmpKeys = fs.mkdtempSync(path.join(os.tmpdir(), 'pkeys-'));
+    const keyFileP = path.join(tmpKeys, 'keys.json');
+    /* ★ 必须同时改**本进程**的环境变量：块内的 storeLib.setKey 是进程内写入，
+       只把 env 传给子进程的话，进程内写入会落到**真实存储路径**（＝污染用户真凭据文件）。
+       这条是夹具自己踩出来的坑，写在这里防复发。 */
+    const _prevKeysEnv = process.env.DSH_PAPER_KEYS_FILE;
+    process.env.DSH_PAPER_KEYS_FILE = keyFileP;
+    /* 本块自己洗环境（上一块的 scrubbedEnv 在隔壁作用域，**不能跨块引用** —— 夹具自己的作用域 bug） */
+    const scrub = () => {
+      const e = Object.assign({}, process.env);
+      try {
+        const c = readJsonSafe(modelProvidersPath()) || { providers: {} };
+        for (const id of Object.keys(c.providers || {})) for (const n of (c.providers[id].env || [])) delete e[n];
+      } catch (err) { /* 读不到就不洗，后续断言会暴露差异 */ }
+      delete e.DSH_PAPER_KEYS_FILE;
+      return e;
+    };
+    const withKeys = (extra) => Object.assign(scrub(), { DSH_PAPER_KEYS_FILE: keyFileP }, extra || {});
+    const fake2 = ['sk', 'panelfixture', '1'.repeat(24)].join('-');
+    const run = (args, env) => { const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs')].concat(args), { encoding: 'utf8', env: env, timeout: 90000 }); return { code: r.status, out: String(r.stdout || '') + String(r.stderr || '') }; };
+    const storeLib = require(path.join(ROOT, 'bin', 'keys-store.cjs'));
+
+    check('v3.2.65·面板·存储路径必须在**仓库之外**（凭据不进 git 的第一道保证）', () => {
+      const p0 = storeLib.keysFilePath();
+      const inside = path.resolve(p0).toLowerCase().startsWith(path.resolve(ROOT).toLowerCase() + path.sep);
+      return inside ? ('居然落在仓库内：' + p0) : true;
+    });
+    check('v3.2.65·面板·正控：录入 → 启用 → providers 报「面板」来源（证明 CLI 真的读面板那份）', () => {
+      const w = storeLib.setKey('deepseek', { key: fake2, enabled: true });
+      if (!w.ok) return '写入失败：' + w.reason;
+      const r = run(['model', 'providers', '--json'], withKeys());
+      if (r.code !== 0) return 'status=' + r.code + ' out=' + r.out.slice(0, 120);
+      let j = null; try { j = JSON.parse(r.out) } catch (e) { return '输出不是 JSON：' + r.out.slice(0, 120) }
+      const row = (j.providers || []).find((x) => x.id === 'deepseek') || {};
+      if (!/面板/.test(String(row.from))) return 'from 未指向面板：' + JSON.stringify(row.from);
+      if (row.panel !== '已连接') return 'panel 状态不对：' + JSON.stringify(row.panel);
+      return true;
+    });
+    check('v3.2.65·面板·★停用优先于环境变量（用户点停用就是停用，不许被 env 悄悄复活）', () => {
+      storeLib.setKey('deepseek', { key: fake2, enabled: true });
+      storeLib.setEnabled('deepseek', false);
+      const r = run(['model', 'ping', '--provider', 'deepseek'], withKeys({ DEEPSEEK_API_KEY: fake2 }));
+      /* 判据：必须走「停用」这条分支（退 2 + 明说停用），而**不能**落到「未配置 ⇒ 未检查」那条。
+         注意别用 /未配置/ 做否证 —— 提示语里那句「不是"未配置"」本身就含这三个字（我第一版就这么写错了）。 */
+      const ok = r.code === 2 && /停用/.test(r.out) && !/未检查/.test(r.out);
+      return ok ? true : ('status=' + r.code + ' out=' + r.out.slice(0, 160));
+    });
+    check('v3.2.65·面板·--key 优先于停用（临时用是允许的，但要显式）', () => {
+      storeLib.setKey('deepseek', { key: fake2, enabled: true });
+      storeLib.setEnabled('deepseek', false);
+      const r = run(['model', 'ping', '--provider', 'deepseek', '--key', fake2, '--base-url', 'http://127.0.0.1:9/v1', '--timeout', '2000'], withKeys());
+      return (r.code !== 0 && /不通/.test(r.out) && !/停用/.test(r.out)) ? true : ('status=' + r.code + ' out=' + r.out.slice(0, 160));
+    });
+    check('v3.2.65·面板·掩码：keys list 只出掩码，绝不出明文（含长度也算泄露面之外）', () => {
+      storeLib.setKey('deepseek', { key: fake2, enabled: true });
+      const r = run(['model', 'keys', 'list'], withKeys());
+      if (r.code !== 0) return 'status=' + r.code + ' out=' + r.out.slice(0, 120);
+      if (r.out.includes(fake2)) return '**明文泄露**：输出里出现了完整 key';
+      return /\*\*\*/.test(r.out) ? true : ('没有掩码形态：' + r.out.slice(0, 120));
+    });
+    check('v3.2.65·面板·★必失败面：凭据文件损坏 ⇒ keys list 必须退 2 并说明（不许当"没有凭据"静默通过）', () => {
+      fs.writeFileSync(keyFileP, '{ this is not json', 'utf8');
+      const r = run(['model', 'keys', 'list'], withKeys());
+      return (r.code === 2 && /JSON/.test(r.out)) ? true : ('status=' + r.code + ' out=' + r.out.slice(0, 160));
+    });
+    check('v3.2.65·面板·诚实面：文件损坏时**本地能力不受影响**（providers 仍退 0 且写明原因）', () => {
+      fs.writeFileSync(keyFileP, 'not json at all', 'utf8');
+      const r = run(['model', 'providers'], withKeys());
+      return (r.code === 0 && /不可读|JSON/.test(r.out)) ? true : ('status=' + r.code + ' out=' + r.out.slice(0, 160));
+    });
+    check('v3.2.65·面板·往返：停用保留 key → 再启用仍可用 → 删除后彻底没有', () => {
+      fs.rmSync(keyFileP, { force: true });
+      storeLib.setKey('deepseek', { key: fake2, enabled: true });
+      storeLib.setEnabled('deepseek', false);
+      const a = storeLib.rows(['deepseek']).items.find((x) => x.id === 'deepseek');
+      if (!(a.present && a.enabled === false)) return '停用后应 present+disabled：' + JSON.stringify(a);
+      storeLib.setEnabled('deepseek', true);
+      const b = storeLib.rows(['deepseek']).items.find((x) => x.id === 'deepseek');
+      if (!(b.enabled === true && /\*\*\*/.test(b.key_masked))) return '再启用后不对：' + JSON.stringify(b);
+      storeLib.removeKey('deepseek');
+      const c = storeLib.rows(['deepseek']).items.find((x) => x.id === 'deepseek');
+      if (c.present) return '删除后仍 present';
+      return true;
+    });
+    try { fs.rmSync(tmpKeys, { recursive: true, force: true }) } catch (e) { /* 清理失败不致命 */ }
+    if (_prevKeysEnv === undefined) delete process.env.DSH_PAPER_KEYS_FILE; else process.env.DSH_PAPER_KEYS_FILE = _prevKeysEnv;
+  })();
   /* ★ v3.2.63 夹具：anonymize（抹除可复核 + 不许漏抹 + 未检查要明说） */
   (() => {
     check('v3.2.63·anonymize·正控：作者/单位/邮箱/基金/致谢五类都抹掉，且清单逐条记了原文与替换', () => {
@@ -4196,20 +4285,29 @@ function modelProviderIds() {
   const conf = readJsonSafe(modelProvidersPath());
   return conf && conf.providers ? Object.keys(conf.providers) : [];
 }
-/** 取凭据：先看显式 --key（一次性，不落盘），再看环境变量；**永不打印值**。返回 {key, from} 或 {} */
+/** 凭据存储（**唯一真源** bin/keys-store.cjs，与宿主半体共用一份）：懒加载，缺失也不能崩。 */
+let _keysStore = undefined;
+function keysStoreLib() {
+  if (_keysStore !== undefined) return _keysStore;
+  try { _keysStore = require(path.join(__dirname, 'keys-store.cjs')); } catch (e) { _keysStore = null; }
+  return _keysStore;
+}
+/**
+ * 取凭据：**优先级只在 keys-store 里定义一处** —— `--key` > 面板停用（阻断）> 面板启用 > `--key-file` > 环境变量。
+ * 返回 {key, from, disabled, reason}；**永不打印值**。存储模块缺失时退回旧行为（绝不因它崩）。
+ */
 function resolveModelKey(pid, conf, argvKey, keyFile) {
   const meta = (conf && conf.providers && conf.providers[pid]) || {};
-  if (argvKey) return { key: argvKey, from: '--key（一次性参数，不落盘）' };
-  if (keyFile && fs.existsSync(keyFile)) {
-    const t = fs.readFileSync(keyFile, 'utf8').trim();
-    const m = t.match(/^\S+$/) ? t : '';                       /* 只接受"整文件就是一枚 key"的形态，避免误读配置 */
-    if (m) return { key: m, from: '--key-file（外部文件，本工具只读不写）' };
+  const st = keysStoreLib();
+  if (!st) {
+    if (argvKey) return { key: argvKey, from: '--key（一次性参数，不落盘）', disabled: false, reason: null };
+    if (keyFile && fs.existsSync(keyFile)) {
+      try { const t = fs.readFileSync(keyFile, 'utf8').trim(); if (/^\S+$/.test(t)) return { key: t, from: '--key-file（外部文件，本工具只读不写）', disabled: false, reason: null }; } catch (e) { /* 落 env */ }
+    }
+    for (const envName of (meta.env || [])) { const v = process.env[envName]; if (v && String(v).trim()) return { key: String(v).trim(), from: 'env ' + envName, disabled: false, reason: null }; }
+    return { key: '', from: '（未配置）', disabled: false, reason: '凭据存储模块不可用（bin/keys-store.cjs 缺失）' };
   }
-  for (const envName of (meta.env || [])) {
-    const v = process.env[envName];
-    if (v && String(v).trim()) return { key: String(v).trim(), from: 'env ' + envName };
-  }
-  return {};
+  return st.resolveKey(pid, { argvKey: argvKey, keyFile: keyFile, envNames: meta.env || [] });
 }
 function maskKey(k) { const s = String(k || ''); return s ? (s.slice(0, 3) + '***' + s.slice(-2) + '（长度 ' + s.length + '）') : '（未配置）'; }
 function modelProviderTable(argv, includeSecrets) {
@@ -4217,10 +4315,20 @@ function modelProviderTable(argv, includeSecrets) {
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
   const conf = readJsonSafe(modelProvidersPath());
   const rows = [];
+  const st = keysStoreLib();
+  const krows = st ? st.rows(Object.keys((conf && conf.providers) || {})) : { items: [], path: '（存储模块不可用）', file_ok: false, file_reason: '存储模块不可用' };
+  const kbyid = {}; for (const it of (krows.items || [])) kbyid[it.id] = it;
   for (const pid of Object.keys((conf && conf.providers) || {})) {
     const meta = conf.providers[pid];
     const r = resolveModelKey(pid, conf, '', '');
-    rows.push({ id: pid, label: meta.label, configured: !!r.key, from: r.from || '（未配置）', model: val('model') || meta.default_model,
+    const kp = kbyid[pid] || { present: false, enabled: false, key_masked: '（未录入）' };
+    rows.push({ id: pid, label: meta.label, configured: !!r.key, from: r.from || '（未配置）',
+                /* 停用 ≠ 未配置：必须分开显示，否则用户以为"没配过" */
+                state: r.key ? '已配置' : (r.disabled ? '已停用' : (kp.present && kp.enabled === false ? '已停用' : '未配置')),
+                reason: r.reason || null,
+                panel: kp.present ? (kp.enabled ? '已连接' : '已停用（保留）') : '未录入',
+                panel_key_masked: kp.key_masked, panel_path: krows.path, panel_file_ok: krows.file_ok !== false, panel_file_reason: krows.file_reason || null,
+                model: val('model') || meta.default_model,
                 base_url: val('base-url') || meta.base_url, env_names: meta.env || [], docs: meta.docs || '', key_masked: includeSecrets ? maskKey(r.key) : '（不打印）' });
   }
   return rows;
@@ -4279,19 +4387,93 @@ async function cmdModel(args, argv) {
     const rows = modelProviderTable(A, false);
     if (json) { console.log(JSON.stringify({ providers: rows, mcp: (conf.mcp || null) }, null, 2)); return 0; }
     console.log('可选模型（**零 key 时全部本地判据照旧**；这里只是"能不能额外用模型"）');
-    for (const r of rows) console.log('  ' + r.id.padEnd(10) + (r.configured ? '已配置' : '未配置').padEnd(8) + ('默认模型 ' + r.model).padEnd(30) + ('env: ' + r.env_names.join(' / ')));
+    for (const r of rows) console.log('  ' + r.id.padEnd(10) + r.state.padEnd(8) + ('默认模型 ' + r.model).padEnd(30) + ('面板: ' + r.panel).padEnd(16) + ('env: ' + r.env_names.join(' / ')));
+    const p0 = rows[0] || {};
+    console.log('面板凭据文件：' + (p0.panel_path || '（未知）') + (p0.panel_file_ok === false ? ('  ⚠ ' + (p0.panel_file_reason || '不可读')) : ''));
+    for (const r of rows) if (r.panel_key_masked && r.panel_key_masked !== '（未录入）') console.log('  · ' + r.id + ' 面板内凭据：' + r.panel_key_masked + (r.panel === '已停用（保留）' ? '  ← 已停用，仍保留' : ''));
+    const why = rows.filter((r) => r.reason).map((r) => r.id + '：' + r.reason);
+    for (const w of why) console.log('  注意 ' + w);
     const conf2 = rows.filter((r) => r.configured).length;
     console.log('合计：' + rows.length + ' 个 provider · 已配置 ' + conf2 + ' 个 ⇒ ' + (conf2 ? '可用模型能力（本地判据不受影响）' : '**全未配置 ⇒ 模型类命令会明确报「未检查」，本地判据照常可用**'));
     console.log('MCP：' + ((conf.mcp && conf.mcp.note) || '（未登记）'));
     return 0;
+  }
+  if (sub === 'keys') {
+    /* CLI 侧的凭据管理（面板是主通道，这里是**无需面板也能用**的通道；两边写同一份存储） */
+    const st = keysStoreLib();
+    if (!st) { console.error('前提层失败：凭据存储模块不可用（bin/keys-store.cjs 缺失）'); return 2; }
+    const act = (A[1] && !A[1].startsWith('--')) ? A[1] : 'list';
+    const pid = val('provider') || val('p') || '';
+    const known = Object.keys(conf.providers || {});
+    if (act === 'path') { console.log(st.keysFilePath()); return 0; }
+    if (act === 'list') {
+      const r = st.rows(known);
+      if (json) { console.log(JSON.stringify(r, null, 2)); return r.file_ok ? 0 : 2; }
+      console.log('面板凭据文件：' + r.path);
+      if (!r.file_ok) console.error('未通过：凭据文件有问题 —— ' + (r.file_reason || '不可读') + '（**不算通过**；文件内容原样保留，未改动）');
+      console.log('已知 provider（' + known.join(' / ') + '）');
+      for (const it of r.items) console.log('  ' + it.id.padEnd(10) + (it.present ? (it.enabled ? '已连接' : '已停用（保留）') : '未录入').padEnd(16) + (it.key_masked || '') + (it.last_test ? ('  上次测试：' + (it.last_test.ok ? '通' : '不通') + ' @' + (it.last_test.at || '')) : ''));
+      console.log('说明：值只在本机文件里；本工具**只打印掩码**，从不回显明文。');
+      return r.file_ok ? 0 : 2;
+    }
+    if (act === 'set') {
+      if (!pid) { console.error('用法：studio model keys set --provider <id> --key <值>（或 --from-file <路径>）'); return 2; }
+      if (!conf.providers[pid]) { console.error('前提层失败：未知 provider「' + pid + '」（可选：' + known.join(' / ') + '）'); return 2; }
+      let keyVal = val('key');
+      const fromFile = val('from-file');
+      if (!keyVal && fromFile) {
+        try { keyVal = fs.readFileSync(path.resolve(fromFile), 'utf8').split(/\r?\n/)[0].trim(); } catch (e) { console.error('前提层失败：读不到 --from-file —— ' + String(e && e.message || e)); return 2; }
+      }
+      if (!keyVal) { console.error('前提层失败：需要 --key <值> 或 --from-file <路径>（**不要在命令里写明文**时会进 shell 历史，优先用面板或 --from-file）'); return 2; }
+      const w = st.setKey(pid, { key: keyVal, enabled: true, base_url: val('base-url'), model: val('model'), label: val('label') });
+      if (!w.ok) { console.error('未通过：写入失败 —— ' + (w.reason || '')); return 2; }
+      console.log('✔ 已录入 ' + pid + '（' + st.maskWithLen(keyVal) + ' · 存于 ' + w.path + ' · **不在仓库内**）。要真验证连通性请跑：studio model ping --provider ' + pid);
+      return 0;
+    }
+    if (act === 'enable' || act === 'disable') {
+      if (!pid) { console.error('用法：studio model keys ' + act + ' --provider <id>'); return 2; }
+      const w = st.setEnabled(pid, act === 'enable');
+      if (!w.ok) { console.error('未通过：' + (w.reason || '')); return 2; }
+      console.log('✔ ' + pid + ' 已' + (act === 'enable' ? '启用' : '停用（**key 保留**，随时可再启用）'));
+      return 0;
+    }
+    if (act === 'remove') {
+      if (!pid) { console.error('用法：studio model keys remove --provider <id>'); return 2; }
+      const w = st.removeKey(pid);
+      if (!w.ok) { console.error('未通过：' + (w.reason || '')); return 2; }
+      console.log(w.removed ? ('✔ 已删除 ' + pid + ' 的面板凭据（连带 key，不可恢复）') : (pid + ' 本来就没有面板凭据（无需删除）'));
+      return 0;
+    }
+    if (act === 'test') {
+      if (!pid) { console.error('用法：studio model keys test --provider <id>'); return 2; }
+      const meta = conf.providers[pid];
+      if (!meta) { console.error('前提层失败：未知 provider「' + pid + '」'); return 2; }
+      const rr = st.resolveKey(pid, { envNames: meta.env || [] });
+      if (!rr.key) { console.error('未通过：' + (rr.disabled ? '面板里被停用 ⇒ 视为不可用' : '未配置（面板未录入且环境变量为空）')); return 2; }
+      const res = await modelCall({ key: rr.key, base_url: val('base-url') || meta.base_url, chat_path: meta.chat_path, model: val('model') || meta.default_model, messages: [{ role: 'user', content: 'ping' }], timeout_ms: Number(val('timeout') || 20000) });
+      const base0 = st.rows(known).items.find((x) => x.id === pid) || {};
+      st.setKey(pid, { key: rr.key, enabled: true, base_url: base0.base_url || '', model: base0.model || '', label: base0.label || '', });
+      const doc0 = st.read().doc; if (doc0.providers[pid]) { doc0.providers[pid].last_test = { at: new Date().toISOString(), ok: !!res.ok, status: Number(res.status || 0), note: res.ok ? '连通' : String(res.error || '').slice(0, 120) }; st.write(doc0); }
+      console.log('provider=' + pid + ' · 凭据来源=' + rr.from);
+      console.log(res.ok ? ('✔ 连通（HTTP ' + res.status + '）') : ('✘ 不通：' + res.error));
+      console.log('（测试结果已记入本机凭据文件，面板可见；**不打印凭据值**）');
+      return res.ok ? 0 : 2;
+    }
+    console.error('用法：studio model keys list|set|enable|disable|remove|test|path [--provider <id>] [--key <值>|--from-file <路径>] [--json]');
+    return 2;
   }
   if (sub === 'ping') {
     const pid = val('provider') || val('p') || 'deepseek';
     const meta = conf.providers[pid];
     if (!meta) { console.error('前提层失败：未知 provider「' + pid + '」（可选：' + Object.keys(conf.providers).join(' / ') + '）'); return 2; }
     const r = resolveModelKey(pid, conf, val('key'), val('key-file'));
+    if (!r.key && r.disabled) {
+      console.error('前提层失败：该 provider 在**面板里被停用** ⇒ 视为不可用（不是"未配置"）。要临时用请加 --key；要长期用请到面板重新启用。');
+      return 2;
+    }
     if (!r.key) {
-      console.error('未配置 ⇒ **未检查（不算通过）**：' + pid + ' 需要环境变量 ' + (meta.env || []).join(' 或 ') + '（或 --key-file 指定外部文件；本工具从不写凭据）。');
+      console.error('未配置 ⇒ **未检查（不算通过）**：' + pid + ' 需要环境变量 ' + (meta.env || []).join(' 或 ') + '（或 --key-file 指定外部文件 / 面板录入；本工具从不写凭据）。');
+      if (r.reason) console.error('　另有：' + r.reason);
       return 2;
     }
     const base = val('base-url') || meta.base_url;
@@ -4315,8 +4497,13 @@ async function cmdModel(args, argv) {
     const meta = conf.providers[pid];
     if (!meta) { console.error('前提层失败：未知 provider「' + pid + '」'); return 2; }
     const r = resolveModelKey(pid, conf, val('key'), val('key-file'));
+    if (!r.key && r.disabled) {
+      console.error('前提层失败：该 provider 在**面板里被停用** ⇒ 视为不可用（不是"未配置"）。本任务是可选的模型增强；**本地判据不依赖它**。');
+      return 2;
+    }
     if (!r.key) {
       console.error('未配置 ⇒ **未检查（不算通过）**：' + pid + ' 需要 ' + (meta.env || []).join(' 或 ') + '。本任务是可选的模型增强；**本地判据不依赖它**（用 studio selftest / preflight 照常）。');
+      if (r.reason) console.error('　另有：' + r.reason);
       return 2;
     }
     const inFile = val('in');   /* 只有 --in；不要引用别处作用域的 draftArg（那是我上一版的错） */
