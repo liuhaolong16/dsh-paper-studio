@@ -45,6 +45,7 @@ node bin/studio.cjs verify <成品件> [--anchors …]                :: 工件�
 node bin/studio.cjs compliance <投稿包目录>                  :: 合规门（投稿前过：硬项=稿件+Cover Letter；软项=图件/参考文献/契约/声明段；取不到即失败）
 node bin/studio.cjs credit <稿件或声明文件>                    :: CRediT 官方 14 角色核对（非官方写法＝失败；缺 CRediT 段＝未通过；依据 references/credit-roles.json）
 node bin/studio.cjs retract-check <稿件或参考文献文件>          :: 引用撤稿检查（OpenAlex is_retracted；撤稿须显式说明；取不到≠通过）
+node bin/criteria-abcd.cjs --check <报告> | --scan-only <文本> | --selftest   :: 证据纪律四条 A/B/C/D（可达性 / 未检查显形 / 失败分型 / 结论带位置+对外扫描）
                                                            ::  依据=references/compliance-checklist.md（含 Elsevier 在先发表一手原文 2026-10-16 取证）
 node bin/studio.cjs scaffold --out "<你的稿件目录>" --name "论文名"   :: **开一篇新稿：按 S0–S7 生成骨架 + 复制现成模板**
 node bin/studio.cjs draft --out "<你的稿件目录>" --name "论文名" --journal "目标刊" --lang en

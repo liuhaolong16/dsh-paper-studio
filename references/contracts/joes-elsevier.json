@@ -72,7 +72,7 @@
     "references": "This journal does not set strict requirements on reference formatting at submission.",
     "reference_style": "Indicate references by adding a number within square brackets in the text. ... Number references in the order they appear in your article."
   },
-  "ported_from": "D:\\DeepSeek\\research-paper-playbook\\_refs/journal-contract-joes.json",
+  "ported_from": "论文仓（非本包）_refs/journal-contract-joes.json（历史留档；本包内这份是规范件）",
   "ported_at": "2026-10-16",
   "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。",
   "checkable_ids": [
@@ -94,5 +94,6 @@
     "package_dir",
     "checkable_ids_covered"
   ],
-  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。"
+  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；任何新增检查若未被列入而契约又声明了它，对账项会 FAIL（登记过≠可机检）。",
+  "ported_from_note": "原值含**本机绝对路径**，按证据纪律 D（对外文本不得含路径分隔符/内网信息）改为相对描述；本地原始路径不入库、不入包。"
 }

@@ -67,7 +67,8 @@
     "preprints": "鼓励预印本发布与引用（本文纳入并标注了 14 条预印本 ✓）",
     "corresponding_author": "通讯作者须确认有权代表全体作者，且全体作者已同意稿件内容与作者贡献声明"
   },
-  "ported_from": "D:\\DeepSeek\\research-paper-playbook\\_refs/journal-contract-ripp.json",
+  "ported_from": "论文仓（非本包）_refs/journal-contract-ripp.json（历史留档；本包内这份是规范件）",
   "ported_at": "2026-10-16",
-  "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。"
+  "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。",
+  "ported_from_note": "原值含**本机绝对路径**，按证据纪律 D（对外文本不得含路径分隔符/内网信息）改为相对描述；本地原始路径不入库、不入包。"
 }
