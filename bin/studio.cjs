@@ -2286,6 +2286,44 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c], { encoding: 'utf8' });
     return (r.status === 0 && /审稿意见 2 条 ⇒ 合规 2 · 有问题 0/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
   });
+  check('v3.8.0·response·正控：**小数点编号**（Comment 1.1）能被识别，且回复信按编号答复就算覆盖（不再误报漏回）', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'psresp-'));
+    const c = path.join(tmp, 'c.md');
+    const l = path.join(tmp, 'l.md');
+    fs.writeFileSync(c, '**Comment 1.1** The split overlaps in time; please re-run.\n\n**Comment 1.2** The robustness claim is unsupported.\n', 'utf8');
+    fs.writeFileSync(l, '## Reviewer 1\n\n**1.1** We re-ran with a strictly chronological split and updated Section 4.3 accordingly; the numbers are now reported per protocol.\n\n**1.2** We removed the sentence claiming robustness; see Section 3.2 as revised.\n', 'utf8');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c, '--json'], { encoding: 'utf8' });
+    let j = null; try { j = JSON.parse(r.stdout); } catch (e) { return '输出非 JSON：' + r.stdout.slice(0, 160); }
+    const nos = (j.rows || []).map((x) => x.no).join(',');
+    const miss = (j.rows || []).filter((x) => x.verdict === 'missing').length;
+    if (nos !== '1.1,1.2') return '编号应为 1.1,1.2，实际 ' + nos;
+    if (miss !== 0) return '不该报漏回，实际漏回 ' + miss + ' 条';
+    if (!(j.rows || []).every((x) => x.match === 'id')) return '应走 id 匹配：' + JSON.stringify((j.rows || []).map((x) => x.match));
+    return true;
+  });
+
+  check('v3.8.0·response·★必失败面：**声称删了但稿里还在**必须报 claim-drift（--manuscript）', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'psdrift-'));
+    const c = path.join(tmp, 'c.md');
+    const l = path.join(tmp, 'l.md');
+    const m = path.join(tmp, 'm.md');
+    fs.writeFileSync(c, '**Comment 1.2** Section 3.2 claims the method is robust to sensor noise, yet no noise experiment is reported.\n', 'utf8');
+    fs.writeFileSync(l, '**1.2** We have removed the robustness claim from Section 3.2.\n', 'utf8');
+    fs.writeFileSync(m, '# Revised\n\n## 3.2 Robustness\nThe method is robust to sensor noise.\n', 'utf8');
+    const r = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c, '--manuscript', m, '--json'], { encoding: 'utf8' });
+    let j = null; try { j = JSON.parse(r.stdout); } catch (e) { return '输出非 JSON：' + r.stdout.slice(0, 160); }
+    const v = (j.rows || [])[0] || {};
+    if (v.verdict !== 'claim-drift') return '应判 claim-drift，实际 ' + v.verdict + ' / claim=' + v.claim;
+    if (!/drift:/.test(v.claim || '')) return '未给出证据片段：' + v.claim;
+    /* 反面对照：同一条回复，若稿里已经删掉那句 ⇒ 不该报 drift */
+    fs.writeFileSync(m, '# Revised\n\n## 3.2 Robustness\nWe have removed the noise claim.\n', 'utf8');
+    const r2 = spawnSync(process.execPath, [__filename, 'response', '--letter', l, '--comments', c, '--manuscript', m, '--json'], { encoding: 'utf8' });
+    let j2 = null; try { j2 = JSON.parse(r2.stdout); } catch (e) { return '反面对照输出非 JSON'; }
+    const v2 = (j2.rows || [])[0] || {};
+    if (v2.verdict === 'claim-drift') return '反面对照误报 drift（稿里已删除）';
+    return true;
+  });
+
   check('response·必失败面：漏回一条必须报 missing 并指出编号', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'resp2-'));
@@ -4461,11 +4499,19 @@ function splitComments(raw) {
   const out = [];
   for (const b of blocks) {
     /* 支持三种编号：`1.` / `Comment 1:` / `[1]` / `意见 1` */
-    const m = /^(?:\[?(\d+)\]?[.):、]?|(?:Comment|Reviewer|Referee|意见|审稿意见)\s*#?\s*(\d+)[:：.]?)\s*([\s\S]*)$/i.exec(b);
+    /* ★ v3.8.0：支持小数点编号（`Comment 1.1` / `1.1` / `R1.1` / `[2.3]`）—— 此前只取整数位，且把 `.1` 的尾巴当正文 */
+    const m = /^(?:\[?(?:R|Q|C)?(\d+(?:\.\d+)*)\]?[.):、]?|(?:Comment|Reviewer|Referee|意见|审稿意见)\s*#?\s*(?:R|Q|C)?(\d+(?:\.\d+)*)[:：.]?)\s*([\s\S]*)$/i.exec(b);
     if (m) out.push({ no: String(m[1] || m[2]), text: normText(m[3]) });
     else out.push({ no: String(out.length + 1), text: b });
   }
-  return out.filter((c) => c.text.length >= 20);           // 太短的块（标题等）不算意见
+  /* ★ v3.8.0：**过滤非意见块** —— 审稿人标题 + 评分行（`## Reviewer 2` / `Recommendation: Minor revision`）
+     不是意见；此前它们会进清单，导致报告里出现假的「漏回」（实测：3 位审稿人的报告多出 2 条假漏回）。 */
+  const isNotAConcern = (t) => {
+    const noCommentMarker = !new RegExp('(?:Comment|Question|Concern|意见|质疑|建议|请|是否|如何|为什么)', 'i').test(t) && !/\?/.test(t);
+    const looksLikeScore = new RegExp('(?:Recommendation|Rating|Confidence|Soundness|Score|评分|推荐|总体评价)\\s*[:：]', 'i').test(t);
+    return looksLikeScore && noCommentMarker && t.length < 220;
+  };
+  return out.filter((c) => c.text.length >= 20 && !isNotAConcern(c.text));   // 太短的块与评分/标题块不算意见
 }
 /**
  * ★★ v3.2.33 运行指纹 —— 让每一份报告能回答「**这条判定属于哪一次运行**」。
@@ -6228,6 +6274,16 @@ function cmdResponse(args, argv) {
   if (!comments.length) { console.error('前提层失败：审稿意见文件里没解析出任何条目（≥20 字的块才算意见）—— 请检查格式'); return 2; }
 
   const rows = [];
+  /* ★ v3.8.0：`--manuscript <改后稿>` ⇒ 核对「声称改了 vs 实际改了」（Task E 对拍产物，对应对手 heldout 里的 revision_claim_drift） */
+  const msArg = val('manuscript');
+  let msText = null;
+  if (msArg) {
+    const mAbs = path.resolve(msArg);
+    if (!fs.existsSync(mAbs)) { console.error('前提层失败：--manuscript 指定的改后稿不存在 —— ' + mAbs); return 2; }
+    msText = normText(fs.readFileSync(mAbs, 'utf8'));
+  }
+  const REMOVE_RE = new RegExp('(remove|removed|delet(?:e|ed)|eliminat|withdraw|删|移除|不再|已去)', 'i');
+  const ADD_RE = new RegExp('(add(?:ed)?|insert(?:ed)?|new(?:ly)?|新增|补充|加入|改为|新增了)', 'i');
   for (let i = 0; i < comments.length; i++) {
     const c = comments[i];
     const probe = c.text.slice(0, 80);
@@ -6240,21 +6296,64 @@ function cmdResponse(args, argv) {
         if (letter.indexOf(c.text.slice(k, k + w)) >= 0) { matched = w; break; }
       }
     }
+    /* ★ v3.8.0 **id 优先匹配**：按编号答复是通行写法（**1.2** / 1.2. / [1.2] / R1.2），比逐字引用稳得多。
+       引用匹配保留（我们自己生成的骨架就是逐字引用）；两者都不中再退到**词面重叠**，并明确标为**低置信**。 */
+    const idRe = c.no ? new RegExp('(?:^|[^0-9A-Za-z])(?:R|Q|C)?' + String(c.no).replace(/\./g, '\\.') + '(?![0-9])') : null;
+    const idHit = idRe ? idRe.test(letter) : false;
+    let kwScore = 0;
+    if (!idHit && hit < 0 && matched < 40) {
+      const toks = c.text.toLowerCase().split(/[^a-z0-9\u4e00-\u9fa5]+/).filter((w) => w.length > 3);
+      const lt = letter.toLowerCase();
+      const inL = toks.filter((w) => lt.indexOf(w) >= 0).length;
+      kwScore = toks.length ? Math.round((inL / toks.length) * 100) / 100 : 0;
+    }
     const next = i + 1 < comments.length ? letter.indexOf(comments[i + 1].text.slice(0, 60)) : -1;
     const start = hit >= 0 ? hit : (matched ? letter.indexOf(c.text.slice(0, matched)) : -1);
     const end = next > start && start >= 0 ? next : letter.length;
     const block = start >= 0 ? letter.slice(start, end) : '';
-    /* 去掉引用行/引用原文，只留"回应"正文 */
-    const body = block.split('\n').filter((L) => !/^\s*>/.test(L)).join('\n')
+    /* ★ v3.8.0：id 命中时，回应块改为「该编号到下一个编号之间」的正文（这才是真实回复信的形态） */
+    let replyBlock = block;
+    if (idHit && c.no) {
+      const re = new RegExp('(?:^|\\n)\\s*(?:\\*\\*)?(?:R|Q|C)?' + String(c.no).replace(/\./g, '\\.') + '(?:\\*\\*)?[.):、]?[^\\n]*', 'g');
+      const all = []; let mm;
+      while ((mm = re.exec(letter)) !== null) all.push(mm.index);
+      if (all.length) {
+        const s0 = all[0];
+        let s1 = letter.length;
+        for (const idx of all) { if (idx > s0) { s1 = idx; break; } }
+        replyBlock = letter.slice(s0, s1);
+      }
+    }
+    const body = replyBlock.split('\n').filter((L) => !/^\s*>/.test(L)).join('\n')
       .replace(normText(probe), '').replace(/^\s*(?:回应|回复|Response|Answer|答)\s*[:：]?/i, '').trim();
     const hasLocator = LOCATOR_RE.test(body);
     /* ★ v3.2.32：骨架哨兵 —— 只要回应块里还有 `待填`/TODO/FIXME，就判「未填写」，
        而不是含糊地报「空回应」或「未指明改动位置」（那两句会让人以为"我写了但不够"）。 */
     const unfilled = /待填|TODO|FIXME/i.test(body);
     const empty = EMPTY_RESPONSE.test(body) || body.length < 40;
-    const covered = hit >= 0 || matched >= 40;
-    const verdict = !covered ? 'missing' : (unfilled ? 'not-filled' : (empty ? 'empty-response' : (hasLocator ? 'ok' : 'no-locator')));
-    rows.push({ no: c.no, covered, matched, len: body.length, hasLocator, verdict, text: c.text.slice(0, 60) });
+    const covered = idHit || hit >= 0 || matched >= 40 || kwScore >= 0.5;
+    const lowConf = covered && !idHit && hit < 0 && matched < 40;
+    /* ★ v3.8.0 声称核对：删改类声称 → 审稿人指的那句是否仍在稿里；新增类声称 → 引号里的话是否真在稿里 */
+    let claim = '';
+    if (msText) {
+      const quoted = (body.match(/[\u300c\u3010]([^\u300d\u3011]{6,60})[\u300d\u3011]/g) || []).map((s) => normText(s.replace(/[\u300c\u300d\u3010\u3011]/g, '')));
+      const cands = [];
+      const ws = c.text.split(/\s+/).filter(Boolean);
+      for (let k = 0; k + 4 <= ws.length; k++) {
+        const ph = ws.slice(k, k + 4).join(' ');
+        if (ph.length >= 18 && msText.indexOf(ph) >= 0) cands.push(ph);
+      }
+      if (REMOVE_RE.test(body) && cands.length) claim = 'drift:' + cands[0];
+      else if (ADD_RE.test(body) && quoted.length && quoted.every((q) => msText.indexOf(q) < 0)) claim = 'not-found:' + quoted[0];
+      else if (REMOVE_RE.test(body) || ADD_RE.test(body)) claim = 'unverifiable';
+    }
+    const claimBad = claim.indexOf('drift:') === 0 || claim.indexOf('not-found:') === 0;
+    const verdict = !covered ? 'missing'
+      : (unfilled ? 'not-filled'
+        : (empty ? 'empty-response'
+          : (claimBad ? (claim.indexOf('drift:') === 0 ? 'claim-drift' : 'claim-not-found')
+            : (hasLocator ? (lowConf ? 'low-confidence' : 'ok') : 'no-locator'))));
+    rows.push({ no: c.no, covered, matched, len: body.length, hasLocator, verdict, match: idHit ? 'id' : (hit >= 0 || matched >= 40 ? 'quote' : (lowConf ? 'keywords' : 'none')), kw: kwScore, claim, text: c.text.slice(0, 60) });
   }
   const bad = rows.filter((r) => r.verdict !== 'ok');
   const L = [];

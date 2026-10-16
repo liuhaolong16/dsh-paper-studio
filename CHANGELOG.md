@@ -3,6 +3,23 @@
 
 # 变更记录
 
+## v3.8.0 —— 2026-10-17
+
+**真对拍 Task E（返修回复）：抓出并修掉我方一处 13/13 假阴性；新增对手脚本侧没有的 `claim-drift` 机检。**
+
+- **对手能力（实测）**：`lifecycle-skills` 有 **5 个返修技能**（`triage-reviews` · `write-rebuttal` · `simulate-reviewers` · `rehearse-qa` · `literature-review`）与可跑 `parse_reviews.py`；
+  `academic-research-skills` 有 `academic-paper-reviewer` + 一整组 heldout 评测；`ai4paper` **0 命中**。
+  **如实记**：`parse_reviews.py` 只认 OpenReview / EasyChair / CMT / HotCRP 导出格式，我方 Markdown 夹具 `[format: unknown]` ⇒ **格式不匹配，不据此断言其能力**。
+- **★本轮最重的发现（我方缺陷）**：`response` 对一封**真实形态的手写回复信**报 **13 条全"漏回"（合规 0）** —— 实际答了 8 条。两处根因：
+  ① 匹配只靠**逐字引用原文**（而回复信是**转述**）；② 编号正则**不认小数点编号**（`Comment 1.1` 只取到 `1`，还把尾巴当正文，报告里 # 列错乱）。
+- **修复（已落代码）**：① `splitComments` 支持 `Comment 1.1` / `1.1` / `R1.1` / `[2.3]`；② **过滤非意见块**（审稿人标题 + `Recommendation:` 评分行 ⇒ 此前多出 2 条假"漏回"）；③ 覆盖判定改为 **id 优先 → 引文 → 关键词兜底（标低置信、不计 FAIL）**。
+- **★新增能力 `response --manuscript <改后稿>`**：机械核对**"声称改了 vs 实际改了"** —— 删改类声称若审稿人指的那句**仍留在稿里** ⇒ `claim-drift`（附证据片段）；新增类若引号内容在稿里找不到 ⇒ `claim-not-found`；判不了就记 `unverifiable`。
+  **对手把同类失效模式（其 heldout 里的 `revision_claim_drift`）作为评测点考 agent，脚本侧未见同款检查器** ⇒ 本轮我方在这项上领先。
+- **实测三态**：改前 合规 0 / 13 假漏回 ⇒ 改后（不带 `--manuscript`）合规 **4** · 有问题 9 ⇒ 带 `--manuscript` 时 **`1.2` 报出 `claim-drift`**（回复信称"已删除鲁棒性论断"，改后稿 3.2 仍写 `robust to sensor noise`）。
+- **自检**：补 2 条（小数点编号 + id 匹配**正控** · `claim-drift` **必失败面 + 反面对照**）。
+- **仍缺（backlog）**：对手的分诊分类法（误解/真缺陷/要求补充实验/澄清/分歧 + **severity × effort 矩阵**）· venue 格式预算合规（一页 rebuttal / OpenReview 线程 / 修回复投包）· `rehearse-qa` · `simulate-reviewers`。
+- 报告：`run/bakeoff/task-e-rebuttal/REPORT.md`。
+
 ## v3.7.0 —— 2026-10-17
 
 **真对拍 Task D（出投稿件）：同输入交叉工具对拍 + 真实包跑通；据此补 4 项匿名化检查、修 `--contract` 易用性缺陷。**

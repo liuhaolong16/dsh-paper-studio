@@ -119,3 +119,10 @@
 - **不学它的一点**：识别性链接与自我引用**只提醒不擅改**（改语义要人判断），且我方产出**可复核可还原**的改动清单。
 - **未跑成（如实记）**：`check_camera_ready.py` 需 venue 档案，其仓库未随附 ⇒ 本轮无其定稿读数。
 - **仍缺**：编译产物 PDF 元数据实读 · `.bib` 注释/LaTeX 注释/补充材料目录/thanks 块等更细族。
+
+## lifecycle-skills · 返修回复对拍（2026-10-17 · Task E）—— 修 13/13 假阴性，新增 claim-drift 机检
+
+- **对手**：5 个返修技能（triage-reviews · write-rebuttal · simulate-reviewers · rehearse-qa · literature-review）；`parse_reviews.py` 只认 OpenReview/EasyChair/CMT/HotCRP 导出格式（我方 Markdown 夹具 `[format: unknown]`，如实记）。
+- **修我方（已落代码）**：`splitComments` 支持小数点编号 · 过滤非意见块（评分/标题行）· 覆盖判定改 **id 优先 → 引文 → 关键词兜底（标低置信）**。
+- **新增（对手脚本侧未见）**：`response --manuscript <改后稿>` 机械核对**声称改了 vs 实际改了** ⇒ `claim-drift` / `claim-not-found` / `unverifiable`（对应对手 heldout 的 `revision_claim_drift`）。
+- **未吸收（backlog）**：分诊分类法（误解/真缺陷/要求补充实验/澄清/分歧 + severity × effort 矩阵）· venue 格式预算合规 · rehearse-qa · simulate-reviewers。
