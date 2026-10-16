@@ -2781,7 +2781,15 @@ function runSelftest() {
     let r;
     try { r = crosscheck(); } catch (e) { return `成品件对跑不起来：${(e && e.message) || e}`; }
     if (!r.docx) return 'crosscheck 未返回成品件对';
-    if (r.docx.checked < 1) return `一个真实 docx 都没检查（checked=${r.docx.checked}）—— 全跳过不算回归`;
+    if (r.docx.checked < 1) {
+      /* ★ v3.2.80（CI 实证）：docx 夹具被 .gitignore 的 `*.docx` 排除 ⇒ **干净克隆（CI 或别人机器）里一个都没有**，
+         于是这条本该"本机回归"的判据在 CI 上必然假红（8 次标签触发全因此类假红而失败）。
+         原则：**判据依赖本机专属资源时，先判存在性，不存在就显形跳过**——"没东西可对"不等于"对拍失败"；
+         但**目录在、却比不出一件**仍判红（那才是真缺口）。 */
+      const fxDir = path.join(ROOT, 'run', 'fixtures');
+      if (!fs.existsSync(fxDir)) { console.log('      ─ 跳过成品件对：无 run/fixtures 目录（干净克隆 ⇒ 无本机专属 docx 夹具）'); return true; }
+      return `一个真实 docx 都没检查（checked=${r.docx.checked}）—— 全跳过不算回归`;
+    }
     const bad = r.docx.rows.filter((x) => !x.ok).map((x) => `${x.file}：${(x.diffs || []).join('；')}`);
     return bad.length === 0 ? true : bad.join(' ｜ ');
   });
@@ -2968,7 +2976,7 @@ function runSelftest() {
     let bad = 0;
     for (const name of Object.keys(lock.styles)) {
       const f = path.join(cslDirPath(), lock.styles[name].file || (name + '.csl'));
-      if (!fs.existsSync(f) || sha256File(f) !== lock.styles[name].sha256) bad++;
+      if (!fs.existsSync(f) || sha256FileNl(f) !== lock.styles[name].sha256) bad++;
     }
     return bad ? ('有 ' + bad + ' 个样式与锁不符') : true;
   });
@@ -3049,7 +3057,15 @@ function runSelftest() {
       const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'model', 'check'],
         { encoding: 'utf8', env: scrubbedEnv(), timeout: 120000 });
       const out = String(r.stdout || '') + String(r.stderr || '');
-      return (r.status === 0 && /成立/.test(out)) ? true : ('status=' + r.status + ' out=' + out.slice(0, 120));
+      if (r.status === 0 && /成立/.test(out)) return true;
+      /* ★ v3.2.80（CI 实证）：本机/CI 上没有任何 provider 配置时，工具按纪律**如实退 2（未配置 ⇒ 未检查）**，
+         这是**正确行为**而不是本判据失败。判据要抓的是"配了 key 却仍不成立"或异常退出。
+         原则同上：拿不到前提时显形跳过，不把"没法查"读成"查不过"。 */
+      if (r.status === 2 && /未检查|未配置|未设置/.test(out)) {
+        console.log('      ─ 跳过（无 provider 配置 ⇒ 工具如实报未检查，符合纪律）');
+        return true;
+      }
+      return 'status=' + r.status + ' out=' + out.slice(0, 120);
     });
   })();
   /* ★ v3.2.65 夹具：面板凭据存储（停用优先于环境变量 · 掩码不泄露 · 损坏不许当成功 · 不落仓库） */
@@ -3846,6 +3862,25 @@ function runSelftest() {
           catch (e) { return 'form coverage 退 ' + ((e && e.status) || 1) + '（应为 0）'; }
         });
 
+  check('v3.2.80·★行尾无关：同一样式内容在 CRLF 与 LF 下必须算出同一个哈希（锁不得跨平台两判）', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'csl-nl-'));
+    const a = path.join(tmp, 'lf.csl'); const b = path.join(tmp, 'crlf.csl');
+    const body = '<?xml version="1.0"?>\n<style><title>T</title>\n<info/></style>\n';
+    fs.writeFileSync(a, body, 'utf8');
+    fs.writeFileSync(b, body.replace(/\n/g, '\r\n'), 'utf8');
+    const ok = sha256FileNl(a) === sha256FileNl(b);
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+    return ok ? true : 'CRLF 与 LF 哈希不同 ⇒ 锁会跨平台两判';
+  });
+  check('v3.2.80·★必失败面：样式内容真被改一个字节时，归一哈希也必须变化', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'csl-nl2-'));
+    const a = path.join(tmp, 'a.csl'); const b = path.join(tmp, 'b.csl');
+    fs.writeFileSync(a, '<style><title>T</title></style>\n', 'utf8');
+    fs.writeFileSync(b, '<style><title>X</title></style>\n', 'utf8');
+    const diff = sha256FileNl(a) !== sha256FileNl(b);
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+    return diff ? true : '内容变了哈希却没变（归一化过度）';
+  });
   const failed = results.filter((r) => !r.ok);
   if (!JSON_OUT) for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   const __pass = results.length - failed.length;
@@ -4951,6 +4986,17 @@ const CSL_STYLE_ALIASES = {
 function cslDirPath() { return path.join(ROOT, 'assets', 'csl'); }
 function cslLockFilePath() { return path.join(ROOT, 'references', 'csl-lock.json'); }
 function sha256File(p) { return crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'); }
+
+/** ★ v3.2.80：**行尾归一后**取哈希 —— 样式锁曾按原始字节算，于是 Windows(CRLF) 与 Linux(LF)
+ *  检出结果不同 ⇒ 同一份样式在两平台一个过、一个红（真实事故：CI 上 3 个样式全报"与锁不符"）。
+ *  归一化 CRLF→LF 后，跨平台同判；锁里记的就是归一后的值。 */
+function sha256FileNl(p) {
+  const crypto = require('node:crypto');
+  const buf = fs.readFileSync(p);
+  const norm = Buffer.from(buf.toString('binary').replace(/\r\n/g, '\n'), 'binary');
+  return crypto.createHash('sha256').update(norm).digest('hex');
+}
+
 function readCslLock(lockFile) {
   try { return JSON.parse(fs.readFileSync(lockFile || cslLockFilePath(), 'utf8')); } catch (e) { return null; }
 }

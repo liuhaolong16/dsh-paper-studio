@@ -41,6 +41,10 @@ jobs:
           npm install -g npm@11
           node --version
           npm --version
+      # ★ v3.2.79：CI 上必须先把依赖装上 —— 此前漏了这一步，citeproc 缺失让 3 条 refs 自检
+      #   如实报「未安装 ⇒ 不算通过」⇒ 8 次标签触发全部在 20 余秒内红。锁文件已入库 ⇒ 用 npm ci。
+      - name: Install dependencies (package-lock.json committed)
+        run: npm ci --no-audit --no-fund
       # 自检先跑：不过就不发布（把门放在发布之前）
       - name: Self-checks (must pass before publishing)
         run: |

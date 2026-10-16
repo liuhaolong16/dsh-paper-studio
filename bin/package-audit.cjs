@@ -73,7 +73,10 @@ function cslLock(root) {
   for (const [k, v] of Object.entries(j.styles || {})) {
     const f = path.join(dir, v.file);
     if (!fs.existsSync(f)) { bad.push(k + '（缺文件）'); continue; }
-    if (sha256(f) === String(v.sha256).toLowerCase()) checked++; else bad.push(k + '（哈希不符）');
+    // ★ v3.2.80：与 studio 同口径 —— 行尾归一后再比，避免 Windows/Linux 两判
+    const nb = Buffer.from(fs.readFileSync(f).toString('binary').replace(/\r\n/g, '\n'), 'binary');
+    const h = crypto.createHash('sha256').update(nb).digest('hex');
+    if (h === String(v.sha256).toLowerCase()) checked++; else bad.push(k + '（哈希不符）');
   }
   return { ok: bad.length === 0 && total > 0, checked, total, bad };
 }
