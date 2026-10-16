@@ -1,0 +1,49 @@
+{
+  "journal": "Journal of Energy Storage",
+  "publisher": "Elsevier",
+  "article_type": "full_length_research",
+  "verified_at": "2026-10-12",
+  "verified_from": "https://www.sciencedirect.com/journal/journal-of-energy-storage/publish/guide-for-authors (HTTP 200, 本机真实浏览器读取；此前 web_fetch 恒 403)",
+  "verification_note": "本文件的每个数字都来自该页面的原文摘录，改动前必须重新核页并更新 verified_at；不得凭印象修改。",
+  "limits": {
+    "abstract_max_words": 250,
+    "manuscript_max_words": 6000,
+    "figures_tables_min": 8,
+    "figures_tables_max": 10,
+    "short_communication_max_words": 2500,
+    "review_max_words": 8000,
+    "highlights": {
+      "required": true,
+      "min": 3,
+      "max": 5,
+      "max_chars_each": 85,
+      "separate_editable_file": true,
+      "filename_must_contain": "highlights"
+    }
+  },
+  "structure": {
+    "keywords_required": true,
+    "credit_required": true,
+    "acknowledgements_before_references": true,
+    "appendix_for_replication_and_extra_results": true,
+    "supplementary_only_alternate_formats": true,
+    "references_style": "numbered_in_order_of_appearance",
+    "reference_entry_must_include": [
+      "year"
+    ],
+    "ai_declaration_required": true,
+    "ai_declaration_provenance": "★ 出版社级要求，**2026-10-16 本机复核（HTTP 200）**：Elsevier《Generative AI policies for journals》（https://www.elsevier.com/about/policies-and-standards/generative-ai-policies-for-journals）。现行要点：① AI 用于稿件准备须在稿件中**单独的 AI 声明段**披露，并写明**工具名 · 用途 · 监督程度**；② 声明段标题推荐用 “Declaration of generative AI and AI-assisted technologies **in the manuscript preparation process**”（本稿已按此对齐）；③ 纯语法/拼写检查无需声明，但**对句子结构或组织作出实质改动须披露**；④ **AI 用于研究过程（而非稿件准备）的用途须在 Methods 中详述**（本稿已在 Methods 的 Seed stability 段后补“No AI tool participated in the analysis”）；⑤ 不得把 AI 列为作者。"
+  },
+  "quotes": {
+    "abstract": "You are required to provide a concise and factual abstract that does not exceed 250 words.",
+    "highlights": "Highlights should consist of 3 to 5 bullet points, each a maximum of 85 characters, including spaces.",
+    "highlights_file": "Submit highlights as a separate editable file in the online submission system with the word \"highlights\" included in the file name.",
+    "length": "Ideally, a research article should have a maximum of 6,000 words and 8-10 figures and/or tables.",
+    "supplementary": "detailed procedures necessary to replicate the study, as well as additional results such as sensitivity analyses, should be included in an Appendix rather than submitted as Supplementary Material.",
+    "references": "This journal does not set strict requirements on reference formatting at submission.",
+    "reference_style": "Indicate references by adding a number within square brackets in the text. ... Number references in the order they appear in your article."
+  },
+  "ported_from": "D:\\DeepSeek\\research-paper-playbook\\_refs/journal-contract-joes.json",
+  "ported_at": "2026-10-16",
+  "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。"
+}

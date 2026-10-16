@@ -7,6 +7,17 @@
 
 
 
+
+## v3.2.5 —— 2026-10-16
+
+**把在投刊的契约都做成插件可复用资产（搬运已取证件，不改数字），并加一条"契约通则"判据。**
+
+- **搬运（不新建判据）**：`_refs/journal-contract-joes.json` → `references/contracts/joes-elsevier.json`；`_refs/journal-contract-ripp.json` → `references/contracts/ripp-bmc.json`。两份都**原样搬运**（未改动任何数字与条款），新增 `ported_from` / `ported_at` / `ported_note` 交代出处；**插件侧是规范件**，论文仓那份属历史留档。三份契约（PLOS / JoES-Elsevier / RIPP-BMC）覆盖当前全部在投刊。
+- **通则判据（+1）**：`references/contracts/*.json` 里**每一份**都必须严格可解析、带 `verified_at`（日期形态）与 `verified_from`（非空）、且 `limits`/`structure` 在场 ⇒ **以后新增契约自动被覆盖**，不用再逐份写夹具。
+- 自检：CLI **90 → 93**（分族正控 + 未知族必失败 + 三份契约正控）。
+- **契约分族（实测修正）**：搬运后通则判据立刻抓到 `ripp-bmc.json` **没有** `limits`/`structure` —— 复核确认它是**另一种合法形态**（核验族：`verified_facts` + `publisher_level_policies`/`implications_for_this_submission`），而 JoES/PLOS 属**限额结构族**（`limits` + `structure`）。判据改为**分族**：取证四项必在 + 必须属于已知族之一，**未知族显形报错、不放行**；正向锁三份契约、反向一条必失败。
+- **真跑（连假阴性一起记）**：A 稿 × JoES 契约跑出 7 项 FAIL/WARN；逐项核对后确认其中 **"无 Highlights 节"是单文件扫描的假阴性** —— Highlights 在 Elsevier 是**独立文件**，本目录 `Highlights.md`/`.docx`/`.txt` 与 `submission\Highlights.docx` **都在**。⇒ **本轮未解决项**：契约门需要**包级模式**（`--package <目录>`），否则包级要件（Highlights / CRediT / AI 声明）会被误报。B 稿那次我取到的"稿件"其实是**投稿前总检查表**，属选件不当，同样记为未解决项。
+
 ## v3.2.4 —— 2026-10-16
 
 **两件事：① 首次做「真装实测」并把它写成文档（此前只有打包干跑）；② 补上 PLOS ONE 机器可读契约 + 一条"运行时依赖是否入包"的判据。**

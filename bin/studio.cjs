@@ -1233,6 +1233,37 @@ function runSelftest() {
     } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   });
 
+  // ★ v3.2.5：契约目录**通则**判据 —— 分族：限额结构族（limits+structure，Elsevier 系/PLOS）
+  //   或 核验族（verified_facts + publisher_level_policies/implications，BMC 系）；
+  //   **不属于任何已知族 ⇒ 显形报"未知契约族"，不放行**。
+  check('契约目录：每份 *.json 必须可解析、带取证信息（journal/publisher/verified_at/verified_from），且属于已知契约族', () => {
+    const dir = path.join(ROOT, 'references', 'contracts');
+    let files = [];
+    try { files = fs.readdirSync(dir).filter((f) => /\.json$/.test(f)); } catch (e) { return '读不到契约目录（不得当通过）：' + String((e && e.message) || e); }
+    if (files.length < 1) return '契约目录为空 ⇒ 前提不成立，不得当通过';
+    const bad = [];
+    for (const f of files) {
+      let c = null;
+      try { c = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (e) { bad.push(f + ' 不可解析'); continue; }
+      for (const m of contractSchemaProblems(c)) bad.push(f + ' ' + m);
+    }
+    return bad.length === 0 ? true : (files.length + ' 份里有问题：' + bad.slice(0, 6).join('；'));
+  });
+  check('必失败：形状不属于任何已知契约族必须被抓（不许"形状不对也静默通过"）', () => {
+    const weird = { journal: 'X', publisher: 'Y', verified_at: '2026-01-01', verified_from: 'u', some_other_thing: {} };
+    const probs = contractSchemaProblems(weird);
+    return probs.some((m) => /未知契约族/.test(m)) ? true : ('未抓到未知族：' + JSON.stringify(probs));
+  });
+  check('正控：三份已入包契约（JoES 限额族 / RIPP 核验族 / PLOS 限额族）都必须判为合法', () => {
+    const dir = path.join(ROOT, 'references', 'contracts');
+    const bad = [];
+    for (const f of ['joes-elsevier.json', 'ripp-bmc.json', 'plos-one.json']) {
+      try { const c = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); const probs = contractSchemaProblems(c); if (probs.length) bad.push(f + ':' + probs.join(',')); }
+      catch (e) { bad.push(f + ' 读不到'); }
+    }
+    return bad.length === 0 ? true : bad.join('；');
+  });
+
   check('门解析：每个门的 entry 路径都能解析出字符串', () => (pipeline.gates || []).every((g) => typeof resolveGate(g, pipeline).entry === 'string' && resolveGate(g, pipeline).entry.length > 0) || '有门解析不出路径');
   check('门解析：脚本缺失必须标 scriptOk=false（不得默认通过）', () => {
     const fake = [{ id: 'x', label: '假门', runtime: 'node', entry: '__no_such_gate__.cjs', rel: 'playbook_root' }];
@@ -1679,6 +1710,22 @@ function runSelftest() {
   return __total === __pass ? 0 : 1;
 }
 
+
+/** 契约形状判据（纯函数，便于夹具注入）：取证信息四项必在；且必须属于已知契约族之一。
+ *  族 A＝限额结构族（limits + structure；Elsevier 系、PLOS 用）；
+ *  族 B＝核验族（verified_facts + publisher_level_policies 或 implications_for_this_submission；BMC 系用）。
+ *  都不属于 ⇒ 报"未知契约族"（显形），绝不放行 —— 这是 2026-10-16 搬运 RIPP 契约时被自己的通则判据抓出来的真事。 */
+function contractSchemaProblems(c) {
+  const bad = [];
+  if (!c || typeof c !== 'object') return ['不是对象'];
+  for (const k of ['journal', 'publisher', 'verified_at', 'verified_from']) if (!(k in c)) bad.push('缺 ' + k);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(c.verified_at || ''))) bad.push('verified_at 形态不对（需 YYYY-MM-DD）');
+  if (!String(c.verified_from || '').trim()) bad.push('verified_from 为空 ⇒ 无取证来源不得当通过');
+  const famA = !!(c.limits && c.structure);
+  const famB = !!(c.verified_facts && (c.publisher_level_policies || c.implications_for_this_submission));
+  if (!famA && !famB) bad.push('不属于已知契约族（需 limits+structure 或 verified_facts+publisher_level_policies/implications）—— 未知契约族');
+  return bad;
+}
 
 // ── v3.1.9 三道新判据（都由 2026-10-16 生态日审的真实问题驱动）────────────
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.dsh-project-memory', '_archive', '__pycache__']);

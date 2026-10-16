@@ -1,0 +1,73 @@
+{
+  "journal": "Research Integrity and Peer Review",
+  "publisher": "BMC (Springer Nature)",
+  "article_type": "review",
+  "verified_at": "2026-10-15",
+  "verified_from": "DOAJ API v2 期刊记录（https://doaj.org/api/v2/search/journals/issn:2058-8615 ，HTTP 200 · 记录 last_updated 2026-09-17 · DOAJ 最近一次全文复核 2026-03-17） + Springer Nature 出版社级政策页（https://www.springernature.com/gp/policies/editorial-policies 与 .../ai-manuscript-preparation ，均 HTTP 200，2026-10-15 取）",
+  "verification_note": "★ 只写**本机能核实**的字段：期刊事实取自 DOAJ 记录，政策要求取自 Springer Nature 出版社级政策页。期刊自己的 Guide/Aims & Scope 页在本机读不到（跨域跳 idp.springer.com 登录墙，2026-10-15 复测），故字数/图表上限、参考文献格式、是否收综述、Title Page 四项仍列 unverified，由门**显形跳过** —— 不得当作已通过。",
+  "verified_facts": {
+    "eissn": "2058-8615",
+    "publisher_country": "GB",
+    "oa_start_year": 2016,
+    "boai": true,
+    "in_doaj": true,
+    "doaj_last_full_review": "2026-03-17",
+    "review_process": "Open peer review",
+    "license": [
+      "CC BY",
+      "CC BY-NC-ND"
+    ],
+    "copyright_author_retains": false,
+    "apc": {
+      "has_apc": true,
+      "usd": 2590,
+      "eur": 2190,
+      "gbp": 1990,
+      "source_url": "https://link.springer.com/journal/41073/how-to-publish-with-us"
+    },
+    "apc_waiver": {
+      "has_waiver": true,
+      "url": "https://www.springernature.com/gp/open-research/policies/journal-policies/apc-waiver-countries"
+    },
+    "other_charges": false,
+    "publication_time_weeks": 5,
+    "preservation": "CLOCKSS",
+    "plagiarism_detection": true,
+    "pid_scheme": "DOI",
+    "keywords": [
+      "research ethics",
+      "publication ethics",
+      "research reporting"
+    ],
+    "institutional_affiliation": "EQUATOR Network; ISTME",
+    "subject_lcc": "General Works (A)",
+    "aims_scope_url": "https://researchintegrityjournal.biomedcentral.com/about"
+  },
+  "unverified": [
+    "字数上限（正文/摘要）——期刊 Guide 页本机读不到（出版社级页不给字数）",
+    "图表数量上限",
+    "参考文献格式（BMC 惯例多为 Vancouver 编号制；本文为编号 + DOI，须按刊核对）",
+    "是否收本类 evidence review（aims & scope 文本本机读不到）",
+    "是否需要单独上传 Title Page",
+    "APC 豁免是否适用于本文作者（豁免按 Springer Nature 国家名单判定，需作者自查）"
+  ],
+  "implications_for_this_submission": {
+    "open_peer_review": "★ 本刊为**开放同行评审**：投稿系统会询问是否公开评审报告（审稿人报告可随文发表）。⇒ ① 投稿时需作出该选择（属人工项）；② 本文已在正文如实声明 AI 辅助与全部可复现材料，与该刊的透明度取向一致。",
+    "apc_correction": "此前决策依据文件里的 APC（USD 2,490，取自 OpenAlex）应以 DOAJ 记录为准更正为 **USD 2,590**（EUR 2,190 / GBP 1,990）。"
+  },
+  "publisher_level_policies": {
+    "source": "https://www.springernature.com/gp/policies/editorial-policies（另有 /ai-manuscript-preparation 专页）",
+    "ai_use_in_manuscript_preparation": "按**风险分级**（Green 低风险：语法/可读性/格式/翻译/摘要化；Amber：提纲、起草段落、替代措辞、参考文献管理支持、可核实来源的视觉内容；Red 不允许：独立撰写结果/讨论、生成科学主张或解释、把 AI 列为作者、无可核实来源的内容）。**三档都要求「清楚描述用途 + 确认作者担责」**；Amber 另要求「AI 生成或辅助的内容须明确标注」。",
+    "ai_visual_content": "AI 辅助的视觉内容**允许**（前提：来源可核实、披露模型与用途、经人工复核）；**须在 AI 声明中说明所用 AI 系统、用途与贡献程度**，并**在图注/说明中单独披露**；**无可核实输入来源的 AI 生成视觉内容不允许**。",
+    "author_contributions": "要求在稿件中**包含说明每位作者贡献的声明**。（本文已含 CRediT 段 ✓）",
+    "competing_interests": "要求披露竞争利益（BMC 亦要求）✓",
+    "peer_review": "审稿人可选择匿名，部分刊物允许公开身份与评审报告（与 DOAJ 记录的 RIPP「开放同行评审」一致）",
+    "plagiarism": "投稿使用 Crossref Similarity Check（iThenticate）查重（与 DOAJ 记录的检测 ✓ 一致）",
+    "research_data": "支持研究数据共享与存档的最佳实践（另有 research data policy 页）",
+    "preprints": "鼓励预印本发布与引用（本文纳入并标注了 14 条预印本 ✓）",
+    "corresponding_author": "通讯作者须确认有权代表全体作者，且全体作者已同意稿件内容与作者贡献声明"
+  },
+  "ported_from": "D:\\DeepSeek\\research-paper-playbook\\_refs/journal-contract-ripp.json",
+  "ported_at": "2026-10-16",
+  "ported_note": "由已取证契约原样搬入插件资产（判据只有一份：本文件即插件侧规范件；源文件在论文仓 _refs/ 下，属历史留档）。搬运未改动任何数字与条款；改动前必须重核期刊页面并更新 verified_at。"
+}
