@@ -1256,6 +1256,32 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'preflight'], { encoding: 'utf8' });
     return (r.status === 2 && /需要 --draft/.test(String(r.stderr || ''))) || ('exit=' + r.status);
   });
+  check('anchors --oa·正控：按 DOI 批量查得 OA/订阅两态，并写回锚点表（离线 stub，不联网）', () => {
+    const stub = (url) => {
+      if (url.indexOf('doi:') < 0) return '{}';
+      return JSON.stringify({ results: [
+        { doi: 'https://doi.org/10.1/oa-one', title: 'OA one', open_access: { is_oa: true, oa_status: 'gold' }, best_oa_location: { pdf_url: 'https://ex.org/one.pdf' } },
+        { doi: 'https://doi.org/10.1/closed-one', title: 'Closed one', open_access: { is_oa: false, oa_status: 'closed' }, best_oa_location: null },
+      ] });
+    };
+    const { byDoi, log } = oaLookup(['10.1/oa-one', '10.1/closed-one', '10.1/absent'], stub);
+    const ok = byDoi.size === 2 && byDoi.get('10.1/oa-one').is_oa === true && byDoi.get('10.1/oa-one').pdf_url === 'https://ex.org/one.pdf'
+      && byDoi.get('10.1/closed-one').is_oa === false && log.length === 0;
+    return ok || ('size=' + byDoi.size + ' log=' + JSON.stringify(log));
+  });
+  check('anchors --oa·必失败面：接口报错（400/error 体）必须**记进日志**，不得静默成"未取到"', () => {
+    const errStub = () => JSON.stringify({ error: 'Invalid query parameters error.', message: 'is_oa is not a valid select field.' });
+    const { byDoi, log } = oaLookup(['10.1/x'], errStub);
+    const ok = byDoi.size === 0 && log.some((l) => l.stage === 'api-error' && /is_oa is not a valid/.test(l.why));
+    return ok || ('log=' + JSON.stringify(log).slice(0, 160));
+  });
+  check('anchors --oa·必失败面：**未取到**必须标 not-retrieved（不得当作"不可达"或"已核"）', () => {
+    const stub = () => JSON.stringify({ results: [] });
+    const { byDoi } = oaLookup(['10.1/ghost'], stub);
+    const miss = byDoi.size === 0;
+    const bad = (() => { try { oaLookup(['10.1/x'], () => { throw new Error('curl 退出码 7'); }); return false; } catch (e) { return true; } })();
+    return (miss && !bad) || ('size=' + byDoi.size + ' threw=' + bad);
+  });
   check('anchors --resolve·正控：identifiers 取自**稿件题录**（有则采/无则留空并标注），不联网', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ares-'));
@@ -2180,6 +2206,102 @@ function resolveRefsOnline(entries, fetcher, opts) {
   }
   return log;
 }
+/** 开放获取（OA）可达性（v3.2.23）
+ *  为什么：锚点表要升级为"人已复核"，必须**读到原文**并留页号+原句。哪些引用能免费读到、哪些要机构订阅，
+ *  决定这件人读工作的**起点**。用 OpenAlex（免 key、支持按 DOI 批量过滤）逐条问，**取不到就记"未取到"**。 */
+function oaLookup(dois, fetcher, opts) {
+  const o = opts || {};
+  const out = new Map();
+  const log = [];
+  const clean = (d) => String(d || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+  const list = Array.from(new Set(dois.map(clean).filter(Boolean)));
+  for (let i = 0; i < list.length; i += 25) {
+    const batch = list.slice(i, i + 25);
+    /* ★ 修正（真跑抓到）：OpenAlex 的 `select` **不接受 `is_oa`**（它属于 `open_access` 对象）——
+       带上它会整批 400，而我把 400 读成了"未取到"，等于**静默失败**。同时 DOI 里的 `/` 不要编码。 */
+    const url = 'https://api.openalex.org/works?per-page=50&select=doi,title,open_access,best_oa_location&filter=doi:'
+      + batch.join('|');
+    let body = '';
+    try { body = fetcher(url) || ''; } catch (e) { log.push({ stage: 'fetch-failed', why: String((e && e.message) || e), n: batch.length }); continue; }
+    let res = [];
+    let doc = null;
+    try { doc = JSON.parse(body) || {}; res = doc.results || []; } catch (e) { log.push({ stage: 'parse-failed', why: '返回体不是 JSON：' + String(body).slice(0, 120), n: batch.length }); continue; }
+    /* ★ 纪律：HTTP/接口级错误必须**记进日志**（此前 400 被读成"未取到"，属静默失败） */
+    if (doc.error) { log.push({ stage: 'api-error', why: String(doc.message || doc.error).slice(0, 200), n: batch.length }); continue; }
+    if (!res.length) log.push({ stage: 'empty-result', why: '接口返回 0 条（可能 DOI 不在 OpenAlex 或一律为订阅版）', n: batch.length });
+    for (const w of res) {
+      const key = clean(w.doi || '');
+      if (!key) continue;
+      out.set(key, {
+        is_oa: !!((w.open_access || {}).is_oa),
+        oa_status: (w.open_access || {}).oa_status || '',
+        pdf_url: ((w.best_oa_location || {}).pdf_url) || ((w.best_oa_location || {}).landing_page_url) || '',
+        title: w.title || '',
+      });
+    }
+  }
+  return { byDoi: out, log };
+}
+function cmdAnchorsOA(args, argv, draftAbs, val, has) {
+  const inPath = val('in') || val('anchors') || path.join(path.dirname(draftAbs), 'anchors-已解析.json');
+  if (!fs.existsSync(inPath)) {
+    console.error('前提层失败：找不到锚点表 —— ' + path.resolve(inPath) + '（先跑 anchors --resolve 生成）');
+    return 2;
+  }
+  let doc;
+  try { doc = JSON.parse(fs.readFileSync(inPath, 'utf8')); } catch (e) { console.error('前提层失败：锚点表不是 JSON —— ' + String((e && e.message) || e)); return 2; }
+  const anchors = doc.anchors || [];
+  const dois = anchors.map((a) => (a.identifier || {}).doi).filter(Boolean);
+  const { spawnSync } = require('child_process');
+  const fetcher = (url) => {
+    const r = spawnSync('curl', ['-sS', '--max-time', '30', '-H', 'User-Agent: paper-studio/3.2.23 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (r.error) throw new Error('curl 不可用：' + r.error.message);
+    if (r.status !== 0) throw new Error('curl 退出码 ' + r.status + '：' + String(r.stderr || '').slice(0, 120));
+    return r.stdout || '';
+  };
+  const { byDoi, log } = oaLookup(dois, fetcher);
+  const clean = (d) => String(d || '').replace(/^https?:\/\/doi\.org\//i, '').trim();
+  let oa = 0, closed = 0, missing = 0;
+  const rows = [];
+  for (const a of anchors) {
+    const doi = clean((a.identifier || {}).doi);
+    if (!doi) { missing++; rows.push({ key: a.marker, doi: '', state: 'no-doi' }); continue; }
+    const hit = byDoi.get(doi);
+    if (!hit) { missing++; rows.push({ key: a.marker, doi, state: 'not-retrieved' }); a._oa = { state: 'not-retrieved', note: 'OpenAlex 未返回该 DOI ⇒ **未取到**（不等于不可达）' }; continue; }
+    if (hit.is_oa) { oa++; a._oa = { state: 'oa', oa_status: hit.oa_status, pdf_url: hit.pdf_url }; rows.push({ key: a.marker, doi, state: 'oa', where: hit.pdf_url || hit.oa_status }); }
+    else { closed++; a._oa = { state: 'closed', oa_status: hit.oa_status || 'closed' }; rows.push({ key: a.marker, doi, state: 'closed' }); }
+  }
+  const outPath = val('out') || path.join(path.dirname(path.resolve(inPath)), 'anchors-含OA.json');
+  doc._oa_report = { generated_at: new Date().toISOString(), source: 'OpenAlex (免 key)',
+    counts: { total: anchors.length, oa, closed, missing }, tried: dois.length, log };
+  fs.writeFileSync(path.resolve(outPath), JSON.stringify(doc, null, 2) + '\n', 'utf8');
+  const L = [];
+  L.push('# 引用文献的开放获取可达性 · ' + path.basename(draftAbs));
+  L.push('');
+  L.push('> 用途：锚点表要升级为"**人已复核**"（`locator.kind=page-quote` + 页号 + ≥30 字原句），前提是**能读到原文**。');
+  L.push('> 本表告诉你**从哪几篇开始**。数据源：OpenAlex（免 key，按 DOI 批量）。**未取到的记"未取到"，不等于不可达。**');
+  L.push('');
+  L.push('- 引用总数：' + anchors.length + ' · 有 DOI：' + dois.length);
+  L.push('- **开放获取（可直接读）**：**' + oa + '** 篇 · 需订阅/机构权限：**' + closed + '** 篇 · 未取到/无 DOI：**' + missing + '** 篇');
+  L.push('');
+  L.push('| 标记 | DOI | 可达性 | 位置/状态 |');
+  L.push('| --- | --- | --- | --- |');
+  for (const r of rows) L.push('| [' + r.key + '] | ' + (r.doi || '—') + ' | ' + ({ oa: '✅ 开放获取', closed: '🔒 需订阅', 'no-doi': '— 无 DOI', 'not-retrieved': '❓ 未取到' }[r.state] || r.state) + ' | ' + (r.where || '') + ' |');
+  if (log.length) { L.push(''); L.push('## 查询明细（未取到的原因）'); L.push(''); for (const l of log) L.push('- ' + l.stage + '：' + l.why + '（' + l.n + ' 个 DOI）'); }
+  const mdPath = outPath.replace(/\.json$/, '') + '-OA报告.md';
+  fs.writeFileSync(mdPath, L.join('\n') + '\n', 'utf8');
+  if (JSON_OUT && !val('out')) {
+    console.log(JSON.stringify({ total: anchors.length, oa, closed, missing, out: path.resolve(outPath), report: mdPath }, null, 2));
+  } else {
+    console.log('开放获取可达性 · ' + path.basename(draftAbs));
+    console.log('  引用 ' + anchors.length + ' 条（有 DOI ' + dois.length + '）⇒ 开放获取 **' + oa + '** · 需订阅 **' + closed + '** · 未取到/无 DOI **' + missing + '**');
+    for (const r of rows) console.log('    ' + (r.state === 'oa' ? '✅' : (r.state === 'closed' ? '🔒' : '❓')) + ' [' + r.key + '] ' + (r.doi || '—') + (r.where ? ' → ' + String(r.where).slice(0, 80) : ''));
+    console.log('  报告：' + mdPath);
+    console.log('  含 OA 标注的锚点表：' + path.resolve(outPath));
+  }
+  return 0;
+}
+
 function cmdResolve(args, argv, draftAbs, keys, hits) {
   const A = argv || [];
   const val = (k) => { const i = A.indexOf('--' + k); return i >= 0 && A[i + 1] && !A[i + 1].startsWith('--') ? A[i + 1] : ''; };
@@ -2269,6 +2391,8 @@ function cmdAnchors(args, argv) {
   /* --resolve：从**稿件自己的题录**解析 identifier（确定性、不联网）生成草稿锚点表；
      可选 --online 用 Crossref 兜底（过相似度阈值才采用）。 */
   if (has('resolve')) return cmdResolve(args, argv, draftAbs, keys, hits);
+  /* --oa：查引用文献的**开放获取可达性**（OpenAlex，免 key 批量）⇒ 决定"补页号原句"从哪几篇开始 */
+  if (has('oa')) return cmdAnchorsOA(args, argv, draftAbs, val, has);
 
   const L = [];
   L.push('# 引用锚点表工作单 · ' + path.basename(draftAbs));

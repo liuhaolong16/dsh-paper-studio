@@ -33,7 +33,8 @@
     "cn_contract_generic": "references/contracts/cn-generic.json（**中文刊跨刊共性**契约：书写顺序 · 页脚著录项 · GB/T 7714 编号；**刻意不含逐刊数字**，逐刊项全在 human_only）",
     "preflight_cmd": "bin/studio.cjs preflight --draft <稿> [--package <包>] [--contract <契约>] [--out <报告.md>]（**投稿前一条命令总检**：汇总门执行器/契约门/合规门；只汇总不判定，\"未检查/不可用\"≠通过）",
     "anchor_table": "references/anchor-table.example.json（**引用锚点表**模板与字段说明：citation_key/marker · identifier{doi,pmid,url} · locator{kind,value,quote} · evidence_layer · status · verdict · retrieval_method · scope.supports_strength；配 `studio.cjs anchors` 生成**留空**工作单与骨架，**工具不预填来源**） 用法：`node bin/studio.cjs anchors --draft <稿> [--resolve] [--online] [--out <json>]`。",
-    "anchors_resolve": "`studio.cjs anchors --resolve`：从**稿件自己的题录区**确定性解析 identifier{doi|url|pmid} 生成草稿锚点表（**有则采、无则留空并标 _unresolved**；`--online` 走 Crossref 兜底但**必须过相似度阈值**，不达标留空并记候选）"
+    "anchors_resolve": "`studio.cjs anchors --resolve`：从**稿件自己的题录区**确定性解析 identifier{doi|url|pmid} 生成草稿锚点表（**有则采、无则留空并标 _unresolved**；`--online` 走 Crossref 兜底但**必须过相似度阈值**，不达标留空并记候选）",
+    "anchors_oa": "`studio.cjs anchors --oa`：查引用文献的**开放获取可达性**（OpenAlex 免 key · 按 DOI 批量）⇒ 输出「N 篇可免费读（含 PDF 直链）/ M 篇需订阅 / K 篇未取到」并写回锚点表（`_oa` 字段），给出\"补页号原句\"的起点清单；未取到的标 `not-retrieved`（**不等于不可达**）。"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",
