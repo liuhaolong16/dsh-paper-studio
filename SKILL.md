@@ -154,6 +154,13 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 > **L-12 没有单独的第三道门**（2026-10-14 复核）：它的两条判据已由 `docx-verify` + `artifact-sync` 覆盖，再建一门就是重复判据 —— 改为把缺陷修在既有的那一门上（见 L-13）。
 > **经验 → 门的映射**只写在一处：`references/pipeline.json` 的 `lessons_coverage`。
 
+**发布前必跑·分发三分检验（v3.2.55 起为纪律）**：本机全绿**不是**分发证据。每次改完 bin/ 或 assets/ 后，按下面三步验一次：
+① 整包复制到临时目录（模拟别人机器上的另一份拷贝）：`robocopy <插件根> %TEMP%\ps-iso /E`；
+② 把本机路径表指空（模拟新装机）：写一个空 JSON，并把 `DSH_PAPER_LOCAL_PATHS` 指向它；
+③ 在**副本目录**里跑 `node bin\studio.cjs selftest`、`node bin\gate-runner.cjs --selftest`、以及一条真稿的 `preflight`。
+判据：三处**都必须与开发机同读数**（任何一条靠"本机路径表"或"本机其它技能"才过 ⇒ 就是分发缺口）。
+教训出处：v3.2.55 首测独立拷贝 **165/168 · 50/52**（本机却全绿）—— 根因是"只在一条分支上跑过的代码＝没跑过的代码"。
+
 **安装与"干净环境"承诺（v3.2.54 实测）**：本插件**不要求先配本机路径表**也能跑完投稿前总检 ——
 ① 12 道门全部**随包走**（`gates/`），运行路径与 `doctor` 用**同一个解析器**（显式外置优先 → 内置回落 → 再没有才判真缺口，回执带来源列）；
 ② 必需素材**随包走**（如语言门的短语库 `assets/phrase-bank.json`）；

@@ -52,6 +52,47 @@ function localPaths() {
   }
   return {};
 }
+/** ★ v3.2.54 **唯一的 python 解释器解析**（命令侧、夹具、门执行器三处共用；此前 runner 另写了一份）。
+ *  顺序：① `pipeline.assets.python_exe` 里显式列出且真的可执行（排除未解析占位符）
+ *        ② `DSH_PYTHON` 环境变量 ③ DSH 运行时目录（含版本目录通配） ④ PATH（排除 WindowsApps 商店占位符）
+ *  返回 { exe, tried, note }；**取不到就返回空 exe**（由调用方报不可用，绝不静默算通过）。 */
+function resolvePython(pipeline) {
+  const tried = [];
+  const probe = (cand) => {
+    if (!cand) return '';
+    try {
+      const r = spawnSync(cand, ['-V'], { encoding: 'utf8', timeout: 15000 });
+      tried.push(cand + ' → ' + (r.error ? 'ERR ' + (r.error.code || r.error.message) : 'rc=' + r.status));
+      return (!r.error && r.status === 0) ? cand : '';
+    } catch (e) { tried.push(cand + ' → ' + String(e.message || e)); return ''; }
+  };
+  const explicit = ((pipeline.assets || {}).python_exe) || [];
+  for (const p of explicit) {
+    if (String(p).indexOf('__LOCAL__') !== 0 && probe(p)) return { exe: p, tried, note: p };
+  }
+  if (process.env.DSH_PYTHON) { const hit = probe(process.env.DSH_PYTHON); if (hit) return { exe: hit, tried, note: hit }; }
+  const rt = path.join(require('os').homedir(), '.dsh', 'dsh-runtimes');
+  try {
+    for (const d of fs.readdirSync(rt)) {
+      for (const name of ['python.exe', 'python']) {
+        for (const sub of [['dependencies', 'python', name], ['python', name]]) {
+          const cand = path.join(rt, d, ...sub);
+          if (fs.existsSync(cand) && probe(cand)) return { exe: cand, tried, note: cand };
+        }
+      }
+    }
+  } catch (e) { /* 无该目录 ⇒ 跳过 */ }
+  const cmds = process.platform === 'win32' ? ['python', 'py', 'python3'] : ['python3', 'python'];
+  for (const cmd of cmds) {
+    const which = spawnSync(process.platform === 'win32' ? 'where' : 'which', [cmd], { encoding: 'utf8' });
+    const hit = (which.stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0] || '';
+    if (hit && /WindowsApps/i.test(hit)) { tried.push(cmd + ' → 跳过（商店占位符 ' + hit + '）'); continue; }
+    const ok = probe(cmd);
+    if (ok) return { exe: ok, tried, note: cmd };
+  }
+  return { exe: '', tried, note: '未找到真 python 解释器；已试：' + tried.join(' | ') };
+}
+
 /** 未解析占位符 ⇒ 可操作指引（命令侧与门侧统一措辞） */
 const LOCAL_HINT = '（该值是未解析的本机路径占位符 ⇒ 把 references/local-paths.example.json 复制成 '
   + '~/.dsh/paper-studio/local-paths.json（或设 DSH_PAPER_LOCAL_PATHS 指向你的表）并填真实路径）';
@@ -695,11 +736,12 @@ function validateHandoff(id, payload, pipeline) {
 function crosscheckMaterial() {
   const { execFileSync } = require('child_process');
   const p = readPipeline();
-  const py = ((p.assets || {}).python_exe || [])[0];
-  const pbRoot = (p.assets || {}).playbook_root || '';
-  const gate = path.join(pbRoot, '_gate-author-material.py');
-  if (!py || !fs.existsSync(py)) { const e = new Error('前提层失败：真源里没有可用的 python_exe：' + py + localPathHint(py)); e.code = 'NO_PY'; throw e; }
-  if (!fs.existsSync(gate)) { const e = new Error('前提层失败：门脚本不存在 ' + gate); e.code = 'NO_GATE'; throw e; }
+  /* v3.2.54：python 与门脚本都改用**统一解析**（此前只认本机路径表 ⇒ 独立拷贝/干净安装下这两条同判夹具必红） */
+  const py = resolvePython(p).exe;
+  const gateRes = (() => { try { return resolveGateScript({ id: 'author-material', entry: '_gate-author-material.py' }, p); } catch (e) { return null; } })();
+  const gate = (gateRes && gateRes.script) || '';
+  if (!py) { const e = new Error('前提层失败：' + resolvePython(p).note + localPathHint(((p.assets || {}).python_exe || [])[0])); e.code = 'NO_PY'; throw e; }
+  if (!gate || !fs.existsSync(gate)) { const e = new Error('前提层失败：门脚本外置与内置都没有（' + gate + '）'); e.code = 'NO_GATE'; throw e; }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-crosscheck-'));
   const big = path.join(tmp, 'material.md');
   fs.writeFileSync(big, '# 材料台账\n' + '实测记录：本文数据与检索台账如下，逐条给出 DOI 与核对日期。\n'.repeat(12), 'utf8');
@@ -815,11 +857,11 @@ function readDocxStructure(file) {
 function crosscheckDocx(files) {
   const { execFileSync } = require('child_process');
   const p = readPipeline();
-  const py = ((p.assets || {}).python_exe || [])[0];
-  const pbRoot = (p.assets || {}).playbook_root || '';
-  const verifier = path.join(pbRoot, '_verify-docx.py');
-  if (!py || !fs.existsSync(py)) { const e = new Error('前提层失败：真源里没有可用的 python_exe：' + py + localPathHint(py)); e.code = 'NO_PY'; throw e; }
-  if (!fs.existsSync(verifier)) { const e = new Error('前提层失败：核验器不存在 ' + verifier); e.code = 'NO_VERIFIER'; throw e; }
+  const py = resolvePython(p).exe;
+  const verRes = (() => { try { return resolveGateScript({ id: 'docx-verify', entry: '_verify-docx.py' }, p); } catch (e) { return null; } })();
+  const verifier = (verRes && verRes.script) || '';
+  if (!py) { const e = new Error('前提层失败：' + resolvePython(p).note + localPathHint(((p.assets || {}).python_exe || [])[0])); e.code = 'NO_PY'; throw e; }
+  if (!verifier || !fs.existsSync(verifier)) { const e = new Error('前提层失败：核验器外置与内置都没有（' + verifier + '）'); e.code = 'NO_VERIFIER'; throw e; }
   const rows = [];
   for (const f of files) {
     if (!f || !fs.existsSync(f)) { rows.push({ file: f || '(未给)', ok: true, skipped: '文件不存在 ⇒ 跳过（**不算同判**，也不静默当通过）' }); continue; }
@@ -2481,9 +2523,10 @@ function runSelftest() {
 
   check('闭集一致：契约里的 material_kind 闭集必须等于门脚本里的 MATERIAL_KINDS', () => {
     const p = readPipeline();
-    const pbRoot = (p.assets || {}).playbook_root || '';
-    const gatePath = path.join(pbRoot, '_gate-author-material.py');
-    if (!fs.existsSync(gatePath)) return `门脚本不在：${gatePath}`;
+    /* v3.2.54：**统一门解析**（外置优先 → 内置回落）。此前这里只认本机路径表 ⇒ 独立拷贝/干净安装下必红。 */
+    const gres = (() => { try { return resolveGateScript({ id: 'author-material', entry: '_gate-author-material.py' }, p); } catch (e) { return null; } })();
+    const gatePath = (gres && gres.script) || '';
+    if (!gatePath || !fs.existsSync(gatePath)) return `门脚本外置与内置都没有：${gatePath || '(none)'}`;
     const src = fs.readFileSync(gatePath, 'utf8');
     const m = src.match(/MATERIAL_KINDS\s*=\s*\{([^}]*)\}/);
     if (!m) return '门脚本里没找到 MATERIAL_KINDS';
@@ -5098,7 +5141,7 @@ function main(argv) {
   }
 }
 
-module.exports = { readPipeline, routeTask, resolveGate, resolveGateScript, intake, runSelftest, printRoute, readTemplates, readLessons, listMethod, scaffold, draftPlan, detectLang, detectGenre, titleAndAbstract, validateHandoff, findContract, crosscheck, crosscheckMaterial, crosscheckDocx, readDocxStructure, readSections, sectionForGate, primarySectionOf, judgeTypeOf, SUBCOMMANDS, STAGE_RULES, PIPELINE_PATH, ROOT };
+module.exports = { readPipeline, routeTask, resolveGate, resolveGateScript, resolvePython, intake, runSelftest, printRoute, readTemplates, readLessons, listMethod, scaffold, draftPlan, detectLang, detectGenre, titleAndAbstract, validateHandoff, findContract, crosscheck, crosscheckMaterial, crosscheckDocx, readDocxStructure, readSections, sectionForGate, primarySectionOf, judgeTypeOf, SUBCOMMANDS, STAGE_RULES, PIPELINE_PATH, ROOT };
 
 // ⚠ 入口守卫必须在 module.exports **之后**（与 gate-runner 同一条纪律）：
 //   它一执行就跑 main()，而 main 里的 report 分支会惰性 require('./gate-runner.cjs')，

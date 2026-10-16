@@ -27,6 +27,10 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const studio = require('./studio.cjs'); // 复用真源读取与路由：禁止第二份实现
+/* ★ v3.2.54 **绑定**：本文件多处按裸名调用 `resolveGateScript`，但**从未绑定过** ⇒ 每次都在 try/catch 里
+   抛 ReferenceError 并被静默吞掉；开发机上因为还有`回落到本机路径表`这条腿而看不出来 ——
+   独立拷贝/干净安装里立刻现形（那些锁会报"门脚本不可得"）。绑定为**同一个实现**，不再各写一份。 */
+const resolveGateScript = (g, p) => studio.resolveGateScript(g, p);
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -118,35 +122,9 @@ function buildArgs(gate, inputs) {
 function interpreterFor(runtime, pipeline) {
   if (runtime === 'node') return process.execPath;
   if (runtime === 'python') {
-    const list = ((pipeline.assets || {}).python_exe) || [];
-    for (const p of list) if (String(p).indexOf('__LOCAL__') !== 0 && fs.existsSync(p)) return p;
-    /* ★ v3.2.54 **解释器自动探测**：干净安装（无本机路径表）时 python_exe 是未解析占位符 ⇒
-       5 道 python 门全部 precondition_fail、整条 preflight 判"不可投"。解释器没法随包走，
-       但可以**探测**：先环境变量，再 DSH 运行时（含版本目录的通配），最后 PATH 上的 python3/python。
-       探测到的每个候选都做一次 `-V` 实证（存在 ≠ 可执行）。 */
-    const cands = [];
-    if (process.env.DSH_PYTHON) cands.push(process.env.DSH_PYTHON);
-    const os = require('node:os');
-    const pathMod = require('node:path');
-    const rt = pathMod.join(os.homedir(), '.dsh', 'dsh-runtimes');
-    try {
-      for (const d of fs.readdirSync(rt)) {
-        for (const name of ['python.exe', 'python']) {
-          cands.push(pathMod.join(rt, d, 'dependencies', 'python', name));
-          cands.push(pathMod.join(rt, d, 'python', name));
-        }
-      }
-    } catch (e) { /* 没有该目录 ⇒ 跳过 */ }
-    cands.push('python3', 'python');
-    const { spawnSync } = require('node:child_process');
-    for (const c of cands) {
-      try {
-        if (c.indexOf(pathMod.sep) >= 0 && !fs.existsSync(c)) continue;
-        const r = spawnSync(c, ['-V'], { encoding: 'utf8', timeout: 15000 });
-        if (!r.error && r.status === 0) return c;
-      } catch (e) { /* 下一个候选 */ }
-    }
-    return null; // 全部探测失败 ⇒ 由调用方报「运行时不可用」（不假装可用）
+    /* ★ v3.2.54：**单一实现** —— 解释器解析统一走 studio.resolvePython（探测链含 DSH 运行时与 PATH，
+       并排除商店占位符）。此前我在 runner 里另写了一份探测 ⇒ 又是"同一件事两套实现"。 */
+    try { const r = studio.resolvePython(pipeline); return (r && r.exe) || null; } catch (e) { return null; }
   }
   return null;
 }
@@ -504,7 +482,12 @@ function runSelftest() {
   if (rP.assets && rP.assets.playbook_root) rcands.push(path.join(rP.assets.playbook_root, '_journal-contract.cjs'));
   let gateSrc = '';
   for (const c of rcands) { if (c && fs.existsSync(c)) { gateSrc = fs.readFileSync(c, 'utf8'); break; } }
-  if (!gateSrc) { check('v3.2.51·反向锁：门脚本不可得 ⇒ 未检查（不假装通过）', false, '门脚本不可得'); }
+  /* ★ v3.2.54b 修正：这里此前写成 check(name, false, why) —— 第二个参数必须是**函数**。
+     开发机上该分支不进入（门总能找到）⇒ 一直没暴露；**独立拷贝里一进就 fn is not a function**。
+     教训：只在一条分支上跑过的代码＝没跑过的代码。 */
+  /* ★ v3.2.54：门脚本**在自包含的插件里必须总能解析到**（外置或内置）⇒ 这里改成**硬前置断言**。
+     自检只接受 `true`：返回别的值即记 ✘（第一版写成 `false` ⇒ 独立拷贝下报"返回了 boolean，必须返回 true"）。 */
+  if (!gateSrc) { check('v3.2.51·反向锁·前置：门脚本必须可解析（外置或内置，自包含插件不许出现"不可得"）', () => false, '门脚本不可得（本锁未运行）'); }
   else {
   const tableM = gateSrc.match(/const CONTRACT_DRIVEN = \{([\s\S]*?)\n\};/);
   const table = {};
