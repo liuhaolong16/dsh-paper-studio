@@ -1512,6 +1512,17 @@ function runSelftest() {
     let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
     return (b.status === 1 && j && j.counts && j.counts.UNSTAMPED === 1) ? true : `rc=${b.status} counts=${JSON.stringify(j && j.counts)}`;
   });
+  check('★preflight·小节序号唯一：报告里所有 `## <序号>、` 不得重复（首版硬编码「五」⇒ 加第 6 步后出现两个「五」）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pfno-'));
+    const d = path.join(tmp, 'draft.md'); const r = path.join(tmp, 'rep.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody.\n');
+    spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--out', r], { encoding: 'utf8' });
+    const txt = fs.existsSync(r) ? fs.readFileSync(r, 'utf8') : '';
+    const secs = (txt.match(/^## ([^\n]+?)、/gm) || []).map((x) => x.replace(/^## /, '').replace(/、.*$/, ''));
+    const dup = secs.filter((x, i) => secs.indexOf(x) !== i);
+    return (secs.length >= 6 && dup.length === 0) ? true : `小节数=${secs.length} 重复序号=${JSON.stringify(dup)}`;
+  });
   check('report-check·正控：报告带运行指纹（含工具版本 + 逐输入 sha256 前 12 位），同输入核对为 FRESH 且 exit=0', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'rc1-'));
@@ -3577,7 +3588,10 @@ function cmdPreflight(args, argv) {
     }
     L.push('');
   });
-  L.push('## 五、图件规格');
+  /* ★ v3.2.37：序号必须**按 steps 派生** —— 首版硬编码「五」，v3.2.36 加第 6 步后报告里出现**两个「五」**
+     （「五、投稿门户字段」与「五、图件规格」）。这类撞号不会让门变红，只会让人读错章节。 */
+  const specNo = CN[steps.length] || String(steps.length + 1);
+  L.push('## ' + specNo + '、图件规格');
   L.push('');
   L.push(specNote);
   if (contractArg) {
