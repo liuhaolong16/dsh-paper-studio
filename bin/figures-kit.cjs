@@ -197,7 +197,7 @@ function selftest() {
     fs.writeFileSync(path.join(tmp, 'figures', 'fig1_a.png'), png);
     fs.writeFileSync(path.join(tmp, 'figures', 'fig9_orphan.pdf'), '%PDF-1.4\n');
     const draft = path.join(tmp, 'draft.md');
-    fs.writeFileSync(draft, 'As shown in Fig. 1, curves track. The ablation is in Fig. 5. **Figure 1.** Curves for all protocols\n', 'utf8');
+    fs.writeFileSync(draft, 'As shown in Fig. 1, curves track. The ablation is in Fig. 5.\n\n**Figure 1.** Curves for all protocols\n', 'utf8');
     const r = auditPackage(tmp, fs.readFileSync(draft, 'utf8'));
     const kinds = r.issues.map((x) => x.level + ':' + x.msg);
     if (!kinds.some((x) => x.startsWith('ERROR:') && x.indexOf('Fig. 5') >= 0)) return '未报缺图：' + JSON.stringify(kinds);
