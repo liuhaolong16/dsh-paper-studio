@@ -526,6 +526,32 @@ check('★ 必失败 · 整包清单漏 references 必须被抓（防"装了包�
   return (miss.length === 1 && miss[0] === 'references') || ('未抓到：' + JSON.stringify(miss))
 })
 
+
+// ★ v3.2.90 跨面文档锁：真源 agent_facing 的每个命令，**两份技能文档都必须写明**
+//   由来：实盘抓到真漂移 —— 对话侧 plugin/skill/SKILL.md 落后于根 SKILL.md（缺 talk / reviewers），
+//   而"对话驱动的用户"恰恰加载的是前者 ⇒ 新能力对这类用户等于不存在。
+check('跨面文档锁：agent_facing 的每个命令必须在【根 SKILL.md】与【plugin/skill/SKILL.md】里都写明', () => {
+  let pj = {}
+  try { pj = JSON.parse(readFileSync(join(ROOT, 'references', 'pipeline.json'), 'utf8')) } catch (e) { return '读不到真源 pipeline.json ⇒ 不得当通过：' + String((e && e.message) || e) }
+  const need = pj.agent_facing || []
+  if (need.length < 5) return '真源 agent_facing 条数异常（' + need.length + '）⇒ 前提不成立，不得当通过'
+  const docs = { '根 SKILL.md': join(ROOT, 'SKILL.md'), 'plugin/skill/SKILL.md': join(ROOT, 'plugin', 'skill', 'SKILL.md') }
+  const bad = []
+  for (const [label, file] of Object.entries(docs)) {
+    let txt = ''
+    try { txt = readFileSync(file, 'utf8') } catch (e) { bad.push(label + ' 读不到'); continue }
+    const miss = need.filter((c) => txt.indexOf('studio.cjs ' + c) === -1 && txt.indexOf('`' + c + '`') === -1)
+    if (miss.length) bad.push(label + ' 缺: ' + miss.join(', '))
+  }
+  return bad.length === 0 || bad.join(' ｜ ')
+})
+
+check('★ 必失败 · 跨面文档锁：文档里漏写一个 agent_facing 命令必须被抓', () => {
+  const need = ['route', 'ghost-cmd-xyz']
+  const fakeDoc = 'node bin/studio.cjs route ...'
+  const miss = need.filter((c) => fakeDoc.indexOf('studio.cjs ' + c) === -1 && fakeDoc.indexOf('`' + c + '`') === -1)
+  return (miss.length === 1 && miss[0] === 'ghost-cmd-xyz') || ('未抓到：' + JSON.stringify(miss))
+})
 check('整包：resolveRoot 必须含"包内自带"候选（否则整包装了也找不到能力树）', () => {
   const src = readFileSync(join(ROOT, 'plugin', 'dist', 'plugin.js'), 'utf8')
   return /包内自带/.test(src) || 'resolveRoot 缺包内自带候选（整包安装会找不到 bin/studio.cjs）'

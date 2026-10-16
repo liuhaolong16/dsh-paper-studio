@@ -131,3 +131,19 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 - `intl+en` 且目标刊为 **PLOS ONE** ⇒ 追加读 `references/plos-one.md`（与 Elsevier 系的差异对照表 · 图件单独 TIFF · 参考文献 Vancouver · **资助不进正文** · Cover Letter 不得提减免）。
 - 参考文献按语言选标准：中文 ⇒ **GB/T 7714—2025**（前 3 人 + 等）；英文 ⇒ 刊约（多为 Vancouver，前 6 人 + et al.）。中英双投**分开生成两版**。
 - 机器真源：`references/pipeline.json` 的 `journal_classes`；说明见 `references/journal-taxonomy.md`。**routing 取值必须含显式 `references/*.md` 路径**（否则 CLI 抛 `JOURNAL_ASSET_UNRESOLVED`）；CLI `route` 会把它吐出来并检查存在性。
+
+## 本技能与 CLI 文档的关系（v3.2.90 起）
+
+- 本文件是**对话侧技能入口**（`name: paper-studio-v3`，给技能发现器扫，从"启用论文插件 / 帮我写论文"进）；
+- 根 `SKILL.md`（`name: paper-studio`）是**命令侧文档**，逐条写明全部子命令用法；
+- **两者必须同时写明真源 `agent_facing` 里的每个命令** —— 插件自检有锁（跨面文档锁）会在任一份漏写时报红。
+
+## 新增能力（v3.2.86–v3.2.88，两批吸收第三方技能包后落地）
+
+- `talk budget --minutes 15 [--qa 3]`：**讲授预算**（内容页 ≈1 张/内容分钟、硬上限 1.25×、problem-first 分节配时；≤7 分钟自动切闪电形态）。**槽位时长必须由用户给出，绝不臆测。**
+- `talk script --minutes 12 [--deck <f>]`：**口播稿预算**（按真源语速把词数摊到每页；备份页不配词）。
+- `talk lint <deck.md> --minutes 12`：**幻灯片 lint**（pacing / 单页>100 词 / 要点>6 / 非断言标题 / 图片缺失 / Marp 不能渲染 PDF）。
+- `reviewers aggregate <scores.json>`：**聚合评审**（置信加权均值 · champion/detractor · 拖后腿维度 · 决策风险带；含「borderline 无 champion ⇒ 向下判」）。
+- `reviewers grade <transcript.md> --target 45 --max 75`：**问答演练评分**（逐答计时 / 未答 / 对冲开头 / 填充词密度 / 是否把答案埋在 yes-no 之后）。
+- `review --reviews <意见.md> [--draft <稿.md>] [--budget N --unit chars|words]`：**审稿意见分诊**（严重度×成本 · 共识升级 · must/should/brief 三带 · 按回复预算分配；**分类未完成退 1**）。
+- 以上 `talk` / `reviewers` / 严重度分诊的**规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0）**，实现为本仓自有 Node 纯函数，**未复制其代码**；来源见 `references/external-adoptions.md`。
