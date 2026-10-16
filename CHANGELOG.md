@@ -5,6 +5,20 @@
 
 
 
+
+## v3.2.3 —— 2026-10-16
+
+**两件事：①「装了插件包就拿到全部能力」整包化；② 合规门接进 `route`/`gates` 流程提醒（A 方案）。**
+
+- **整包化（用户目标）**：仓库根新增 `package.json`（`dsh-paper-studio`），`files` 含 **`bin` + `references` + `plugin` + `SKILL.md`**，`dsh.bundle.patch` 指向 `plugin/cordis.patch.yml`，`bin` 暴露 `paper-studio` CLI 与 `paper-studio-mcp` ⇒ **一次安装＝CLI + 判据资产 + 期刊体系 + 插件半体 + MCP 服务端**，不再要求用户另有一份仓库。
+  - `resolveRoot()` 新增**「包内自带」候选**（`plugin/dist/plugin.js` 往上两级＝能力树根，优先级仅次于环境变量）；只装 `plugin/` 单目录的历史形态下该候选项指向不存在位置，等同跳过（不误伤）。
+  - 插件自检新增**整包自证 3 条**（含必失败面）：`files` 必须含四个能力目录、`dsh.bundle.patch` 与 `main` 指向的**文件必须真在盘上**、`resolveRoot` 必须保留包内自带候选 ⇒ **"装了就有全部能力"是可机检的，不靠文档保证**。
+- **A：合规门接进流程（本用户本轮授权）**：在 playbook 仓新增**薄门** `_gate-compliance.cjs`（只 `spawn` 插件 CLI 的 `compliance`，**不复制任何判据条文**），登记进真源 `gates`（`rel=playbook_root`，`args=['--draft','{draft}']`，`required_placeholders=['{draft}']`，`used_by=['check','write']`）并挂进 `check`（投稿前体检）与 `write`（起草）两个任务类型 ⇒ **`route` 会自动把合规门列进必过门**（此前任务进来不会被提醒）。
+  - 缺输入（没给 `--draft`）⇒ 退出码 2 ⇒ gate-runner 记 `precondition_fail`，**绝不静默通过**；插件 CLI 找不到 ⇒ 显形打印所有候选根。
+  - 注：playbook 仓**不是 git 仓**，故该文件不入版本库；真源里登记的是它的路径与退出码约定。
+- 文档：`plugin/README.md`「分发口径」由"只支持 git 安装"改写为**整包优先**（含"只装 plugin/ 目录会显形失败"的说明）。
+- 自检：插件 **33 → 36** · CLI **85/85**。
+
 ## v3.2.2 —— 2026-10-16
 
 **把合规门接进"插件工具面"，并给跨面漂移装上判据（由用户一问"哪种比较完善"追出的可达性缺口）。**

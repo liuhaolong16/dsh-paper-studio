@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process'
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const name = 'dsh-paper-studio-v3'
 export const inject = ['tools']
@@ -26,6 +27,10 @@ function resolveRoot() {
   // 把机器特定路径放最后：在别的机器上它只是"不存在"，不影响前面的候选。
   const cands = [
     process.env.DSH_PAPER_STUDIO_ROOT,
+    // ★ v3.2.3「包内自带」：整包安装时 dist/plugin.js 位于 <pkg>/plugin/dist ⇒ 两级上就是能力树根。
+    //   这条让"装了插件包就拿到全部能力"成立，不再要求用户另有一份仓库；
+    //   若只装了 plugin/ 单目录（历史 npm 形态），此候选指向不存在的位置，等同跳过（不误伤）。
+    (() => { try { return resolve(dirname(fileURLToPath(import.meta.url)), '..', '..'); } catch { return ''; } })(),
     join(homedir(), '.agents', 'skills', 'paper-studio'),
     join(homedir(), '.dsh', 'skills', 'paper-studio'),
     join(homedir(), 'paper-studio'),

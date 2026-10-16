@@ -1,5 +1,15 @@
 # dsh-paper-studio —— 论文方案（编排层）+ DSH 插件 V3
 
+## 安装：装一次就拿到全部能力（v3.2.3）
+
+本仓库是**一个整包**（不是"插件壳 + 外置资产"）：`files` 已含 `bin`（CLI）· `references`（判据资产与期刊体系）· `plugin`（DSH 插件半体、MCP 服务端）· `SKILL.md`（技能手册）。
+
+- **整包**：`npm i -g dsh-paper-studio`（或把本仓库作为 bundle 装进 profile）⇒ `paper-studio` 命令、`paper-studio-mcp` 服务端、以及全部判据资产一次到位。
+- **从仓库**：`dsh plugin --profile <p> add github:liuhaolong16/dsh-paper-studio`（等价，整棵树）。
+- 插件定位能力树的顺序：`DSH_PAPER_STUDIO_ROOT` → **包内自带**（`<pkg>/plugin/dist` 往上两级）→ `~/.agents/skills/paper-studio` → `~/.dsh/skills/paper-studio` → `~/paper-studio` → `/opt/paper-studio`。
+- 只装 `plugin/` 单目录**不支持**，且会**显形失败**（缺资产即退出码 1），不会静默降级。
+
+
 把「**论文方案**」（＝论文框架 + 方法论 + 工作流）做成**可编排、可机检、可在对话里直接用**的一套东西：
 一个 **CLI 编排层**（`bin/studio.cjs` + 唯一真源 `references/pipeline.json`）＋ 一个 **DSH 插件**（`plugin/`，**对话驱动、无面板、双模式、五种写作模式**）。
 

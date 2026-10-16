@@ -486,6 +486,32 @@ check('★ 必失败 · agent_facing 里的幽灵动作必须被抓（不许静�
   return (miss.length === 1 && miss[0] === 'ghost-action-xyz') || ('未抓到：' + JSON.stringify(miss))
 })
 
+// ★ v3.2.3：整包自证 —— "装了这个包就有全部能力"必须可机检，而不是靠文档保证
+check('整包：根 package.json 必须把全部能力打进 files（bin/references/plugin/SKILL.md）', () => {
+  let pkg = {}
+  try { pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) } catch (e) { return '读不到根 package.json ⇒ 整包安装不可用（不得当通过）：' + String((e && e.message) || e) }
+  const need = ['bin', 'references', 'plugin', 'SKILL.md']
+  const files = pkg.files || []
+  const miss = need.filter((f) => !files.includes(f))
+  if (miss.length) return '整包 files 缺: ' + miss.join(', ')
+  const patch = (pkg.dsh && pkg.dsh.bundle && pkg.dsh.bundle.patch) || ''
+  if (!patch) return '根 package.json 缺 dsh.bundle.patch ⇒ 装了也不会被宿主当插件加载'
+  if (!existsSync(join(ROOT, patch))) return 'dsh.bundle.patch 指向的文件不存在: ' + patch
+  if (!pkg.main || !existsSync(join(ROOT, pkg.main))) return 'main 指向的文件不存在: ' + String(pkg.main)
+  return true
+})
+
+check('★ 必失败 · 整包清单漏 references 必须被抓（防"装了包却没有判据资产"）', () => {
+  const pkg = { files: ['bin', 'plugin', 'SKILL.md'], main: './x', dsh: { bundle: { patch: './y' } } }
+  const miss = ['bin', 'references', 'plugin', 'SKILL.md'].filter((f) => !(pkg.files || []).includes(f))
+  return (miss.length === 1 && miss[0] === 'references') || ('未抓到：' + JSON.stringify(miss))
+})
+
+check('整包：resolveRoot 必须含"包内自带"候选（否则整包装了也找不到能力树）', () => {
+  const src = readFileSync(join(ROOT, 'plugin', 'dist', 'plugin.js'), 'utf8')
+  return /包内自带/.test(src) || 'resolveRoot 缺包内自带候选（整包安装会找不到 bin/studio.cjs）'
+})
+
 for (const [name, fn] of asyncChecks) {
   try { const r = await fn(); results.push({ name, ok: r === true, detail: r === true ? '' : String(r) }) }
   catch (e) { results.push({ name, ok: false, detail: String((e && e.message) || e) }) }

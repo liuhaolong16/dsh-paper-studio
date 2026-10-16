@@ -41,197 +41,780 @@
     }
   ],
   "stage_skeletons": [
-    { "target": "00-输入.md", "title": "S0 输入", "fields": ["研究问题", "已有材料", "数据可得性", "目标刊或学位要求", "写作语言"],
+    {
+      "target": "00-输入.md",
+      "title": "S0 输入",
+      "fields": [
+        "研究问题",
+        "已有材料",
+        "数据可得性",
+        "目标刊或学位要求",
+        "写作语言"
+      ],
       "budget": "半页内（只填事实，不写论述）",
-      "must_answer": ["研究问题一句话是什么？", "材料属于哪一类（自有数据 / 已有半成品 / 仅方向）？"],
+      "must_answer": [
+        "研究问题一句话是什么？",
+        "材料属于哪一类（自有数据 / 已有半成品 / 仅方向）？"
+      ],
       "evidence_duty": "数据可得性只有两种写法：**已拿到（给路径）**或**未拿到（给获取计划）**；不许写「拟获取」。",
-      "gates": ["author-material"] },
-    { "target": "01-检索证据.md", "title": "S1 检索证据", "fields": ["每条引用：DOI / 标题（机器读过）/ 全文状态四分类"],
+      "gates": [
+        "author-material"
+      ]
+    },
+    {
+      "target": "01-检索证据.md",
+      "title": "S1 检索证据",
+      "fields": [
+        "每条引用：DOI / 标题（机器读过）/ 全文状态四分类"
+      ],
       "budget": "无上限，按条计（一条一行）",
-      "must_answer": ["这条来源支持哪一句 claim？", "全文状态是四分类里的哪一类？"],
+      "must_answer": [
+        "这条来源支持哪一句 claim？",
+        "全文状态是四分类里的哪一类？"
+      ],
       "evidence_duty": "DOI + **机器读过的**标题；四分类（全文可得 / 仅摘要 / 需登录⇒跳过不采信 / 未找到）；**取不回的不入表，但失败也要写进来**。",
-      "gates": ["claim-anchor", "review-protocol"] },
-    { "target": "02-选题.md", "title": "S2 选题", "fields": ["一句话 claim", "贡献三条", "缺口句"],
+      "gates": [
+        "claim-anchor",
+        "review-protocol"
+      ]
+    },
+    {
+      "target": "02-选题.md",
+      "title": "S2 选题",
+      "fields": [
+        "一句话 claim",
+        "贡献三条",
+        "缺口句"
+      ],
       "budget": "半页",
-      "must_answer": ["一句话 claim 是什么？", "缺口句凭什么说它是缺口（给可核验范围）？"],
+      "must_answer": [
+        "一句话 claim 是什么？",
+        "缺口句凭什么说它是缺口（给可核验范围）？"
+      ],
       "evidence_duty": "缺口/优先权断言必须带**检索范围或引用**（否则踩 claim-priority 硬失败）。",
-      "gates": ["contract"] },
-    { "target": "03-大纲.md", "title": "S3 大纲", "fields": ["章节 + 字数配比", "每节一句目的", "图表规划"],
+      "gates": [
+        "contract"
+      ]
+    },
+    {
+      "target": "03-大纲.md",
+      "title": "S3 大纲",
+      "fields": [
+        "章节 + 字数配比",
+        "每节一句目的",
+        "图表规划"
+      ],
       "budget": "一页；章节配比按刊物（实证类常见：引言 15–20% · 方法 20–25% · 结果 25–30% · 讨论 25–30%）",
-      "must_answer": ["每节的目的是什么？", "每个图表支撑哪一句 claim？"],
+      "must_answer": [
+        "每节的目的是什么？",
+        "每个图表支撑哪一句 claim？"
+      ],
       "evidence_duty": "每个图表都要有「它证明了什么」的一句话；没有这句话的图表不进大纲。",
-      "gates": ["contract"] },
-    { "target": "04-数据方法.md", "title": "S4 数据与方法", "fields": ["数据口径", "筛选判据", "随机种子与稳健性", "误差棒定义"],
+      "gates": [
+        "contract"
+      ]
+    },
+    {
+      "target": "04-数据方法.md",
+      "title": "S4 数据与方法",
+      "fields": [
+        "数据口径",
+        "筛选判据",
+        "随机种子与稳健性",
+        "误差棒定义"
+      ],
       "budget": "20–25% 篇幅",
-      "must_answer": ["随机性与重复次数怎么报？", "误差棒（或区间）的定义是什么？"],
+      "must_answer": [
+        "随机性与重复次数怎么报？",
+        "误差棒（或区间）的定义是什么？"
+      ],
       "evidence_duty": "**种子 / 重复次数 / 误差棒定义**三者必须可复算；二次数据要标 as reported by。",
-      "gates": ["contract", "phrase"] },
-    { "target": "05-缺陷核实.md", "title": "S4b 缺陷核实", "fields": ["口径/测量缺陷核实记录", "结论与其影响"],
+      "gates": [
+        "contract",
+        "phrase"
+      ]
+    },
+    {
+      "target": "05-缺陷核实.md",
+      "title": "S4b 缺陷核实",
+      "fields": [
+        "口径/测量缺陷核实记录",
+        "结论与其影响"
+      ],
       "budget": "半页",
-      "must_answer": ["哪些口径缺陷会影响结论？", "哪些部分我们**没有测**？"],
+      "must_answer": [
+        "哪些口径缺陷会影响结论？",
+        "哪些部分我们**没有测**？"
+      ],
       "evidence_duty": "未测不报：明确写「we refrain from asserting…」类表述（综述类门会查这条）。",
-      "gates": ["review-protocol"] },
-    { "target": "06-正文初稿.md", "title": "S5 正文", "fields": ["分节正文", "每段的证据来源"],
+      "gates": [
+        "review-protocol"
+      ]
+    },
+    {
+      "target": "06-正文初稿.md",
+      "title": "S5 正文",
+      "fields": [
+        "分节正文",
+        "每段的证据来源"
+      ],
       "budget": "全文 4000–8000 词（视刊物）；一节一写完就单跑门，不攒到最后",
-      "must_answer": ["每段支撑哪一句 claim？"],
+      "must_answer": [
+        "每段支撑哪一句 claim？"
+      ],
       "evidence_duty": "每段都要能指回 `01-检索证据.md` 某一行或作者材料；**指不回去的句子不许留在稿子里**。",
-      "gates": ["worknote-leak", "claim-anchor", "phrase"] },
-    { "target": "07-成品件.md", "title": "S6 成品件", "fields": ["图件数", "表件数", "docx 生成与复验记录"],
+      "gates": [
+        "worknote-leak",
+        "claim-anchor",
+        "phrase"
+      ]
+    },
+    {
+      "target": "07-成品件.md",
+      "title": "S6 成品件",
+      "fields": [
+        "图件数",
+        "表件数",
+        "docx 生成与复验记录"
+      ],
       "budget": "图 3–6 · 表 2–4（视刊物）",
-      "must_answer": ["docx 里还有没有残留标记？", "表图数与源稿是否一致？"],
+      "must_answer": [
+        "docx 里还有没有残留标记？",
+        "表图数与源稿是否一致？"
+      ],
       "evidence_duty": "重开 docx 数原生对象 + 扫残留标记 + 判 md↔docx 同步（三项都是机器判据）。",
-      "gates": ["docx-verify", "artifact-sync"] },
-    { "target": "09-投稿包清单.md", "title": "S7 投稿材料", "fields": ["目标刊要求摘录", "待作者确认项", "提交清单"],
+      "gates": [
+        "docx-verify",
+        "artifact-sync"
+      ]
+    },
+    {
+      "target": "09-投稿包清单.md",
+      "title": "S7 投稿材料",
+      "fields": [
+        "目标刊要求摘录",
+        "待作者确认项",
+        "提交清单"
+      ],
       "budget": "一页",
-      "must_answer": ["目标刊要求的四段声明怎么措辞？", "还有哪些**只有作者能确认**的项？"],
+      "must_answer": [
+        "目标刊要求的四段声明怎么措辞？",
+        "还有哪些**只有作者能确认**的项？"
+      ],
       "evidence_duty": "四段声明必须原文可查；AI 使用声明写**实际使用范围**（不写范围等于没写）。",
-      "gates": ["declaration-set", "journal-contract"] }
+      "gates": [
+        "declaration-set",
+        "journal-contract"
+      ]
+    }
   ],
   "methodology_index": {
     "note": "11 维方法论真源（不复制，指路径）",
     "root": "D:\\DeepSeek\\research-paper-playbook\\research\\",
     "dimensions": [
-      { "id": "01", "file": "01-topic-selection.md", "label": "选题" },
-      { "id": "02", "file": "02-framework.md", "label": "框架" },
-      { "id": "03", "file": "03-structure.md", "label": "结构" },
-      { "id": "04", "file": "04-databases.md", "label": "数据库" },
-      { "id": "04b", "file": "04b-取材台账.md", "label": "取材台账" },
-      { "id": "05", "file": "05-references.md", "label": "参考文献" },
-      { "id": "06", "file": "06-content.md", "label": "内容" },
-      { "id": "07", "file": "07-abstract.md", "label": "摘要" },
-      { "id": "08", "file": "08-writing-style.md", "label": "写法" },
-      { "id": "09", "file": "09-dedup-and-ai-rate.md", "label": "降重" },
-      { "id": "10", "file": "10-statistics.md", "label": "统计" },
-      { "id": "11", "file": "11-image-integrity.md", "label": "图像完整性" }
+      {
+        "id": "01",
+        "file": "01-topic-selection.md",
+        "label": "选题"
+      },
+      {
+        "id": "02",
+        "file": "02-framework.md",
+        "label": "框架"
+      },
+      {
+        "id": "03",
+        "file": "03-structure.md",
+        "label": "结构"
+      },
+      {
+        "id": "04",
+        "file": "04-databases.md",
+        "label": "数据库"
+      },
+      {
+        "id": "04b",
+        "file": "04b-取材台账.md",
+        "label": "取材台账"
+      },
+      {
+        "id": "05",
+        "file": "05-references.md",
+        "label": "参考文献"
+      },
+      {
+        "id": "06",
+        "file": "06-content.md",
+        "label": "内容"
+      },
+      {
+        "id": "07",
+        "file": "07-abstract.md",
+        "label": "摘要"
+      },
+      {
+        "id": "08",
+        "file": "08-writing-style.md",
+        "label": "写法"
+      },
+      {
+        "id": "09",
+        "file": "09-dedup-and-ai-rate.md",
+        "label": "降重"
+      },
+      {
+        "id": "10",
+        "file": "10-statistics.md",
+        "label": "统计"
+      },
+      {
+        "id": "11",
+        "file": "11-image-integrity.md",
+        "label": "图像完整性"
+      }
     ]
   },
   "stage_skeletons_by_genre": {
     "note": "**按体裁选阶段骨架**（V1.6 · 框架-模型联动）。缺省（未列出的体裁，如 empirical/methodological/secondary-analysis）用上面的 `stage_skeletons`；`review` 用下面这套。",
     "attribution": "综述套骨架的**条目结构**参考 PRISMA 2020 清单（27 条；Page MJ, McKenzie JE, Bossuyt PM, Boutron I, Hoffmann TC, Mulrow CD, et al. The PRISMA 2020 statement: an updated guideline for reporting systematic reviews. BMJ 2021;372:n71. doi:10.1136/bmj.n71），该清单以 **CC BY 4.0** 分发。**本插件只借条目结构与编号对应，不搬其正文措辞**；每节括号内标注对应条目号，便于作者回查官方清单。",
     "review": [
-      { "target": "R0-协议与注册.md", "title": "R0 协议与注册（PRISMA #24a/b/c）", "fields": ["注册库名 + 注册号，或明确「未注册」", "协议可访问位置，或明确「未准备协议」", "相对协议的任何改动及其原因"],
-        "budget": "半页", "must_answer": ["这篇综述注册了吗？注册号是什么？", "协议在哪？做了哪些改动？为什么？"],
+      {
+        "target": "R0-协议与注册.md",
+        "title": "R0 协议与注册（PRISMA #24a/b/c）",
+        "fields": [
+          "注册库名 + 注册号，或明确「未注册」",
+          "协议可访问位置，或明确「未准备协议」",
+          "相对协议的任何改动及其原因"
+        ],
+        "budget": "半页",
+        "must_answer": [
+          "这篇综述注册了吗？注册号是什么？",
+          "协议在哪？做了哪些改动？为什么？"
+        ],
         "evidence_duty": "三种状态都可写（已注册 / 未注册 / 未准备协议），但**必须如实写明是哪一种**；不许留空。",
-        "gates": ["review-protocol"] },
-      { "target": "R1-检索来源与时间.md", "title": "R1 检索来源与时间（PRISMA #6）", "fields": ["逐一列出数据库/注册库/网站/机构/参考文献表", "**每个来源的最后检索日期**"],
-        "budget": "半页到一页（按来源数）", "must_answer": ["一共检索了哪些来源？", "每个来源最后一次检索是哪天？"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R1-检索来源与时间.md",
+        "title": "R1 检索来源与时间（PRISMA #6）",
+        "fields": [
+          "逐一列出数据库/注册库/网站/机构/参考文献表",
+          "**每个来源的最后检索日期**"
+        ],
+        "budget": "半页到一页（按来源数）",
+        "must_answer": [
+          "一共检索了哪些来源？",
+          "每个来源最后一次检索是哪天？"
+        ],
         "evidence_duty": "来源与日期必须成对出现；只写「我们检索了 arXiv」而不给日期，等于不可复算。",
-        "gates": ["review-protocol"] },
-      { "target": "R2-检索式与纳排.md", "title": "R2 检索式与纳排（PRISMA #7 + #5）", "fields": ["各库**完整检索式**（含过滤器与限制）", "纳入标准 / 排除标准", "纳入研究如何分组（供合成用）"],
-        "budget": "一页以上（检索式可以放附录）", "must_answer": ["检索式能被人照抄复算吗？", "为什么把某些研究排除在合成之外？"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R2-检索式与纳排.md",
+        "title": "R2 检索式与纳排（PRISMA #7 + #5）",
+        "fields": [
+          "各库**完整检索式**（含过滤器与限制）",
+          "纳入标准 / 排除标准",
+          "纳入研究如何分组（供合成用）"
+        ],
+        "budget": "一页以上（检索式可以放附录）",
+        "must_answer": [
+          "检索式能被人照抄复算吗？",
+          "为什么把某些研究排除在合成之外？"
+        ],
         "evidence_duty": "检索式要**完整**（含限定条件）；否决类选择要给理由（如「限高影响刊会偏向我们正要评估的报告规范」）。",
-        "gates": ["review-protocol"] },
-      { "target": "R3-筛选流程与复核.md", "title": "R3 筛选流程与独立复核（PRISMA #8）", "fields": ["每条记录/每份报告由几名复核者筛", "是否独立双人", "若用了自动化工具：工具名与用法"],
-        "budget": "半页", "must_answer": ["筛选是几个人做的？独立吗？", "用了自动化工具吗？用在哪一步？"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R3-筛选流程与复核.md",
+        "title": "R3 筛选流程与独立复核（PRISMA #8）",
+        "fields": [
+          "每条记录/每份报告由几名复核者筛",
+          "是否独立双人",
+          "若用了自动化工具：工具名与用法"
+        ],
+        "budget": "半页",
+        "must_answer": [
+          "筛选是几个人做的？独立吗？",
+          "用了自动化工具吗？用在哪一步？"
+        ],
         "evidence_duty": "「用了自动化工具」必须写出**用在哪一步**（检索/去重/筛选/提取），否则读者无法判断误差来源。",
-        "gates": ["review-protocol"] },
-      { "target": "R4-数据提取与数据项.md", "title": "R4 数据提取与数据项（PRISMA #9 + #10）", "fields": ["几名提取者、是否独立、如何向原作者求证", "结局（outcomes）的定义与检索范围", "其它变量（样本/干预/资助等）与缺失处理假设"],
-        "budget": "半页到一页", "must_answer": ["提取是几人做的？", "哪些结局与变量被提取，缺的怎么办？"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R4-数据提取与数据项.md",
+        "title": "R4 数据提取与数据项（PRISMA #9 + #10）",
+        "fields": [
+          "几名提取者、是否独立、如何向原作者求证",
+          "结局（outcomes）的定义与检索范围",
+          "其它变量（样本/干预/资助等）与缺失处理假设"
+        ],
+        "budget": "半页到一页",
+        "must_answer": [
+          "提取是几人做的？",
+          "哪些结局与变量被提取，缺的怎么办？"
+        ],
         "evidence_duty": "数据项的**定义**要写出来；「未报告」与「未提取」必须区分。",
-        "gates": ["review-protocol"] },
-      { "target": "R5-偏倚风险与效应量.md", "title": "R5 偏倚风险与效应量（PRISMA #11 + #12）", "fields": ["偏倚风险评估**工具名**、几名评估者、是否独立", "每个结局用的效应量（如 RR / MD / 未做定量合成）"],
-        "budget": "半页到一页", "must_answer": ["用什么工具评估偏倚风险？", "每个结局的效应量是什么？没做定量合成吗？"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R5-偏倚风险与效应量.md",
+        "title": "R5 偏倚风险与效应量（PRISMA #11 + #12）",
+        "fields": [
+          "偏倚风险评估**工具名**、几名评估者、是否独立",
+          "每个结局用的效应量（如 RR / MD / 未做定量合成）"
+        ],
+        "budget": "半页到一页",
+        "must_answer": [
+          "用什么工具评估偏倚风险？",
+          "每个结局的效应量是什么？没做定量合成吗？"
+        ],
         "evidence_duty": "**没做**定量合成时要明确写「未做定量合成」，不许含糊（这与「未测不报」是同一条纪律）。",
-        "gates": ["review-protocol"] },
-      { "target": "R6-合成方法.md", "title": "R6 合成方法（PRISMA #13a–f）", "fields": ["哪些研究进入每个合成（判定过程）", "数据准备/换算/缺失统计量处理", "合成模型、异质性识别方法、**软件包**", "亚组/元回归、敏感性分析"],
-        "budget": "一页", "must_answer": ["用了什么模型与软件？", "异质性与敏感性怎么查的？（没做就写没做）"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R6-合成方法.md",
+        "title": "R6 合成方法（PRISMA #13a–f）",
+        "fields": [
+          "哪些研究进入每个合成（判定过程）",
+          "数据准备/换算/缺失统计量处理",
+          "合成模型、异质性识别方法、**软件包**",
+          "亚组/元回归、敏感性分析"
+        ],
+        "budget": "一页",
+        "must_answer": [
+          "用了什么模型与软件？",
+          "异质性与敏感性怎么查的？（没做就写没做）"
+        ],
         "evidence_duty": "软件包名、模型、异质性指标三者必写；**做了没写与没做混同是最常见的复现障碍**。",
-        "gates": ["review-protocol"] },
-      { "target": "R7-结果与流程计数.md", "title": "R7 结果与流程计数（PRISMA #16a/b + #17–#22）", "fields": ["**从检索到的记录数 → 筛后 → 纳入研究数**的完整计数（建议流程图）", "被排除但看似符合的研究及理由", "纳入研究的特征、偏倚风险、合成结果与确定性"],
-        "budget": "全文最大的一块（视研究数）", "must_answer": ["检索到多少 → 筛掉多少 → 纳入多少？（每个数都要有）", "哪些看起来符合却被排除？为什么？"],
+        "gates": [
+          "review-protocol"
+        ]
+      },
+      {
+        "target": "R7-结果与流程计数.md",
+        "title": "R7 结果与流程计数（PRISMA #16a/b + #17–#22）",
+        "fields": [
+          "**从检索到的记录数 → 筛后 → 纳入研究数**的完整计数（建议流程图）",
+          "被排除但看似符合的研究及理由",
+          "纳入研究的特征、偏倚风险、合成结果与确定性"
+        ],
+        "budget": "全文最大的一块（视研究数）",
+        "must_answer": [
+          "检索到多少 → 筛掉多少 → 纳入多少？（每个数都要有）",
+          "哪些看起来符合却被排除？为什么？"
+        ],
         "evidence_duty": "**流程计数至少给出两个阶段的数字**（记录数 / 纳入数），并尽量配流程图；近似被排除者要逐条给理由。",
-        "gates": ["review-protocol", "claim-anchor"] },
-      { "target": "R8-讨论与可得性.md", "title": "R8 讨论与可得性（PRISMA #23 + #27）", "fields": ["结果在既有证据中的位置", "**证据的**局限 + **综述过程**的局限（分列）", "对实践/政策/未来研究的意义", "数据/代码/材料公开位置（提取表、数据、分析代码等）"],
-        "budget": "一页以上", "must_answer": ["证据本身的局限与**我们流程**的局限分别是哪些？", "哪些材料公开、在哪？"],
+        "gates": [
+          "review-protocol",
+          "claim-anchor"
+        ]
+      },
+      {
+        "target": "R8-讨论与可得性.md",
+        "title": "R8 讨论与可得性（PRISMA #23 + #27）",
+        "fields": [
+          "结果在既有证据中的位置",
+          "**证据的**局限 + **综述过程**的局限（分列）",
+          "对实践/政策/未来研究的意义",
+          "数据/代码/材料公开位置（提取表、数据、分析代码等）"
+        ],
+        "budget": "一页以上",
+        "must_answer": [
+          "证据本身的局限与**我们流程**的局限分别是哪些？",
+          "哪些材料公开、在哪？"
+        ],
         "evidence_duty": "局限必须**分两类**（证据的 / 过程的）；可得性要写到「在哪」而不是「可索取」。",
-        "gates": ["review-protocol", "declaration-set"] }
+        "gates": [
+          "review-protocol",
+          "declaration-set"
+        ]
+      }
     ]
   },
   "section_skeletons_by_genre": {
     "note": "**章节级论文框架**（V2.0 · 框架层细化）：阶段级骨架（S0–S7 / R0–R8）回答「写作按什么顺序推进」，本节回答「**每一节要解决什么、必答什么、写多少、拿什么证据、过哪道门**」。缺省（empirical/methodological/secondary-analysis）用 `default`（IMRaD 十节）；`review` 用 `review`。",
     "default": [
-      { "id": "title", "label": "标题", "purpose": "一句话说清「做了什么 + 在什么对象上 + 得到什么」。",
-        "must_answer": ["读者只看标题，知不知道这篇在做什么？"],
-        "budget_words": "12–20 词 / 20–35 字", "evidence_duty": "标题里不出现未定义缩写；不承诺结论强度超过设计。",
-        "gates": ["contract"], "common_failures": ["标题里塞方法名堆砌", "把相关性写成因果"] },
-      { "id": "abstract", "label": "摘要", "purpose": "独立可读的全文缩影：问题 → 方法 → 主要结果（带数字）→ 结论。",
-        "must_answer": ["有没有给出**具体数字**或明确的不确定性？", "结论有没有超出证据？"],
-        "budget_words": "150–250 词 / 250–400 字", "evidence_duty": "摘要里的每个数字都必须能在正文找到同口径来源。",
-        "gates": ["phrase", "contract"], "common_failures": ["只有背景没有结果", "结论比正文强"] },
-      { "id": "highlights", "label": "亮点（部分刊物要求）", "purpose": "3–5 条、每条 ≤85 字符，讲**发现**不讲方法。",
-        "must_answer": ["每一条是否都是本文自己的发现？"],
-        "budget_words": "3–5 条 · 每条 ≤85 字符", "evidence_duty": "每条都能对到正文某处结果。",
-        "gates": ["contract"], "common_failures": ["把方法当亮点", "条数或长度超标"] },
-      { "id": "introduction", "label": "引言", "purpose": "把读者从领域背景带到**本文要解决的那个具体缺口**。",
-        "must_answer": ["缺口句凭什么说是缺口（检索范围或引用）？", "本文贡献是什么（可数、可核）？"],
-        "budget_words": "全文 15–20%（约 600–1200 词）", "evidence_duty": "缺口/优先权断言必须带检索范围或引用（否则踩 claim-priority）。",
-        "gates": ["contract", "claim-anchor"], "common_failures": ["只综述不给缺口", "贡献与结论不对应"] },
-      { "id": "methods", "label": "方法", "purpose": "让别人能照着复算：数据、口径、筛选、参数、随机性、误差定义。",
-        "must_answer": ["随机性与重复次数怎么报？", "误差棒/区间的定义是什么？"],
-        "budget_words": "全文 20–25%", "evidence_duty": "种子/重复次数/误差棒定义三者必须可复算；二次数据要标 as reported by。",
-        "gates": ["contract", "review-protocol"], "common_failures": ["缺误差定义", "口径前后不一致"] },
-      { "id": "results", "label": "结果", "purpose": "只呈现观察到的事实与统计量，不做解释。",
-        "must_answer": ["每个图表各自支撑哪一句 claim？", "有没有把没做的事写成做了？"],
-        "budget_words": "全文 25–30%", "evidence_duty": "图表与正文数字必须同口径同单位；未测的写 refrained from asserting。",
-        "gates": ["claim-anchor", "contract"], "common_failures": ["结果里夹讨论", "图注与正文数字不一致"] },
-      { "id": "discussion", "label": "讨论", "purpose": "把结果放回既有证据里，并**分开**写证据的局限与本研究过程的局限。",
-        "must_answer": ["证据本身局限与本文过程局限分别是哪些？", "结论是否被设计支持（相关性 vs 因果）？"],
-        "budget_words": "全文 25–30%", "evidence_duty": "局限分两类写；「不影响结论」要给理由（如结论是否证性的）。",
-        "gates": ["phrase", "claim-anchor"], "common_failures": ["局限写成免责声明", "把相关性讲成机制"] },
-      { "id": "conclusion", "label": "结论", "purpose": "只回收本文能支撑的结论 + 一句下一步。",
-        "must_answer": ["结论句与结果是否一一对应？"],
-        "budget_words": "150–300 词", "evidence_duty": "不引入新数据、新引用。",
-        "gates": ["contract"], "common_failures": ["引入新内容", "重复摘要"] },
-      { "id": "back-matter", "label": "后置件（声明 / 参考文献 / 补充材料）", "purpose": "把投稿硬项与可得性一次对齐。",
-        "must_answer": ["四段声明齐不齐？材料公开写到「在哪」了吗？", "写了 AI 使用的话，**有没有说明未发表数据是否外发第三方服务**？"],
-        "budget_words": "按刊物", "evidence_duty": "四段声明原文可查；补充材料给可访问位置。",
-        "gates": ["declaration-set", "journal-contract", "confidentiality"], "common_failures": ["声明缺失或空泛", "补充材料无可访问位置"] },
-      { "id": "figures-tables", "label": "图表（横切面）", "purpose": "每个图表都是一个可独立读懂的证据单元。",
-        "must_answer": ["图注是否自足（不看正文也能懂）？", "表图数与源稿一致吗？"],
-        "budget_words": "图 3–6 · 表 2–4", "evidence_duty": "图注写清口径、单位、误差与采集日期；成品件核验器会数原生对象。",
-        "gates": ["docx-verify", "artifact-sync"], "common_failures": ["图注不自足", "转换后丢图或残留标记"] },
-      { "id": "whole-doc", "label": "全文横切面：工作注记与隐私", "purpose": "全文级的两个「不该出现」：工作注记（待填/TODO/内部记录）不许进正文；内部路径、敏感标识与审稿痕迹不许进投稿稿。",
-        "must_answer": ["正文里还有没有「待填/见附件」这类工作注记？", "有没有本机路径、内部材料名、身份或患者类信息？"],
-        "budget_words": "全文（不是某一节的篇幅问题，是全文扫描）", "evidence_duty": "主稿与工作注记**物理分开**；敏感项必须脱敏，审稿痕迹留在 response letter 里。",
-        "gates": ["worknote-leak", "confidentiality"], "common_failures": ["把「待填写」留在正文", "本机路径进了致谢或数据段"] }
+      {
+        "id": "title",
+        "label": "标题",
+        "purpose": "一句话说清「做了什么 + 在什么对象上 + 得到什么」。",
+        "must_answer": [
+          "读者只看标题，知不知道这篇在做什么？"
+        ],
+        "budget_words": "12–20 词 / 20–35 字",
+        "evidence_duty": "标题里不出现未定义缩写；不承诺结论强度超过设计。",
+        "gates": [
+          "contract"
+        ],
+        "common_failures": [
+          "标题里塞方法名堆砌",
+          "把相关性写成因果"
+        ]
+      },
+      {
+        "id": "abstract",
+        "label": "摘要",
+        "purpose": "独立可读的全文缩影：问题 → 方法 → 主要结果（带数字）→ 结论。",
+        "must_answer": [
+          "有没有给出**具体数字**或明确的不确定性？",
+          "结论有没有超出证据？"
+        ],
+        "budget_words": "150–250 词 / 250–400 字",
+        "evidence_duty": "摘要里的每个数字都必须能在正文找到同口径来源。",
+        "gates": [
+          "phrase",
+          "contract"
+        ],
+        "common_failures": [
+          "只有背景没有结果",
+          "结论比正文强"
+        ]
+      },
+      {
+        "id": "highlights",
+        "label": "亮点（部分刊物要求）",
+        "purpose": "3–5 条、每条 ≤85 字符，讲**发现**不讲方法。",
+        "must_answer": [
+          "每一条是否都是本文自己的发现？"
+        ],
+        "budget_words": "3–5 条 · 每条 ≤85 字符",
+        "evidence_duty": "每条都能对到正文某处结果。",
+        "gates": [
+          "contract"
+        ],
+        "common_failures": [
+          "把方法当亮点",
+          "条数或长度超标"
+        ]
+      },
+      {
+        "id": "introduction",
+        "label": "引言",
+        "purpose": "把读者从领域背景带到**本文要解决的那个具体缺口**。",
+        "must_answer": [
+          "缺口句凭什么说是缺口（检索范围或引用）？",
+          "本文贡献是什么（可数、可核）？"
+        ],
+        "budget_words": "全文 15–20%（约 600–1200 词）",
+        "evidence_duty": "缺口/优先权断言必须带检索范围或引用（否则踩 claim-priority）。",
+        "gates": [
+          "contract",
+          "claim-anchor"
+        ],
+        "common_failures": [
+          "只综述不给缺口",
+          "贡献与结论不对应"
+        ]
+      },
+      {
+        "id": "methods",
+        "label": "方法",
+        "purpose": "让别人能照着复算：数据、口径、筛选、参数、随机性、误差定义。",
+        "must_answer": [
+          "随机性与重复次数怎么报？",
+          "误差棒/区间的定义是什么？"
+        ],
+        "budget_words": "全文 20–25%",
+        "evidence_duty": "种子/重复次数/误差棒定义三者必须可复算；二次数据要标 as reported by。",
+        "gates": [
+          "contract",
+          "review-protocol"
+        ],
+        "common_failures": [
+          "缺误差定义",
+          "口径前后不一致"
+        ]
+      },
+      {
+        "id": "results",
+        "label": "结果",
+        "purpose": "只呈现观察到的事实与统计量，不做解释。",
+        "must_answer": [
+          "每个图表各自支撑哪一句 claim？",
+          "有没有把没做的事写成做了？"
+        ],
+        "budget_words": "全文 25–30%",
+        "evidence_duty": "图表与正文数字必须同口径同单位；未测的写 refrained from asserting。",
+        "gates": [
+          "claim-anchor",
+          "contract"
+        ],
+        "common_failures": [
+          "结果里夹讨论",
+          "图注与正文数字不一致"
+        ]
+      },
+      {
+        "id": "discussion",
+        "label": "讨论",
+        "purpose": "把结果放回既有证据里，并**分开**写证据的局限与本研究过程的局限。",
+        "must_answer": [
+          "证据本身局限与本文过程局限分别是哪些？",
+          "结论是否被设计支持（相关性 vs 因果）？"
+        ],
+        "budget_words": "全文 25–30%",
+        "evidence_duty": "局限分两类写；「不影响结论」要给理由（如结论是否证性的）。",
+        "gates": [
+          "phrase",
+          "claim-anchor"
+        ],
+        "common_failures": [
+          "局限写成免责声明",
+          "把相关性讲成机制"
+        ]
+      },
+      {
+        "id": "conclusion",
+        "label": "结论",
+        "purpose": "只回收本文能支撑的结论 + 一句下一步。",
+        "must_answer": [
+          "结论句与结果是否一一对应？"
+        ],
+        "budget_words": "150–300 词",
+        "evidence_duty": "不引入新数据、新引用。",
+        "gates": [
+          "contract"
+        ],
+        "common_failures": [
+          "引入新内容",
+          "重复摘要"
+        ]
+      },
+      {
+        "id": "back-matter",
+        "label": "后置件（声明 / 参考文献 / 补充材料）",
+        "purpose": "把投稿硬项与可得性一次对齐。",
+        "must_answer": [
+          "四段声明齐不齐？材料公开写到「在哪」了吗？",
+          "写了 AI 使用的话，**有没有说明未发表数据是否外发第三方服务**？"
+        ],
+        "budget_words": "按刊物",
+        "evidence_duty": "四段声明原文可查；补充材料给可访问位置。",
+        "gates": [
+          "declaration-set",
+          "journal-contract",
+          "confidentiality"
+        ],
+        "common_failures": [
+          "声明缺失或空泛",
+          "补充材料无可访问位置"
+        ]
+      },
+      {
+        "id": "figures-tables",
+        "label": "图表（横切面）",
+        "purpose": "每个图表都是一个可独立读懂的证据单元。",
+        "must_answer": [
+          "图注是否自足（不看正文也能懂）？",
+          "表图数与源稿一致吗？"
+        ],
+        "budget_words": "图 3–6 · 表 2–4",
+        "evidence_duty": "图注写清口径、单位、误差与采集日期；成品件核验器会数原生对象。",
+        "gates": [
+          "docx-verify",
+          "artifact-sync"
+        ],
+        "common_failures": [
+          "图注不自足",
+          "转换后丢图或残留标记"
+        ]
+      },
+      {
+        "id": "whole-doc",
+        "label": "全文横切面：工作注记与隐私",
+        "purpose": "全文级的两个「不该出现」：工作注记（待填/TODO/内部记录）不许进正文；内部路径、敏感标识与审稿痕迹不许进投稿稿。",
+        "must_answer": [
+          "正文里还有没有「待填/见附件」这类工作注记？",
+          "有没有本机路径、内部材料名、身份或患者类信息？"
+        ],
+        "budget_words": "全文（不是某一节的篇幅问题，是全文扫描）",
+        "evidence_duty": "主稿与工作注记**物理分开**；敏感项必须脱敏，审稿痕迹留在 response letter 里。",
+        "gates": [
+          "worknote-leak",
+          "confidentiality"
+        ],
+        "common_failures": [
+          "把「待填写」留在正文",
+          "本机路径进了致谢或数据段"
+        ]
+      }
     ],
     "review": [
-      { "id": "title", "label": "标题", "purpose": "标明这是系统综述 + 对象 + 范围（PRISMA #1）。",
-        "must_answer": ["标题里能不能看出是综述、综述的是什么？"],
-        "budget_words": "12–20 词 / 20–35 字", "evidence_duty": "不含未定义缩写。",
-        "gates": ["contract"], "common_failures": ["看不出是综述"] },
-      { "id": "abstract", "label": "摘要（结构化）", "purpose": "按 PRISMA-Abstracts 的结构写：目的 / 数据来源 / 纳排 / 结果数 / 结论（PRISMA #2）。",
-        "must_answer": ["有没有给出**检索到的记录数与纳入研究数**？"],
-        "budget_words": "200–300 词", "evidence_duty": "摘要里的计数必须与正文流程计数一致。",
-        "gates": ["review-protocol", "phrase"], "common_failures": ["摘要缺流程计数"] },
-      { "id": "introduction", "label": "引言", "purpose": "说清为什么要做这次综述、它回答什么问题（PRISMA #3、#4）。",
-        "must_answer": ["研究对象与问题（RQ）是否可数、可核？"],
-        "budget_words": "全文 15–20%", "evidence_duty": "缺口断言带检索范围或引用。",
-        "gates": ["contract", "claim-anchor"], "common_failures": ["问题太宽不可核"] },
-      { "id": "methods", "label": "方法（协议 / 检索 / 筛选 / 提取 / 偏倚 / 合成）", "purpose": "让人能照着复算整条流程（PRISMA #5–#15）。",
-        "must_answer": ["纳排标准、检索式、各来源最后检索日期、筛选与提取各几人、偏倚风险用什么工具、合成模型与软件——这些齐了吗？"],
-        "budget_words": "全文 20–30%", "evidence_duty": "路径与非路径、做了与没做都要写；**没做定量合成要明说**。",
-        "gates": ["review-protocol"], "common_failures": ["缺检索日期", "未写软件包", "没做合成却含糊"] },
-      { "id": "results", "label": "结果（含流程计数）", "purpose": "从检出记录数到纳入研究数的完整链条 + 研究特征 + 偏倚 + 合成结果（PRISMA #16–#22）。",
-        "must_answer": ["检索到 N → 筛后 N → 纳入 N，三个数齐不齐？", "被排除但看似符合的研究，理由写了吗？"],
-        "budget_words": "全文 25–35%", "evidence_duty": "计数取下界并标口径；近似排除逐条给理由。",
-        "gates": ["review-protocol", "claim-anchor"], "common_failures": ["只有结论没有流程数字"] },
-      { "id": "discussion", "label": "讨论", "purpose": "证据总体的解读 + **证据的局限**与**综述过程的局限**分列 + 意义（PRISMA #23）。",
-        "must_answer": ["两类局限分开了吗？", "确定性（certainty）怎么表述的？"],
-        "budget_words": "全文 20–25%", "evidence_duty": "局限分两类；结论强度不超过证据强度。",
-        "gates": ["review-protocol", "phrase"], "common_failures": ["局限混作一段", "结论过强"] },
-      { "id": "back-matter", "label": "后置件（注册 / 支持 / 利益 / 可得性）", "purpose": "注册与协议状态、资助、竞争利益、数据代码材料可得性（PRISMA #24–#27）。",
-        "must_answer": ["注册了吗（没注册也要写明）？材料公开写到「在哪」了吗？", "写了 AI 使用的话，**有没有说明未发表数据是否外发第三方服务**？"],
-        "budget_words": "按刊物", "evidence_duty": "四态都要如实写；可得性必须给位置。",
-        "gates": ["review-protocol", "declaration-set", "confidentiality", "journal-contract"], "common_failures": ["注册状态空着"] },
-      { "id": "figures-tables", "label": "图表（横切面：流程图 / 汇总表）", "purpose": "综述的图不是装饰：**PRISMA 流程计数**通常就画成流程图，纳入研究特征与偏倚风险多为汇总表。",
-        "must_answer": ["流程计数有没有配一张流程图或表？", "表图数与成品件一致吗？"],
-        "budget_words": "流程图 1 + 汇总表 1–3", "evidence_duty": "图注自足；成品件核验器会数原生对象（转换后丢图/残留标记都要抓）。",
-        "gates": ["docx-verify", "artifact-sync"], "common_failures": ["流程计数只用文字", "转换后残留标记"] },
-      { "id": "whole-doc", "label": "全文横切面：工作注记与隐私", "purpose": "全文级的两个「不该出现」：工作注记不许进正文；内部路径、敏感标识与审稿痕迹不许进投稿稿。",
-        "must_answer": ["正文里还有没有「待填写/待补」这类工作注记？", "有没有本机路径、内部材料名或敏感标识？"],
-        "budget_words": "全文扫描", "evidence_duty": "主稿与工作注记物理分开；敏感项脱敏。",
-        "gates": ["worknote-leak", "confidentiality"], "common_failures": ["「待填写」留在摘要或声明段"] }
+      {
+        "id": "title",
+        "label": "标题",
+        "purpose": "标明这是系统综述 + 对象 + 范围（PRISMA #1）。",
+        "must_answer": [
+          "标题里能不能看出是综述、综述的是什么？"
+        ],
+        "budget_words": "12–20 词 / 20–35 字",
+        "evidence_duty": "不含未定义缩写。",
+        "gates": [
+          "contract"
+        ],
+        "common_failures": [
+          "看不出是综述"
+        ]
+      },
+      {
+        "id": "abstract",
+        "label": "摘要（结构化）",
+        "purpose": "按 PRISMA-Abstracts 的结构写：目的 / 数据来源 / 纳排 / 结果数 / 结论（PRISMA #2）。",
+        "must_answer": [
+          "有没有给出**检索到的记录数与纳入研究数**？"
+        ],
+        "budget_words": "200–300 词",
+        "evidence_duty": "摘要里的计数必须与正文流程计数一致。",
+        "gates": [
+          "review-protocol",
+          "phrase"
+        ],
+        "common_failures": [
+          "摘要缺流程计数"
+        ]
+      },
+      {
+        "id": "introduction",
+        "label": "引言",
+        "purpose": "说清为什么要做这次综述、它回答什么问题（PRISMA #3、#4）。",
+        "must_answer": [
+          "研究对象与问题（RQ）是否可数、可核？"
+        ],
+        "budget_words": "全文 15–20%",
+        "evidence_duty": "缺口断言带检索范围或引用。",
+        "gates": [
+          "contract",
+          "claim-anchor"
+        ],
+        "common_failures": [
+          "问题太宽不可核"
+        ]
+      },
+      {
+        "id": "methods",
+        "label": "方法（协议 / 检索 / 筛选 / 提取 / 偏倚 / 合成）",
+        "purpose": "让人能照着复算整条流程（PRISMA #5–#15）。",
+        "must_answer": [
+          "纳排标准、检索式、各来源最后检索日期、筛选与提取各几人、偏倚风险用什么工具、合成模型与软件——这些齐了吗？"
+        ],
+        "budget_words": "全文 20–30%",
+        "evidence_duty": "路径与非路径、做了与没做都要写；**没做定量合成要明说**。",
+        "gates": [
+          "review-protocol"
+        ],
+        "common_failures": [
+          "缺检索日期",
+          "未写软件包",
+          "没做合成却含糊"
+        ]
+      },
+      {
+        "id": "results",
+        "label": "结果（含流程计数）",
+        "purpose": "从检出记录数到纳入研究数的完整链条 + 研究特征 + 偏倚 + 合成结果（PRISMA #16–#22）。",
+        "must_answer": [
+          "检索到 N → 筛后 N → 纳入 N，三个数齐不齐？",
+          "被排除但看似符合的研究，理由写了吗？"
+        ],
+        "budget_words": "全文 25–35%",
+        "evidence_duty": "计数取下界并标口径；近似排除逐条给理由。",
+        "gates": [
+          "review-protocol",
+          "claim-anchor"
+        ],
+        "common_failures": [
+          "只有结论没有流程数字"
+        ]
+      },
+      {
+        "id": "discussion",
+        "label": "讨论",
+        "purpose": "证据总体的解读 + **证据的局限**与**综述过程的局限**分列 + 意义（PRISMA #23）。",
+        "must_answer": [
+          "两类局限分开了吗？",
+          "确定性（certainty）怎么表述的？"
+        ],
+        "budget_words": "全文 20–25%",
+        "evidence_duty": "局限分两类；结论强度不超过证据强度。",
+        "gates": [
+          "review-protocol",
+          "phrase"
+        ],
+        "common_failures": [
+          "局限混作一段",
+          "结论过强"
+        ]
+      },
+      {
+        "id": "back-matter",
+        "label": "后置件（注册 / 支持 / 利益 / 可得性）",
+        "purpose": "注册与协议状态、资助、竞争利益、数据代码材料可得性（PRISMA #24–#27）。",
+        "must_answer": [
+          "注册了吗（没注册也要写明）？材料公开写到「在哪」了吗？",
+          "写了 AI 使用的话，**有没有说明未发表数据是否外发第三方服务**？"
+        ],
+        "budget_words": "按刊物",
+        "evidence_duty": "四态都要如实写；可得性必须给位置。",
+        "gates": [
+          "review-protocol",
+          "declaration-set",
+          "confidentiality",
+          "journal-contract"
+        ],
+        "common_failures": [
+          "注册状态空着"
+        ]
+      },
+      {
+        "id": "figures-tables",
+        "label": "图表（横切面：流程图 / 汇总表）",
+        "purpose": "综述的图不是装饰：**PRISMA 流程计数**通常就画成流程图，纳入研究特征与偏倚风险多为汇总表。",
+        "must_answer": [
+          "流程计数有没有配一张流程图或表？",
+          "表图数与成品件一致吗？"
+        ],
+        "budget_words": "流程图 1 + 汇总表 1–3",
+        "evidence_duty": "图注自足；成品件核验器会数原生对象（转换后丢图/残留标记都要抓）。",
+        "gates": [
+          "docx-verify",
+          "artifact-sync"
+        ],
+        "common_failures": [
+          "流程计数只用文字",
+          "转换后残留标记"
+        ]
+      },
+      {
+        "id": "whole-doc",
+        "label": "全文横切面：工作注记与隐私",
+        "purpose": "全文级的两个「不该出现」：工作注记不许进正文；内部路径、敏感标识与审稿痕迹不许进投稿稿。",
+        "must_answer": [
+          "正文里还有没有「待填写/待补」这类工作注记？",
+          "有没有本机路径、内部材料名或敏感标识？"
+        ],
+        "budget_words": "全文扫描",
+        "evidence_duty": "主稿与工作注记物理分开；敏感项脱敏。",
+        "gates": [
+          "worknote-leak",
+          "confidentiality"
+        ],
+        "common_failures": [
+          "「待填写」留在摘要或声明段"
+        ]
+      }
     ]
   }
 }

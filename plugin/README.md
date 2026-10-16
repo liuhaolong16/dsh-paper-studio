@@ -74,19 +74,23 @@ node bin\studio.cjs audit     :: 出厂审查 6 项（完整性 + 重复性 + �
 
 **纪律**：任何"当前状态类的数字"都不写在文档里只写一次——**文档写数字就必须被 `claims` 盯住**；历史记录一律标快照标记。
 
-## 分发口径（v3.1.8 新增 · 重要）
+## 分发口径（v3.2.3 改写 · 重要）
 
-**本插件只支持从仓库安装（git），不支持只装 `plugin/` 目录的 npm 包。**
+**目标：装一次就拿全部能力。** 现在支持两种装法，**推荐整包**：
 
-- 原因：判据与资产在**仓库根** —— `references/pipeline.json`（唯一真源）与它登记的资产（`references/cn-journals.md`、`plos-one.md`、`submission-runbook.md`、`journal-taxonomy.md`）。而 `plugin/package.json` 的 `files` 只含 `plugin/` 内部目录（`dist` / `bin` / `skill` / `adapters` / `hub` / `cordis.patch.yml` / `README.md`），**打不出 `../references`**。
-- 为什么不把资产复制进 `plugin/`：那会造出**第二份真源**，两边必然分叉（本项目的第一条纪律就是「单一真源，不内联第二份」）。
-- **怎么自证装对了**（一条命令）：
+| 装法 | 命令 | 拿到什么 | 说明 |
+|---|---|---|---|
+| **整包（推荐）** | `npm i -g dsh-paper-studio` 或把本仓库作为 bundle 安装 | CLI（`bin/studio.cjs`）+ 判据资产（`references/`）+ 期刊体系 + 插件半体 + MCP 服务端 | 仓库根 `package.json` 的 `files` 已含 `bin` / `references` / `plugin` / `SKILL.md`；`resolveRoot()` 有**包内自带**候选 ⇒ 无需另存一份仓库 |
+| 仓库（git） | `dsh plugin --profile <p> add github:liuhaolong16/dsh-paper-studio` | 同上（整棵树） | 老路径，继续可用 |
 
-  ```
-  node bin/studio.cjs route "把这篇稿子按中文核心期刊的要求改一遍"
-  ```
+**仍不支持**：只装 `plugin/` 单目录（npm 的 `files` 打不出仓库根的 `../references`）。这种情况**会显形失败**而不是静默降级 —— CLI 打印 `该读：references/… [缺失]` 并以退出码 1 结束；`compliance` 门也会以退出码 2 报"找不到能力树根"。
 
-  输出里必须出现 `期刊分类路由` 块，且 `该读：references/cn-journals.md  [存在]`；**若资产缺失，会显形打印缺失路径并让退出码变 1**（缺输入一律 FAIL，不许静默通过）。JSON 模式下看 `journal_class` 与 `journal_assets`。
+**自证（装机后一条命令）**：
+```bash
+node bin/studio.cjs route "把这篇稿子按中文核心期刊的要求改一遍"   # 应出现 [存在] 且退出码 0
+node plugin/selftest.mjs                                      # 整包自证：files 齐备 + dsh 补丁与 main 真在盘上 + 包内自带候选在
+```
+
 
 ## 期刊分类路由可执行化（v3.1.8 新增）
 

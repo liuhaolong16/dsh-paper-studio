@@ -197,9 +197,14 @@ function runSelftest() {
     const r = ruleOverlap();
     return (r.pass === true && r.overlapping.length === 0) ? true : JSON.stringify(r.overlapping);
   });
-  check('★ 正控 · 门元数据：11 门齐全且全 A 有说明', () => {
+  // ★ 2026-10-16：**不写死门数** —— 与下面「子命令文档覆盖」那条同一个坑：门是会长出来的
+  //   （v3.2.3 加 compliance-scan 时，这条硬编码 11 的断言先红了，而它红的理由是"数字对不上"，
+  //   不是"元数据不全"）。判据应当是**结构不变量**：全门有 judge_type/primary_section、全 A 有说明。
+  check('★ 正控 · 门元数据：全部门都有 judge_type 与 primary_section，且全 A 有说明（不写死门数）', () => {
     const g = gatesMeta();
-    return (g.pass === true && g.total === 11 && g.distribution.A === 11) ? true : JSON.stringify(g);
+    const allA = Object.keys(g.distribution).every((k) => k === 'A');
+    return (g.pass === true && g.total >= 11 && allA && g.missing_judge_type.length === 0 && g.missing_primary_section.length === 0)
+      ? true : JSON.stringify(g);
   });
   // ★ 标签里**不写死子命令数**：写死就是漂移源（真事：加了 cost 之后这条自检的标签先红了，
   //   而它红的理由是"数字对不上"，不是"覆盖不全"）。数量由 skillsCoverage() 现算。

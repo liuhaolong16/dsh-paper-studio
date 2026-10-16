@@ -153,7 +153,8 @@
       "journal-contract": "A",
       "docx-verify": "A",
       "artifact-sync": "A",
-      "author-material": "A"
+      "author-material": "A",
+      "compliance-scan": "A"
     },
     "verdict_taxonomy": {
       "note": "**判定状态机 + 保证级别轴**（V2.6 · 外部吸收：ARIS `assurance-contract.md`，MIT）。ARIS 把「门为什么没给结论」分得很细，我原先只分四种，**把最危险的一种混进了无害的那种**：`skipped_missing_input`（该跑但缺前提）在 ARIS 里叫 **`BLOCKED`**，其原文定性是『**BLOCKED is more dangerous than NOT_APPLICABLE**』——『应该审却审不了』不等于『没什么可审』，它必须**阻断**；而我原先把缺输入当成不阻断的跳过（这正是 ARIS 文档里记录过的失效模式：beast 档产出草稿质量论文、三道投稿门全被静默跳过）。修法不是直接改默认行为（会破坏现有用法），而是**引入独立的保证级别轴**：`draft`＝现状不变（只有 fail/error 阻断）· `submission`＝**blocked 亦阻断**。另两条同源纪律：① **子门只负责『永远出判定』，不自己阻断**（『Always Emit, Never Block』），阻断决策**只在一处**（聚合层 + 保证级别）；② **NOT_APPLICABLE 必须留痕**（它表示『审过，且确实没有可审的』），而静默跳过不留痕、外部无法区分『查过没有』与『忘了查』。",
@@ -386,7 +387,8 @@
       "docx-verify": "figures-tables",
       "artifact-sync": "figures-tables",
       "contract": "*",
-      "author-material": "*"
+      "author-material": "*",
+      "compliance-scan": "*"
     }
   },
   "stage_kinds": {
@@ -430,7 +432,8 @@
         "contract",
         "journal-contract",
         "docx-verify",
-        "artifact-sync"
+        "artifact-sync",
+        "compliance-scan"
       ],
       "outputs": [
         "待修项清单（带行号）",
@@ -501,7 +504,8 @@
         "author-material",
         "contract",
         "claim-anchor",
-        "phrase"
+        "phrase",
+        "compliance-scan"
       ],
       "outputs": [
         "正文草稿（零占位符）",
@@ -843,6 +847,34 @@
         "check"
       ],
       "note": "**只判「有没有」，不判「写得对不对」**（内容属实性是人读项）；AI 使用声明必须出现生成式 AI 语境词，只写「AI」两字不算。红线：本门不提供任何规避 AI 检测的措辞。"
+    },
+    {
+      "id": "compliance-scan",
+      "label": "投稿合规与许可清单门（在先发表/预印本 · 第三方许可 · 地图政治正确性 · 伦理声明 · 可机检交付）",
+      "runtime": "node",
+      "entry": "_gate-compliance.cjs",
+      "rel": "playbook_root",
+      "scope": "deliverable",
+      "args": [
+        "--draft",
+        "{draft}"
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "合规清单齐备",
+        "1": "有硬项缺失（逐项列出）",
+        "2": "前提层失败（稿件路径缺失 / 插件 CLI 不可达）"
+      },
+      "used_by": [
+        "check",
+        "write"
+      ],
+      "note": "薄适配器：只 spawn 插件 CLI 的 compliance（判据正文只有一份，在插件仓 references/compliance-checklist.md），原样透出 CLI 输出与退出码；缺输入一律不判通过。"
     }
   ],
   "handoff": {
