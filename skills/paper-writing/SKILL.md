@@ -32,6 +32,7 @@ description: |
 - `references/external-adoptions.md`
 - `bin/figures-kit.cjs（自研图模板生成 + 九条图法判据复核）· references/figure-style-rubric.md`
 - `bin/tense-check.cjs（时态规范机检：方法/结果节现在时描述动作 ⇒ WARN；结论节过去时下一般断言 ⇒ INFO）`
+- `bin/paragraph-logic.cjs（段落级逻辑启发式弱机检：段长带 / 断言有无支撑 / 相邻段共词；不用 PASS，状态 OK 不等于逻辑没问题）`
 
 ## 边界（这些事本模块不做）
 
