@@ -1244,7 +1244,7 @@ function runSelftest() {
     try { txt = fs.readFileSync(out, 'utf8'); } catch {}
     const ok = r.status !== 2 && /^# 投稿前总检/m.test(txt) && /## 一、门执行器/.test(txt) && /## 二、期刊契约门/.test(txt)
       && /## 三、投稿信要素核对/.test(txt) && /## 四、返修回复信核对/.test(txt)   /* v3.2.29：接入返修回复信步骤 */
-      && /共 5 步/.test(txt)   /* 步数 4→5 */
+      && /共 6 步/.test(txt)   /* 步数 4→5→6（v3.2.36 加「投稿门户字段」） */
       && /结论：\*\*/.test(txt) && /未检查 ≠ 通过|未检查（不是通过）/.test(txt)
       /* ★ 顺序锁：第一节的内容必须是**门执行器的真输出**（gate-runner 打印"门执行结果"），
          而不是别的门的报告——首版因下标写死+漏跑一步，把契约门报告顶到了第一节。 */
@@ -1573,6 +1573,35 @@ function runSelftest() {
     let j = null; try { j = i0 >= 0 ? JSON.parse(so.slice(i0 + 1)) : null; } catch {}
     const un = j && j.rows ? j.rows.filter((x) => x.state === 'uncompared').map((x) => x.role) : [];
     return (b.status === 1 && j && j.verdict_code === 'PARTIAL' && un.length >= 1 && un.every((r) => /contract$/.test(r))) ? true : `rc=${b.status} code=${j && j.verdict_code} un=${JSON.stringify(un)}`;
+  });
+  /* ★ v3.2.36：preflight 现在 6 步（最后一步是「投稿门户字段」，**提醒级不阻断**）。 */
+  check('preflight·第 6 步：报告里出现「投稿门户字段」小节、共 6 步，且必填齐全时该步 退出码 0', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pf6-'));
+    const d = path.join(tmp, 'draft.md'); const r = path.join(tmp, 'rep.md');
+    fs.writeFileSync(d, ['# T', '', '## Abstract', '', 'Body text here.', '', '**Keywords:** a; b', '', '**Authors:** A. B.', '', '**Corresponding author:** A. B.', ''].join('\n'));
+    spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--out', r], { encoding: 'utf8' });
+    const txt = fs.existsSync(r) ? fs.readFileSync(r, 'utf8') : '';
+    /* ★ 定位**小节标题**（`## 六、投稿门户字段`）而不是报告头那行（`- 投稿门户字段：…`）—— 首版就栽在这。 */
+    const idx = txt.indexOf('、投稿门户字段');
+    const seg = idx >= 0 ? txt.slice(idx, idx + 300) : '';
+    return (idx >= 0 && /共 6 步/.test(txt) && /退出码：0/.test(seg))
+      ? true : `有小节=${idx >= 0} 共6步=${/共 6 步/.test(txt)} 段内退出码0=${/退出码：0/.test(seg)}`;
+  });
+  check('★preflight·门户是提醒级：必填缺失 ⇒ 该步 退出码 1 且结论落在「提醒」桶（**不得变成不可投**）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'pf7-'));
+    const d = path.join(tmp, 'draft.md'); const r = path.join(tmp, 'rep.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nBody text here.\n');   // 缺关键词/作者/通讯作者（必填）
+    spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--out', r], { encoding: 'utf8' });
+    const txt = fs.existsSync(r) ? fs.readFileSync(r, 'utf8') : '';
+    /* ★ 精确定位小节并只看**这一步自己的桶标签**：rc=1 必须显示「有提醒（不阻断，逐条确认）」。
+       不能苛求整篇 verdict —— 这份极简草稿在**别的门**（门执行器）那步本就 rc≥2 ⇒ 整篇"不可投"是正确的，
+       与本步是否提醒级无关（首版把两件事混在一起，断言写错了）。 */
+    const idx = txt.indexOf('、投稿门户字段');
+    const seg = idx >= 0 ? txt.slice(idx, idx + 300) : '';
+    return (idx >= 0 && /退出码：1/.test(seg) && /有提醒（不阻断，逐条确认）/.test(seg) && !/本次未通过|⇒ \*\*未通过\*\*/.test(seg))
+      ? true : `有小节=${idx >= 0} 该步1=${/退出码：1/.test(seg)} 段=${seg.slice(0, 120)}`;
   });
   check('scaffold·正控：按 --comments 生成逐条待填骨架（每条的原文逐字带入 + 两处填写位 + 待填哨兵）', () => {
     const { spawnSync } = require('node:child_process');
@@ -3490,6 +3519,13 @@ function cmdPreflight(args, argv) {
     steps.push({ label: '返修回复信核对', rc: null, out: '未给 --letter ⇒ **未检查**（未检查 ≠ 通过）' });
   }
 
+  /* ★ v3.2.36 第 6 步：**投稿门户字段**（题名/摘要/关键词/作者/通讯作者 + 契约限额对照）。
+     为什么是**提醒级**：门户必填项缺失/超限确实要在上传前处理，但「稿件本身没写 Corresponding author 行」并不等于稿件不可投
+     （门户另填、信封/投稿信里有）⇒ 按 rc=1 进「提醒」桶，**不阻断**，由作者逐条确认。 */
+  run('投稿门户字段（逐字不变量）', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'submission-fields',
+    '--draft', draftAbs]
+    .concat(pkgDir ? ['--package', path.resolve(pkgDir)] : [])
+    .concat(contractArg ? ['--contract', path.resolve(contractArg)] : []));
   // 3) 合规门（给了包才跑）
   if (pkgDir) {
     run('投稿合规门', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'compliance', path.resolve(pkgDir)]);
@@ -3519,6 +3555,7 @@ function cmdPreflight(args, argv) {
   L.push('- 期刊契约：' + (contractArg ? '`' + path.basename(contractArg) + '`' : '**未给** ⇒ 契约门未检查'));
   L.push('- 引用锚点表：' + (val('anchors') ? '`' + path.basename(val('anchors')) + '`（已透传给第 14 道门）' : '**未给** ⇒ claim-anchor 门按"无锚点"判 ⇒ 已计入下方结果'));
   L.push('- 投稿信：' + (val('cover') ? '`' + path.basename(val('cover')) + '`（已核要素与刊名一致性）' : '**未给** ⇒ 投稿信要素未检查'));
+  L.push('- 投稿门户字段：**总是检查**（题名/摘要/关键词/作者/通讯作者必填；声明类与短标题只报告；限额按契约对照）');
   L.push('- 返修回复信：' + (val('letter') ? '`' + path.basename(val('letter')) + '`' + (val('comments') ? ' + 意见 `' + path.basename(val('comments')) + '`' : '（**未给 --comments ⇒ 核不了覆盖**）') : '**未给** ⇒ 回复信未检查'));
   L.push('- 结论：**' + verdict + '**（未通过 ' + bad.length + ' 项 · **提醒 ' + warned.length + ' 项** · 未检查 ' + unchecked.length + ' 项 · 共 ' + steps.length + ' 步）');
   L.push('');
