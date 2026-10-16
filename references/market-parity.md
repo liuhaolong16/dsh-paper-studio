@@ -151,3 +151,24 @@ skill/      ← 平铺 SKILL.md 副本，放进 ~/.agents/skills/ 让 DSH 发现
 3. **可机检的门体系 + 真语料标定** —— 竞品有 evals/benchmark，但**未见"误报率随语料口径"的标定纪律**（我方 `calibrate` + `check-registry` 数字一致性 + `gate-runner` 工件哈希复核）。
 4. **外部纪律吸收**（ARIS 的 acceptance-gate / reviewer-independence / assurance / citation-discipline / runstate done≠accepted 等）—— 竞品均为单流程 prompt，无此层。
 5. **知之为知之的诚实记录** —— 本文件第 0 节明写通路受限与"没读到正文"，这是竞品 README 里看不到的东西。
+
+---
+
+## 实测修正（2026-10-17 · 真对拍 Task A 之后加，**旧结论保留在上，勿当现状**）
+
+**旧结论**：「润色域 —— 竞品最集中的域，也是我方最大缺口」。**该结论已被实测证据推翻**（在可机检维度上）。
+
+**证据**（`run/bakeoff/task-a-polish/REPORT.md`，可复跑：`node bin/bakeoff.cjs --task run/bakeoff/task-a-polish`）：
+
+| 参赛者 | 中性机检 | 不变量 | AI 味 | 改动账本 | 失败原因 |
+|---|---|---|---|---|---|
+| **ours** | **PASS** | 2/2 | 0 | 7 行 | — |
+| lifecycle-skills（Apache-2.0） | **PASS** | 2/2 | 0 | 5 行 | — |
+| academic-research-skills（CC-BY-NC） | FAIL | 0/2 | 0 | 无 | 丢 `30` 与 `[12]`；不产出改动账本 |
+| awesome-ai-research-writing（无许可） | FAIL | 0/2 | 7 处 | 无 | 丢 `30`/`[12]`；AI 味原样保留 |
+
+**修正后的口径**（只到方向性证据这一层）：
+1. 在**数字/引用不变量 · 去 AI 味 · 改动账本可追溯性 · 具体性**这四个可机检维度上，**我方与对手里最强的规则集同档**；
+2. **真正有差别的不是"润色质量"，而是"是否把不变量与可追溯性当硬规则"** —— prompt-清单类会**在润色时抹平具体数字与引用标记**；
+3. **仍未测**：语言自然度的**盲评**（需独立判者）· 对手**软件本体**效果（它们**没有可执行的 CLI**，本轮为方法级对拍）⇒ **不得声称"我们更强"，只能说"我们不再落后"**；
+4. 「呈现类（slides/poster/talk-script）」与「parse-cfp / camera-ready / fit-page-limit / simulate-reviewers / triage-reviews」两项缺口**仍成立**（`talk` 已补呈现的第一块，其余待做）。

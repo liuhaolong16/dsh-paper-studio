@@ -3,6 +3,16 @@
 
 # 变更记录
 
+## v3.4.1 —— 2026-10-17
+
+**把被实测推翻的旧结论就地更正（保留原文，加修正段）：`references/market-parity.md` 的「润色域是我方最大缺口」已被 Task A 对拍证据推翻。**
+
+- **修正口径**：在「数字/引用不变量 · 去 AI 味 · 改动账本可追溯性 · 具体性」四个**可机检**维度上，我方与对手里最强规则集（lifecycle-skills）**同档**；
+  真正差别在于**是否把不变量与可追溯性当硬规则**（prompt-清单类会在润色时抹平具体数字与引用标记）。
+- **仍未测**：语言自然度的**盲评** · 对手**软件本体**效果（无 CLI）⇒ **不声称更强**。
+- **仍成立的缺口**：呈现类（slides/poster/talk-script，`talk` 已补第一块）· parse-cfp / camera-ready / fit-page-limit / simulate-reviewers / triage-reviews。
+- 纪律：**旧结论不删**，以「实测修正」段标注被推翻，并给出可复跑命令（`node bin/bakeoff.cjs --task run/bakeoff/task-a-polish`）。
+
 ## v3.4.0 —— 2026-10-17
 
 **真对拍开跑：新增判分装置 `bin/bakeoff.cjs`，完成 Task A（中→英润色 + 去 AI 味），出第一个有证据的强弱表。**
