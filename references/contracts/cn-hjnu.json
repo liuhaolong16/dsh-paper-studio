@@ -1,0 +1,76 @@
+{
+  "journal": "汉江师范学院学报",
+  "publisher": "汉江师范学院",
+  "article_type": "research_article",
+  "verified_at": "2026-10-16",
+  "provenance_level": "archived-secondary",
+  "verified_from": "references/cn-journals.md §2（来源：《汉江师范学院学报》来稿须知 2025-05-08 ·《河南工业大学学报》投稿须知 知网 cbimg 2022 存档）+ §12.3 前轮记录样本；2026-10-16 本轮尝试该刊官方门户：`hjsf.cbpt.cnki.net` 200 但为跳转壳（129 B）· `WKA/WebPublication/index.aspx` **302 → showValidateCode.aspx（验证码页）** ⇒ **自动化取不到须知正文，且不绕验证码**",
+  "verification_note": "★ 本契约的数字**不是一手门户原文**，而是**归档二手口径**（2022/2025 存档与逐刊对照表）。凡表格里**明确标注了其他来源刊**的数字（如\"题名 ≤20 字\"标注来源为《推进技术》），**一律不得推定适用于本刊**，已移入 human_only。使用前必须由人在官网门户（经人工登录/验证码）重核并更新 verified_at。",
+  "limits": {
+    "count_mode": "cjk",
+    "abstract_max_chars": 200,
+    "manuscript_max_chars": 8500,
+    "heading_max_chars": 15,
+    "keywords_min": 3,
+    "keywords_max": 5
+  },
+  "structure": {
+    "section_aliases": {
+      "abstract": [
+        "摘要",
+        "中文摘要"
+      ],
+      "keywords": [
+        "关键词",
+        "中文关键词"
+      ],
+      "acknowledgements": [
+        "致谢"
+      ],
+      "references": [
+        "参考文献"
+      ]
+    },
+    "keywords_required": true,
+    "references_style": "numbered（[1] 上标，置于引文所在句/段标点之前；同一文献多次引用同一序号）",
+    "reference_entry_must_include": [
+      "year"
+    ]
+  },
+  "verified_facts": {
+    "关键词": "3–5 个（分号间隔）——§2 逐刊对照（汉江师范列）",
+    "全文": "≤8500 字——§2（汉江师范列）；综述/论著各有上限 ⇒ 逐刊查",
+    "中文摘要": "≤200 字，且与英文摘要信息对等——§2（两刊实测口径）",
+    "参考文献": "十类著录式逐条给出（[J]/[M]/[A]/[C]/[D]/[N]/[EB/OL]/[S]/[R]/[P]），可作模板——§2 与 §2.1（GB/T 7714—2025）",
+    "书写顺序": "题目→作者姓名→单位全称→所在地名→邮编→中文摘要→中文关键词→中图分类号→文献标志码→英文题名→作者姓名（拼音）→单位（英文）→英文摘要→英文关键词→正文→参考文献——§2",
+    "篇幅口径冲突提醒": "河南工大该刊官网（2026 一手）为\"摘要 300 字左右\"，而 §2 表为\"≤200 字\" ⇒ **同一刊两来源不一致**，本契约对汉江只采用 §2 口径并标 archived-secondary；改投前一律以官网为准。",
+    "费用": "前轮记录样本为「不收取任何费用」——**属历史记录，非本轮一手** ⇒ 列为 human_only 复核项。"
+  },
+  "human_only": [
+    "题名上限：§2 表内该数字**明确标注来源为《推进技术》** ⇒ 不得推定适用于本刊，须查本刊须知",
+    "官网门户的须知正文（本轮被验证码阻断；须人工登录重核全部数字）",
+    "版面费/审稿费/稿酬（前轮记录\"不收取任何费用\"，须官方复核）",
+    "版权转让/著作权协议条款",
+    "投稿系统的必填项与字段顺序",
+    "中图分类号 / 文献标志码的取值"
+  ],
+  "machine_checkable": [
+    "摘要 ≤200 字（按字）",
+    "全文 ≤8500 字（按字）",
+    "各级标题 ≤15 字（提醒级）",
+    "关键词 3–5 个",
+    "正文引用编号按首次出现升序",
+    "参考文献条目含年份"
+  ],
+  "checkable_ids": [
+    "abstract_chars",
+    "manuscript_max_words",
+    "references_numbered_in_order",
+    "reference_entries_complete",
+    "keywords_present",
+    "heading_max_chars",
+    "keywords_count",
+    "checkable_ids_covered"
+  ],
+  "checkable_ids_note": "本清单＝2026-10-16 实测「本门对该契约实际执行过的检查 id」+ 对账项自身；声明了却没执行的检查会被 `checkable_ids_covered` 判失败。"
+}

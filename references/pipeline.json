@@ -23,7 +23,8 @@
     "credit_roles": "references/credit-roles.json（CRediT 官方 14 角色（ANSI/NISO Z39.104-2022 · CC-BY 4.0），含逐字角色名与取证信息）",
     "retraction_check": "references/retraction-check.md（引用撤稿检查说明：来源 OpenAlex is_retracted · 三态判据 · 取不到≠通过 · 已知漏检面）",
     "journal_contract_gate": "外部门 `_journal-contract.cjs`（论文仓）：契约驱动检查 + --package 包级证据 + --selftest + checkable_ids 对账",
-    "cn_contract_henan_ut": "references/contracts/cn-henan-ut.json（**中文刊机读契约样板**：河南工业大学学报（自然科学版）；一手门户取证 + human_only + checkable_ids）"
+    "cn_contract_henan_ut": "references/contracts/cn-henan-ut.json（**中文刊机读契约样板**：河南工业大学学报（自然科学版）；一手门户取证 + human_only + checkable_ids）",
+    "cn_contract_hjnu": "references/contracts/cn-hjnu.json（中文刊机读契约：汉江师范学院学报；**归档二手口径** provenance=archived-secondary · 验证码阻断待人工重核 · human_only 列不推定的项）"
   },
   "journal_classes": {
     "note": "期刊分类真源（两轴正交，必须分别记录）：地域轴 region × 语言轴 language。两轴不可互相代替（国内有英文刊、国外也有中文刊），一律记两个字段，不允许只写『中文刊/外文刊』。",
@@ -39,7 +40,7 @@
       }
     },
     "routing": {
-      "cn+zh": "references/cn-journals.md；机器可读契约：references/contracts/cn-henan-ut.json（中文计数口径 count_mode=cjk + 中文节名别名）",
+      "cn+zh": "references/cn-journals.md；机器可读契约：references/contracts/cn-henan-ut.json（中文计数口径 count_mode=cjk + 中文节名别名）；第二份契约（归档口径样板）：references/contracts/cn-hjnu.json",
       "intl+en": "references/submission-runbook.md",
       "intl+en+plos": "references/plos-one.md（PLOS 系专章：Vancouver 参考文献 + 图件单独 TIFF + 资助不进正文）",
       "cn+en": "references/cn-journals.md（入口与材料）+ references/submission-runbook.md（正文体例）",
