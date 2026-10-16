@@ -89,6 +89,7 @@ metadata:
   - `draft` / `scaffold` 起新稿 · `genre` 判体裁 · `sections` 出章节骨架（含篇幅预算与必答问题）
 - `form list | form show <id> | form check --form <id> --draft <稿.md>` —— **论文形态**（学位论文 / 课堂演讲论文 / SCI / 开题报告 / 课程论文 / 会议论文）：**形态选流程，体裁选门**；`check` 是必备件门（缺件或无法机检一律判不合格）
 - `form ask` / `form gate --answers <答案.json>` —— 启动问答：**未收齐一律退 2，不许开写**
+- `form budget --form <id> --draft <稿.md> [--minutes N] [--lang zh|en] [--answers <答案.json>]` —— **字数门 + 时间盒门**：区间按形态（**模板优先**）；课堂演讲按「分钟 × 口播速率」判**超时风险**与页数上限；**缺时长判未检查（不许猜）**
   - `verify` 跑门 · `stylecheck` 写作质量 · `polish` 润色保障（保真守卫 + 改动账本）· `revise` 审稿回复/去 AI 味/通读/缩写扩写
   - `figures` 题注与绘图建议 · `profile` 研究风格档案 · `coach` 开工教练 · `audit` 出厂审查
 - **永远看退出码**：`paper_studio` 返回 `exit_code`。**0 才叫通过**；非 0 要在回答里如实说明（不要把它说成"跑过了"）。

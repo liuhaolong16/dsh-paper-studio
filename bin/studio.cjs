@@ -133,6 +133,68 @@ function localPathHint(v) {
   return String(v || '').indexOf('__LOCAL__') === 0 ? LOCAL_HINT : '';
 }
 
+function countTextUnits(text) {
+  /* 字数口径（纯函数）：先剥掉代码块与行内代码（不该算正文），再数 CJK 字 + 英文词。 */
+  const body = String(text || '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]*`/g, ' ');
+  const cjk = (body.match(/[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff]/g) || []).length;
+  const enWords = (body.match(/[A-Za-z][A-Za-z'\-]*/g) || []).length;
+  return { cjk, enWords, chars: cjk + enWords };
+}
+
+function countSlides(text) {
+  /* 幻灯片页数：以二级标题 `## ` 计（课堂演讲骨架＝一页一主张）。 */
+  return (String(text || '').match(/^##\s+\S/gm) || []).length;
+}
+
+function formBudgetReport(input) {
+  /* 字数门 + 时间盒门（纯函数）。★缺时长不许猜：判 unchecked ⇒ ok=false。
+     模板指定字数/页数时**模板优先**（可经 templateWords / templatePages 传入）。 */
+  const f = (input && input.form) || {};
+  const p = (input && input.pipeline) || {};
+  const bud = (p.forms && p.forms.budget) || {};
+  const band = ((f.norms || {}).length_bands) || {};
+  const text = (input && input.text) || '';
+  const measured = countTextUnits(text);
+  const slides = countSlides(text);
+  const violations = [], unchecked = [], notes = [];
+  const minutes = Number(input && input.minutes);
+  const lang = (input && input.lang) === 'en' ? 'en' : 'zh';
+  let bandUsed = null, source = '';
+
+  const tw = Number(input && input.templateWords), tp = Number(input && input.templatePages);
+  if (tw > 0) { bandUsed = { min: 0, max: tw, unit: 'chars' }; source = '模板指定字数'; }
+  else if (tp > 0) { bandUsed = { min: 0, max: tp, unit: 'pages' }; source = '模板指定页数'; }
+  else if (band.unit === 'chars') { bandUsed = { min: band.min, max: band.max, unit: 'chars' }; source = (f.label || f.id) + ' 的形态区间'; }
+  else if (band.unit === 'pages') { bandUsed = { min: band.min, max: band.max, unit: 'pages' }; source = (f.label || f.id) + ' 的形态区间'; }
+  else if (band.unit === 'contract') unchecked.push('字数：该形态以**目标期刊契约**为准，本命令不判字数（请跑契约门）');
+  else unchecked.push('字数：该形态未声明可机检区间（未检查 ≠ 合格）');
+
+  if (bandUsed) {
+    const val = bandUsed.unit === 'pages' ? slides : measured.chars;
+    const unitLabel = bandUsed.unit === 'pages' ? '页（按 ## 标题计）' : '字（CJK 字 + 英文词）';
+    notes.push('量得 ' + val + ' ' + unitLabel + ' · 判定区间 ' + bandUsed.min + '–' + bandUsed.max + '（来源：' + source + '）');
+    if (val > bandUsed.max) violations.push('超出上限：' + val + ' > ' + bandUsed.max + '（' + source + '）');
+    if (bandUsed.min > 0 && val < Math.floor(bandUsed.min / 2)) violations.push('内容过薄：' + val + ' < 下限的一半（' + Math.floor(bandUsed.min / 2) + '）');
+  }
+
+  if ((f.gates || []).includes('timing-budget')) {
+    if (!(minutes > 0)) {
+      unchecked.push('时间盒：**缺时长**（--minutes 或答案里的 talk_minutes）⇒ 不判，也不许猜');
+    } else {
+      const rate = ((bud.speech_rate || {})[lang]) || [180, 220];
+      const cap = Math.round(rate[1] * minutes), lo = Math.round(rate[0] * minutes);
+      const per = bud.seconds_per_slide || 50;
+      const slideCap = Math.round((minutes * 60) / per);
+      notes.push('时间盒：' + minutes + ' 分钟 ⇒ 口播 ' + lo + '–' + cap + ' 字（' + lang + ' ' + rate[0] + '–' + rate[1] + '/分）· 幻灯片上限约 ' + slideCap + ' 页（' + per + ' 秒/页）');
+      if (measured.chars > cap) violations.push('★超时风险：正文 ' + measured.chars + ' 字 > ' + minutes + ' 分钟口播上限 ' + cap + ' 字');
+      else if (measured.chars < Math.round(lo / 2)) violations.push('内容过薄：' + measured.chars + ' 字 < 下限一半 ' + Math.round(lo / 2) + ' 字');
+      if (slides > slideCap) violations.push('★页数超上限：' + slides + ' 页 > ' + slideCap + ' 页（' + minutes + ' 分钟 × ' + per + ' 秒/页）');
+    }
+  }
+  return { ok: violations.length === 0 && unchecked.length === 0, form: f.id || '', source, band: bandUsed, minutes: minutes > 0 ? minutes : null,
+    measured: { chars: measured.chars, cjk: measured.cjk, enWords: measured.enWords, slides }, violations, unchecked, notes };
+}
+
 function formGateReport(answers, form, p) {
   /* 启动问答齐备判据（纯函数）：公共五问 + 该形态专属必问（gate_extra）。
      ★缺项与「值不在选项里」都判不通过 —— 未收齐不许开写；冲突只给警告，不阻断。 */
@@ -3323,6 +3385,96 @@ function runSelftest() {
           return true;
         });
 
+
+        // ── v3.2.71 · 字数门 + 时间盒门 ────────────────────────────────
+        check('v3.2.71·budget·字数口径：CJK 按字、英文按词；代码块与行内代码不计', () => {
+          const u = countTextUnits('中文十个字符测试 abc def `code_not_counted`\n```\nblock not counted\n```\n');
+          if (u.cjk !== 8) return 'CJK 计数应为 8，实得 ' + u.cjk;
+          if (u.enWords !== 2) return '英文词应为 2，实得 ' + u.enWords;
+          return u.chars === u.cjk + u.enWords ? true : 'chars 不等于 cjk+enWords';
+        });
+
+        check('v3.2.71·budget·字数门：学位论文短稿（低于区间一半）必须判不符合', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const rep = formBudgetReport({ form: f, pipeline: readPipeline(), text: '这是一篇很短的稿子。'.repeat(50) });
+          if (rep.ok) return '短稿竟判符合';
+          if (!rep.violations.some((x) => x.includes('内容过薄'))) return '没报内容过薄：' + rep.violations.join(' / ');
+          return true;
+        });
+
+        check('v3.2.71·budget·字数门：落在区间内的学位论文稿必须判符合', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const rep = formBudgetReport({ form: f, pipeline: readPipeline(), text: '本文研究了一个具体问题并给出可复现的实验流程与失败模式清单。'.repeat(400) });
+          if (!rep.ok) return '区间内竟判不符合：' + rep.violations.concat(rep.unchecked).join(' / ');
+          return rep.measured.chars >= 8000 ? true : '构造的稿子字数不足（' + rep.measured.chars + '）';
+        });
+
+        check('v3.2.71·budget·★模板优先：给了模板字数就必须按模板判（形态区间被覆盖）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const text = '本文研究了一个具体问题并给出可复现的实验流程。'.repeat(300); // 约 9000 字（在形态区间内）
+          const okRep = formBudgetReport({ form: f, pipeline: readPipeline(), text });
+          if (!okRep.ok) return '前提设置错：该稿本应落在形态区间内';
+          const rep = formBudgetReport({ form: f, pipeline: readPipeline(), text, templateWords: 5000 });
+          if (rep.source !== '模板指定字数') return '没走模板优先：' + rep.source;
+          if (rep.ok) return '超模板上限却判符合 —— 模板优先没生效';
+          return true;
+        });
+
+        check('v3.2.71·budget·★时间盒门：课堂演讲 15 分钟讲 5000 字 ⇒ 超时风险；2000 字 ⇒ 符合', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'class-talk');
+          const p = readPipeline();
+          const over = formBudgetReport({ form: f, pipeline: p, text: '这是一段口播内容。'.repeat(625), minutes: 15 });
+          if (over.ok) return '15 分钟 5000 字竟判符合';
+          if (!over.violations.some((x) => x.includes('超时风险'))) return '没报超时风险：' + over.violations.join(' / ');
+          const fit = formBudgetReport({ form: f, pipeline: p, text: '这是一段口播内容。'.repeat(250), minutes: 15 });
+          if (!fit.ok) return '15 分钟 2000 字竟判不符合：' + fit.violations.concat(fit.unchecked).join(' / ');
+          return true;
+        });
+
+        check('v3.2.71·budget·★时间盒诚实面：缺时长（minutes）必须判未检查 ⇒ 不符合，不许猜', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'class-talk');
+          const rep = formBudgetReport({ form: f, pipeline: readPipeline(), text: '这是一段口播内容。'.repeat(250) });
+          if (rep.ok) return '缺时长却判符合 —— 这正是"拿不到就放过"的漏洞';
+          if (!rep.unchecked.some((x) => x.includes('缺时长'))) return '没报缺时长：' + rep.unchecked.join(' / ');
+          return true;
+        });
+
+        check('v3.2.71·budget·页数门：会议论文 12 页（## 标题计）超 8 页上限必须判不符合', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'conference');
+          let text = '';
+          for (let i = 1; i <= 12; i++) text += '## 第 ' + i + ' 节标题\n\n正文若干内容若干内容。\n\n';
+          const rep = formBudgetReport({ form: f, pipeline: readPipeline(), text });
+          if (rep.measured.slides !== 12) return '页数计错：' + rep.measured.slides;
+          if (rep.ok) return '超页数上限竟判符合';
+          if (!rep.violations.some((x) => x.includes('超出上限'))) return '没报超出上限：' + rep.violations.join(' / ');
+          return true;
+        });
+
+        check('v3.2.71·budget·端到端（子进程·静默）：短稿退 2、合适稿退 0、缺时长退 2', () => {
+          const { execFileSync } = require('child_process');
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-bud-'));
+          const f1 = path.join(dir, 'short.md'), f2 = path.join(dir, 'ok.md'), f3 = path.join(dir, 'talk.md');
+          fs.writeFileSync(f1, '太短的稿子。', 'utf8');
+          fs.writeFileSync(f2, '本文研究了一个具体问题并给出可复现的实验流程与失败模式清单，供后续研究对照使用。'.repeat(400), 'utf8');
+          fs.writeFileSync(f3, '一页一主张。'.repeat(50), 'utf8');
+          const run = (args) => { try { execFileSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs')].concat(args), { stdio: ['ignore', 'ignore', 'ignore'] }); return 0; } catch (e) { return (e && e.status) || 1; } };
+          const s1 = run(['form', 'budget', '--form', 'thesis', '--draft', f1]);
+          const s2 = run(['form', 'budget', '--form', 'thesis', '--draft', f2]);
+          const s3 = run(['form', 'budget', '--form', 'class-talk', '--draft', f3]);
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* 清不掉不影响判据 */ }
+          if (s1 !== 2) return '短稿应退 2，实退 ' + s1;
+          if (s2 !== 0) return '区间内应退 0，实退 ' + s2;
+          if (s3 !== 2) return '课堂演讲缺时长应退 2，实退 ' + s3;
+          return true;
+        });
+
   const failed = results.filter((r) => !r.ok);
   if (!JSON_OUT) for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   const __pass = results.length - failed.length;
@@ -6378,6 +6530,36 @@ if (cmd === 'form') {
           if (rep.missing.length) { console.log('  还缺（必须问清）：'); for (const x of rep.missing) console.log('    ✘ ' + x); }
           if (rep.unknown.length) { console.log('  值不在选项里（要么改值，要么我加选项）：'); for (const x of rep.unknown) console.log('    ✘ ' + x); }
           if (rep.warnings.length) { console.log('  提醒（不阻断，但请确认）：'); for (const x of rep.warnings) console.log('    ⚠ ' + x); }
+        }
+        return rep.ok ? 0 : 2;
+      }
+      if (sub === 'budget') {
+        const draftPath = flag('--draft') || rest.slice(2).find((a) => !a.startsWith('--'));
+        if (!draftPath) { console.error('用法：node bin/studio.cjs form budget --form <id> --draft <稿.md> [--minutes N] [--lang zh|en] [--answers <答案.json>] [--json]'); return 2; }
+        if (!fs.existsSync(draftPath)) { console.error('前提层失败：文件不存在 ' + draftPath); return 2; }
+        const id = flag('--form') || '';
+        const f = forms.list.find((x) => x.id === id);
+        if (!f) { console.error('前提层失败：未知形态「' + (id || '(空)') + '」——可选：' + forms.list.map((x) => x.id).join(' / ')); return 2; }
+        let ans = {};
+        const ap = flag('--answers');
+        if (ap) {
+          if (!fs.existsSync(ap)) { console.error('前提层失败：答案文件不存在 ' + ap); return 2; }
+          try { ans = JSON.parse(fs.readFileSync(ap, 'utf8')) || {}; }
+          catch (e) { console.error('前提层失败：答案文件不是合法 JSON —— ' + String((e && e.message) || e).slice(0, 90)); return 2; }
+        }
+        const mins = Number(flag('--minutes') || ans.talk_minutes || ans.minutes || 0);
+        const rep = formBudgetReport({
+          form: f, pipeline: readPipeline(), text: fs.readFileSync(draftPath, 'utf8'),
+          minutes: mins, lang: flag('--lang') || ans.lang || 'zh',
+          templateWords: ans.template_words, templatePages: ans.template_pages,
+        });
+        if (json) console.log(JSON.stringify(Object.assign({ draft: draftPath }, rep), null, 2));
+        else {
+          console.log('形态篇幅/时间检查：' + f.label + '（' + f.id + '） ← ' + draftPath);
+          for (const n of rep.notes) console.log('  · ' + n);
+          for (const u of rep.unchecked) console.log('  ? 未检查：' + u);
+          for (const v of rep.violations) console.log('  ✘ ' + v);
+          console.log(rep.ok ? '  判定：符合' : '  判定：不符合（有超限或未检查项）');
         }
         return rep.ok ? 0 : 2;
       }

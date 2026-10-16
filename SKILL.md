@@ -250,5 +250,6 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 - **读失败/损坏绝不抛**：`model providers` 仍退 0（本地能力不受影响）并写明原因；`model keys list`（凭据主通道）**退 2 并说明**，不许当"没有凭据"静默通过。
 - `form list | form show <id> | form check --form <id> --draft <稿.md>` —— **论文形态**（学位论文 / 课堂演讲论文 / SCI 期刊 / 开题报告 / 课程论文 / 会议论文）：与体裁正交（**形态选流程，体裁选门**）；`check` 是**必备件门**，缺件或无法机检一律判不合格
 - `form ask [--form <id>] [--json]` / `form gate --answers <答案.json>` —— **启动问答**：先问形态/语言/去向/载体/模式 **＋该形态专属必问**，`gate` **未收齐一律退 2（不许开写）**，冲突只警告
+- `form budget --form <id> --draft <稿.md> [--minutes N] [--lang zh|en] [--answers <答案.json>]` —— **字数门 + 时间盒门**：区间按形态（**模板优先**）；课堂演讲按「分钟 × 口播速率」判**超时风险**与页数上限；**缺时长判未检查（不许猜）**
 - 自检：`node bin/keys-store.cjs --selftest` ⇒ **10/10**（含三条必失败面：损坏 JSON 不抛且给原因 · 非法 provider 名被拒 · 原子写不留残片）；studio 另有 8 条面板夹具，全部走临时 `DSH_PAPER_KEYS_FILE`，**不碰真凭据**。
 - 面板本体（客户端半体）做成**独立插件**（`dsh-paper-keys`）：paper-studio 保持"零面板"承诺，卸载面板不影响论文能力本体。
