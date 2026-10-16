@@ -745,6 +745,7 @@ const SUBCOMMANDS = [
   'verify',
   'stylecheck',
   'talk',
+  'reviewers',
   'polish',
   'profile',
   'schemacheck',
@@ -7205,6 +7206,10 @@ if (cmd === 'form') {
     if (cmd === 'stylecheck') {
       // V2.9：写作质量机械检查（叙事纪律里可机检的那部分；语义留给跨模型 reviewer）
       return require('./stylecheck.cjs').main(argv.slice(1));
+    }
+    if (cmd === 'reviewers') {
+      // v3.2.87：审稿人侧模拟聚合 + 问答演练评分（吸收自 lifecycle-skills 的 simulate-reviewers / rehearse-qa，Apache-2.0）
+      return require('./reviewers.cjs').main(argv.slice(1), { pipeline: readPipeline() });
     }
     if (cmd === 'talk') {
       // v3.2.86：讲授/呈现类（吸收自 lifecycle-skills 的 make-slides/write-talk-script，Apache-2.0）。

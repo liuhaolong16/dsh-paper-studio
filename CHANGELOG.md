@@ -3,6 +3,19 @@
 
 # 变更记录
 
+## v3.2.87 —— 2026-10-17
+
+**吸收 P0·审稿与问答类：新增 `reviewers` 子命令（aggregate / grade）——规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0），实现为本仓自有 Node 纯函数 + 夹具。**
+
+- **`reviewers aggregate <scores.json>`**：聚合评审。**置信加权均值**（与算术均值不同，夹具强制两者必须可分辨）· 四维均值与**拖后腿维度**（按均值最小者，不接受"挑一个"）· 分歧极差 · **champion / detractor** ·
+  **决策风险带**（likely-reject / borderline-reject / borderline-accept / likely-accept）+ **「borderline 且无 champion ⇒ 向下判」**（吸收自上游）+ **未采纳的严谨性缺陷在 harshness≥4 时压到"边缘偏拒"** + 修法三类标签（fix-now / rebuttal-defensible / structural）。
+  **前提门**：空 reviewers / 量表越界 / 非数字 overall **一律拒**（`NO_REVIEWERS` / `BAD_INPUT`），不许当通过。读数自带"**咨询性、不预测结果**"声明。
+- **`reviewers grade <transcript.md> --target <秒> --max <秒>`**：问答演练评分。逐答给出**计时**（按真源语速，中文 180 字/分起）· **未答** · **对冲开头** · **填充词密度**（>3% 报）· **是否把答案埋在 yes-no 之后**；
+  退出码 0=ready / 1=需再练 / 2=输入不合法（**没有目标就判不了超时 ⇒ 缺 `--target/--max` 直接拒**）。
+- **与既有能力的分工（刻意不重复造）**：上游 `triage-reviews` 的"拆分+分类+矩阵"我方 `studio review` **已经有**；其**严重度×成本评分与回复预算分配**列为下一轮**并入 `review`**，不另起并行命令（同一件事只有一个所有者）。
+- **踩坑（已修）**：注释里写了 `Q**/**A**` 形式的示例，其中的 `*/` **提前闭合了块注释** ⇒ `SyntaxError: Unexpected token '**'`。教训：**注释里不要出现会闭合块注释的字符序列**。
+- **回归**：studio 246/246 · 门执行器 54/54 · package-audit 11/11 · audit 6/6 全绿 · 插件 38/38 · 面板 25/25 · 数字对拍 PASS；`reviewers` 自检 **10/10**（含 4 条必失败面）。
+
 ## v3.2.86 —— 2026-10-17
 
 **吸收 P0·呈现讲授类：新增 `talk` 子命令（budget / script / lint）——规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0），实现为本仓自有 Node 纯函数 + 夹具。**

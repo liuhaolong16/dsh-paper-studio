@@ -1362,7 +1362,8 @@
     "audit.cjs": "（无独立自检结论行：由 audit 主流程与生态侧车覆盖；如需门请补 --selftest）",
     "criteria-abcd.cjs": "A/B/C/D 证据纪律四条（--selftest 15 条）",
     "package-audit.cjs": "node bin/package-audit.cjs --selftest",
-    "talk.cjs": "node bin/talk.cjs --selftest"
+    "talk.cjs": "node bin/talk.cjs --selftest",
+    "reviewers.cjs": "node bin/reviewers.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1383,6 +1384,7 @@
     "profile",
     "coach",
     "talk",
+    "reviewers",
     "audit",
     "state",
     "lessons",

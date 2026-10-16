@@ -42,3 +42,18 @@
 - **许可**：**Apache-2.0**（可复制/修改/再分发，须保留版权与许可声明）。⇒ 本仓**未复制其代码**，只吸收**规则与流程**：槽位→预算（≈1 张/内容分钟，硬上限 1.25×）· problem-first 分节配比 · claim 式标题（禁"Background/方法"这类非断言标题）· 单页 >100 词即"文档不是幻灯片" · 要点 >6 条即过载 · 图片缺失/不可渲染 · 备份页不占预算 · **绝不臆测槽位时长** · 口播稿按语速摊词（中文字/分、英文词/分）。
 - **落地**：`bin/talk.cjs`（`talk budget|script|lint`，纯函数 + 10 条夹具含必失败面）· 文档见 `SKILL.md` · 真源登记 `pipeline.json`（`selfchecks` + `agent_facing`）。
 - **未吸收项与其后**：`rehearse-qa` / `simulate-reviewers` / `triage-reviews` / `make-poster` / `fit-page-limit` / `prepare-camera-ready` 排在后续轮次（见 `absorption-matrix-20261017.md` backlog）。
+
+## lifecycle-skills（Apache-2.0）· 审稿与问答类 —— 2026-10-17
+
+- **来源**：同上（本地 `E:\DeepSeek\third_party\scan-20261017\lifecycle-skills`）。
+- **许可**：**Apache-2.0** ⇒ 本仓**未复制其代码**，只吸收**规则与流程**：
+  · simulate-reviewers：按会议族校准 harshness · 四维打分（新颖性/严谨性/可复现性/清晰度）· **置信加权均值** · 分歧/champion/detractor ·
+    拖后腿维度 · 决策风险带（likely-reject / borderline-reject / borderline-accept / likely-accept）· **「borderline 且无 champion ⇒ 向下判」** ·
+    未采纳的严谨性缺陷在 harshness≥4 时把总分压到"边缘偏拒" · 修法三类标签（fix-now / rebuttal-defensible / structural）
+  · rehearse-qa：`grade_answers` 的逐答判据（计时 vs 目标/上限 · 未答 · 对冲开头 · 填充词密度 · 是否把答案埋在 yes-no 之后）·
+    "连续两次站得住才算练成" · 绝不给演练题编造引文
+- **落地**：`bin/reviewers.cjs`（`aggregate` / `grade`，纯函数 + **10 条夹具含 4 条必失败面**）。
+- **刻意未做（与既有能力重复，改为"并进 `review`"）**：上游 `triage-reviews` 的"拆分意见 + 分类 + 矩阵"我方 `studio review` **已具备**
+  （切条 / 启发式分类 / 对稿定位 / 矩阵输出）；其**严重度×成本评分与按回复预算分配**列为下一轮**并入 `review`** 的改进项，
+  不另起一套并行命令（遵守"同一件事只有一个所有者"）。
+- **未吸收项**：`review_form`（面板与量表模板）· `qa_drill`（槽位→提问节奏与人格配额）· `make-poster` / `fit-page-limit` / `prepare-camera-ready`，排在后续轮。

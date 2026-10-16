@@ -80,6 +80,9 @@ node bin/studio.cjs revise budget --file "<稿.md>"       :: 缩写/扩写：与
 node bin/studio.cjs talk budget --minutes 15 [--qa 3]     :: **讲授预算**：内容页目标（≈1 张/分钟）与硬上限 1.25×，problem-first 分节配时（**槽位时长必须由你给出，绝不臆测**）
 node bin/studio.cjs talk script --minutes 12 [--deck <f>]  :: **口播稿预算**：按语速把词数摊到每页（中文 180–220 字/分 · 英文 120–150 词/分；备份页不配词）
 node bin/studio.cjs talk lint <deck.md> --minutes 12      :: **幻灯片 lint**：pacing（>1.25× 即 RISK）· 单页 >100 词 · 要点 >6 条 · 非断言标题 · 图片缺失 · Marp 不能渲染 PDF 图
+node bin/studio.cjs reviewers aggregate <scores.json>       :: **聚合评审**：置信加权均值 · champion/detractor · 拖后腿维度 · 决策风险带（含「borderline 无 champion ⇒ 向下判」）
+node bin/studio.cjs reviewers grade <transcript.md> --target 45 --max 75 :: **问答演练评分**：逐答计时（中文 180 字/分起）/ 未答 / 对冲开头 / 填充词密度 / 是否把答案埋在 yes-no 之后；退出码 0=ready 1=需再练
+   （`reviewers` 的规则与流程**吸收自第三方技能包 lifecycle-skills 的 simulate-reviewers / rehearse-qa**（Apache-2.0）；实现为本仓自有 Node 纯函数 + 夹具；来源见 `references/external-adoptions.md`）
    （`talk` 的规则与流程**吸收自第三方技能包 lifecycle-skills 的 make-slides / write-talk-script**（Apache-2.0）；实现为本仓自有 Node 纯函数 + 夹具，来源与许可见 `references/external-adoptions.md`）
 node bin/studio.cjs figures caption --check --file "<稿.md>"   :: 题注体检（硬判据＝"见正文"；缺 n/单位只提示）· `figures recommend` 绘图建议 · `figures arch` 架构图 Mermaid 源码
 node bin/studio.cjs schemacheck --manifest tools.json    :: **工具 parameters 严格性校验**（防严格通道 400 / "换模型才报错"）
