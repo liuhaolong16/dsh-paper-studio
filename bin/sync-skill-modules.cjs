@@ -43,6 +43,10 @@ function validateModules(mods, agentFacing, subcommands) {
     if (!m || !/^[a-z][a-z0-9-]*$/.test(String(m.id || ''))) { errs.push('模块 id 非 kebab-case：' + JSON.stringify(m && m.id)); continue; }
     if (fs.existsSync(path.join(ROOT, 'skills', m.id, 'SKILL.md')) === false && !m._allowMissing) { /* 首次生成时允许不存在 */ }
     if (String(m.when || '').length < 20) errs.push(m.id + '：when（何时用）不足 20 字 ⇒ 发现器按它命中，写太短等于没写');
+    if (m.triggers !== undefined) {
+      if (!Array.isArray(m.triggers) || !m.triggers.length) errs.push(m.id + '：triggers 给了但为空 ⇒ 要么删掉该字段，要么写真触发词');
+      else for (const t of m.triggers) if (String(t).length < 2) errs.push(m.id + '：triggers 里有过短项「' + t + '」（<2 字，发现器命中不到）');
+    }
     const cmds = Array.isArray(m.commands) ? m.commands : [];
     if (!cmds.length) errs.push(m.id + '：一个命令都没挂 ⇒ 空话模块');
     for (const c of cmds.concat(Array.isArray(m.extra_commands) ? m.extra_commands : [])) {
@@ -66,6 +70,7 @@ function buildModuleDoc(m, rootDoc) {
   L.push('description: |');
   L.push('  ' + m.title + '。' + m.when);
   L.push('  **不用于**：' + (m.not_for || '与本科目无关的任务（先走根 `SKILL.md` 的路由表）') + '。');
+  if (Array.isArray(m.triggers) && m.triggers.length) L.push('  Triggers on: ' + m.triggers.join(' · ') + '。');
   L.push('  真源：`references/pipeline.json` 的 `skill_modules.' + m.id + '`；本文件由 `' + SCRIPT_REL + '` 生成，**勿手改**。');
   L.push('---');
   L.push('');

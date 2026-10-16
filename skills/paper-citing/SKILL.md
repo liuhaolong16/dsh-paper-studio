@@ -3,6 +3,7 @@ name: paper-citing
 description: |
   文献与引用（著录格式 · 编号 · 核验与锚点）。要格式化参考文献（GB/T 7714—2025 / Vancouver 等）、要核对「引用是否真实存在」、或要给主张配引用锚点时
   **不用于**：文献检索策略本身（走检索技能）· 稿件排版（paper-gates / paper-writing）。
+  Triggers on: 参考文献 · 引用格式 · 著录 · GB/T 7714 · Vancouver · 核引用 · 引用锚点 · references · citation · bibliography · DOI 核对。
   真源：`references/pipeline.json` 的 `skill_modules.paper-citing`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 
@@ -26,6 +27,7 @@ description: |
 
 - `assets/csl/*.csl（3 个样式 · CC-BY-SA 3.0 · 见 assets/csl/PROVENANCE.md）`
 - `references/csl-lock.json（样式 sha256 锁）`
+- `bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）`
 
 ## 边界（这些事本模块不做）
 

@@ -1368,7 +1368,8 @@
     "license-scan.cjs": "node bin/license-scan.cjs --selftest",
     "license-audit.cjs": "node bin/license-audit.cjs --selftest",
     "sync-skill-modules.cjs": "node bin/sync-skill-modules.cjs --selftest",
-    "figures-kit.cjs": "node bin/figures-kit.cjs --selftest"
+    "figures-kit.cjs": "node bin/figures-kit.cjs --selftest",
+    "oa-fetch.cjs": "node bin/oa-fetch.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1462,6 +1463,17 @@
       "boundaries": [
         "不判断投稿去向与期刊匹配（那要期刊契约与选刊资料，见 paper-gates 与 paper-citing）",
         "不生成正文（只给骨架、必答问题与证据义务）"
+      ],
+      "triggers": [
+        "开题",
+        "选形态",
+        "起稿",
+        "章节骨架",
+        "写作任务书",
+        "thesis",
+        "proposal",
+        "outline",
+        "paper type"
       ]
     },
     {
@@ -1493,6 +1505,17 @@
       "boundaries": [
         "门只照它认识的判据判；**判据前提扫到零必须报红**，跳过一律单列且不计入通过数",
         "不代替人读：语义与学术判断留给人或跨模型 reviewer"
+      ],
+      "triggers": [
+        "投稿前检查",
+        "体检",
+        "期刊契约",
+        "声明件",
+        "合规",
+        "数字一致性",
+        "preflight",
+        "submission check",
+        "journal requirements"
       ]
     },
     {
@@ -1517,6 +1540,20 @@
         "**改动账本**：每处改动必须留 kind 与 reason，缺了拒收",
         "LaTeX 保真：公式原样，百分号 / 下划线 / 和号的转义不得破坏命令",
         "去 AI 味只给可替换项与行号，**密度只作 advisory**"
+      ],
+      "triggers": [
+        "润色",
+        "改语言",
+        "去AI味",
+        "中英互译",
+        "图表题注",
+        "图表规格",
+        "双盲匿名",
+        "polish",
+        "rewrite",
+        "AI tone",
+        "figure caption",
+        "anonymize"
       ]
     },
     {
@@ -1532,11 +1569,25 @@
       ],
       "assets": [
         "assets/csl/*.csl（3 个样式 · CC-BY-SA 3.0 · 见 assets/csl/PROVENANCE.md）",
-        "references/csl-lock.json（样式 sha256 锁）"
+        "references/csl-lock.json（样式 sha256 锁）",
+        "bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）"
       ],
       "boundaries": [
         "**verify-or-drop**：核不实就删或打标，绝不编造",
         "零 key、离线可跑；联网核验由宿主或既有技能提供"
+      ],
+      "triggers": [
+        "参考文献",
+        "引用格式",
+        "著录",
+        "GB/T 7714",
+        "Vancouver",
+        "核引用",
+        "引用锚点",
+        "references",
+        "citation",
+        "bibliography",
+        "DOI 核对"
       ]
     },
     {
@@ -1559,6 +1610,17 @@
         "**咨询性、不预测结果**：风险带只帮你在还能改的时候发现问题",
         "分诊未完成（有未分类项）就退 1，不许直接写 rebuttal",
         "严重度＝对录用的威胁、成本＝回复窗口内的代价；同源关切被 2 个以上审稿人提出升一级"
+      ],
+      "triggers": [
+        "模拟审稿",
+        "审稿意见",
+        "返修",
+        "回复审稿人",
+        "投稿信",
+        "reviewer",
+        "rebuttal",
+        "response to reviewers",
+        "cover letter"
       ]
     },
     {
@@ -1576,6 +1638,18 @@
       "boundaries": [
         "**槽位时长必须由用户给出**，绝不从记忆或场所档案臆测",
         "备份页不占预算；标题必须是断言，非断言标题判风险"
+      ],
+      "triggers": [
+        "答辩",
+        "汇报",
+        "演讲",
+        "幻灯片",
+        "口播稿",
+        "汇报时长",
+        "presentation",
+        "slides",
+        "talk",
+        "defense"
       ]
     },
     {
@@ -1601,8 +1675,21 @@
       "boundaries": [
         "**凭证值不入任何记忆 / 文件 / 日志**（model 只记处理方式）",
         "教训必须带「怎么验」（可机检判据优先于口号）"
+      ],
+      "triggers": [
+        "跨会话续跑",
+        "状态机",
+        "教训",
+        "交接",
+        "成本",
+        "模型通道",
+        "resume",
+        "state",
+        "lessons",
+        "handoff",
+        "cost"
       ]
     }
   ],
-  "skill_modules_note": "★ v3.2.96 模块化技能包：把 agent_facing 命令按「何时用」切成 7 个模块（各自一个 SKILL.md，发现器可按需单独加载）。硬约束由 bin/sync-skill-modules.cjs 机器核对：每模块命令必须真实存在于 SUBCOMMANDS · 并集必须恰好等于 agent_facing（不许漏 / 幽灵 / 重复认领）· when 不得少于 20 字。生成物：skills/<id>/SKILL.md + 两份入口文档的「能力模块索引」段（均由生成器维护，勿手改）。"
+  "skill_modules_note": "★ v3.2.96 模块化技能包：把 agent_facing 命令按「何时用」切成 7 个模块（各自一个 SKILL.md，发现器可按需单独加载）。硬约束由 bin/sync-skill-modules.cjs 机器核对：每模块命令必须真实存在于 SUBCOMMANDS · 并集必须恰好等于 agent_facing（不许漏 / 幽灵 / 重复认领）· when 不得少于 20 字。生成物：skills/<id>/SKILL.md + 两份入口文档的「能力模块索引」段（均由生成器维护，勿手改）。 【v3.3.0】每模块新增 `triggers`（触发短语，吸收自 SkillHub `academic-research` 的做法：它的 description 用 Triggers on 列短语，利于被发现）；由生成器写入各模块 frontmatter。"
 }

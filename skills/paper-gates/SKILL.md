@@ -3,6 +3,7 @@ name: paper-gates
 description: |
   门与合规体检（权威门 · 期刊契约 · 声明件 · 数字一致性）。稿子基本成形、要做「投稿前体检」，或要核对期刊契约 / 声明件 / 数字一致性 / 可复现材料时；也用于出厂前检查本插件自身是否自洽
   **不用于**：起草与润色（paper-forms / paper-writing）· 单个引用的核对（paper-citing）。
+  Triggers on: 投稿前检查 · 体检 · 期刊契约 · 声明件 · 合规 · 数字一致性 · preflight · submission check · journal requirements。
   真源：`references/pipeline.json` 的 `skill_modules.paper-gates`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 

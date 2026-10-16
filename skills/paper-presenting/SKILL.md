@@ -3,6 +3,7 @@ name: paper-presenting
 description: |
   呈现与讲授（幻灯片预算 · 口播稿 · 幻灯片 lint）。论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时
   **不用于**：论文正文写作（paper-writing）· 海报与定稿页数（后续轮次）。
+  Triggers on: 答辩 · 汇报 · 演讲 · 幻灯片 · 口播稿 · 汇报时长 · presentation · slides · talk · defense。
   真源：`references/pipeline.json` 的 `skill_modules.paper-presenting`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 

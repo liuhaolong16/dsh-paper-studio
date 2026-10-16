@@ -3,6 +3,7 @@ name: paper-writing
 description: |
   写作与文字（润色 · 文风 · 中英通道 · 图表规格 · 双盲匿名化）。要把某段或整篇改到能投、要去 AI 味、要做中英双向转换、要体检图表题注与规格、或要生成双盲匿名版时
   **不用于**：改动方法论与数据（那不属文字层）· 引用格式（paper-citing）。
+  Triggers on: 润色 · 改语言 · 去AI味 · 中英互译 · 图表题注 · 图表规格 · 双盲匿名 · polish · rewrite · AI tone · figure caption · anonymize。
   真源：`references/pipeline.json` 的 `skill_modules.paper-writing`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 

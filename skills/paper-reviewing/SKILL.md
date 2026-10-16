@@ -3,6 +3,7 @@ name: paper-reviewing
 description: |
   审稿与返修（模拟评审 · 意见分诊 · 回复与投稿信）。投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时
   **不用于**：投稿件本身的合规体检（paper-gates）· 纯文字润色（paper-writing）。
+  Triggers on: 模拟审稿 · 审稿意见 · 返修 · 回复审稿人 · 投稿信 · reviewer · rebuttal · response to reviewers · cover letter。
   真源：`references/pipeline.json` 的 `skill_modules.paper-reviewing`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 

@@ -3,6 +3,7 @@ name: paper-process
 description: |
   过程与沉淀（状态机 · 教训 · 方法 · 交接 · 成本 · 模型通道）。要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时
   **不用于**：论文内容本身（见其余模块）。
+  Triggers on: 跨会话续跑 · 状态机 · 教训 · 交接 · 成本 · 模型通道 · resume · state · lessons · handoff · cost。
   真源：`references/pipeline.json` 的 `skill_modules.paper-process`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 

@@ -3,6 +3,23 @@
 
 # 变更记录
 
+## v3.3.0 —— 2026-10-17
+
+**补做被用户点破的功课：真去读了 SkillHub `academic-research` 的源文件并逐项对比 —— 结果确实有可吸收项。**
+
+- **我的错**：上一轮只凭技能标题就判「能力重合 ⇒ 不采纳」。**正确判据是"读了源文件、逐项对比后我方更好"才不吸收。**
+- **市场数据纠正**：该市场 **5746 个技能**（639 页），论文相关 **44 个**；不是我上次说的"一个示例技能"。
+- **真源已下到本地逐字读完**（`E:\DeepSeek\third_party\skillhub\academic-research\`：`SKILL.md` + `scholar-search.py` 296 行 + `literature-review.py` 304 行）。
+- **对比结论（`references/skillhub-comparison.md` 12 项逐条）**：`abstract_inverted_index` 还原摘要 · `mailto` 礼貌池 · DOI→OA 位置 —— **我方早已具备**，
+  其中礼貌池我方走**环境变量**（他们**硬编码他人邮箱** `topanga@ludwitt.com`）、且我方多一项 **`is_retracted` 撤稿状态**；失败态我方是三态（他们"取不到=没有"）；我方还有夹具、许可与归属机检。
+- **★本轮吸收三个真缺口**：
+  1. **Unpaywall 兜底 OA-PDF 直链** → `bin/oa-fetch.cjs`（邮箱只从 `PAPER_STUDIO_CONTACT_EMAIL` / `OPENALEX_MAILTO` 取；**未配置 ⇒ SKIP 并写明原因**，绝不冒用他人身份）；
+  2. **24h 磁盘缓存**（md5(url+params) 键，落 `run/.cache/oa/`，`--no-cache` 绕过；**命中需在回执标明"来自缓存"**，不伪装成刚取到）；
+  3. **模块 `triggers`**（吸收他们 `Triggers on: …` 的做法）→ 真源 `skill_modules[*].triggers`，生成器写进各模块 frontmatter，并新增"triggers 为空/过短"的校验。
+- **夹具 9/9**（含 3 条必失败面 + 正控：缓存命中/绕过 · 摘要重建 · Unpaywall 取链）。
+- **⛔ 红线记录**：同市场的 `paper-fetcher` 是 **Sci-Hub 抓全文** ⇒ **不吸收、不记录步骤**；`academic-research` 上游许可未声明 ⇒ 只学方法、不搬代码。
+- **接线**：真源 `selfchecks` + `paper-citing` 模块资产 + 登记表 `env.paper-oa-fetch`（总数 **73**）；7 个模块 frontmatter 由生成器刷新（含 triggers）。
+
 ## v3.2.99 —— 2026-10-17
 
 **吸收 dsh-sci 的 119 张插图库：图法收下、图片不进包、图由我们自己生成。**

@@ -3,6 +3,7 @@ name: paper-forms
 description: |
   形态与开稿（论文形态 · 体裁 · 骨架 · 任务书）。要开一篇新稿、要判断该按哪种形态走（学位论文 / 开题 / 课程论文 / 会议 / 期刊 / 课堂演讲）、或要出章节骨架与写作任务书时
   **不用于**：已经成稿后的润色、引用核对与投稿体检（分别走 paper-writing / paper-citing / paper-gates）。
+  Triggers on: 开题 · 选形态 · 起稿 · 章节骨架 · 写作任务书 · thesis · proposal · outline · paper type。
   真源：`references/pipeline.json` 的 `skill_modules.paper-forms`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 
