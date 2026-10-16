@@ -1239,7 +1239,8 @@ function runSelftest() {
     let txt = '';
     try { txt = fs.readFileSync(out, 'utf8'); } catch {}
     const ok = r.status !== 2 && /^# 投稿前总检/m.test(txt) && /## 一、门执行器/.test(txt) && /## 二、期刊契约门/.test(txt)
-      && /## 三、投稿信要素核对/.test(txt) && /共 4 步/.test(txt)   /* v3.2.26：接入投稿信步骤 ⇒ 步数 3→4 */
+      && /## 三、投稿信要素核对/.test(txt) && /## 四、返修回复信核对/.test(txt)   /* v3.2.29：接入返修回复信步骤 */
+      && /共 5 步/.test(txt)   /* 步数 4→5 */
       && /结论：\*\*/.test(txt) && /未检查 ≠ 通过|未检查（不是通过）/.test(txt)
       /* ★ 顺序锁：第一节的内容必须是**门执行器的真输出**（gate-runner 打印"门执行结果"），
          而不是别的门的报告——首版因下标写死+漏跑一步，把契约门报告顶到了第一节。 */
@@ -1294,6 +1295,15 @@ function runSelftest() {
     const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c, '--contract', k], { encoding: 'utf8' });
     return (r.status === 0 && /投稿信要素核对/.test(String(r.stdout))) || ('exit=' + r.status + ' out=' + String(r.stdout).slice(0, 160));
   });
+  check('★假阴性锁：**单作者稿**写 "The author approved the submission" 必须判通过（首版只认 all authors ⇒ 误报缺声明）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-single-'));
+    const c = path.join(tmp, 'cover.md');
+    fs.writeFileSync(c, 'Dear Editor,\n\nOur original manuscript is not under consideration elsewhere. The author approved the submission and declares no competing interests.\n');
+    const r = spawnSync(process.execPath, [__filename, 'cover', '--cover', c], { encoding: 'utf8' });
+    const out = String(r.stdout);
+    return (r.status === 0 && !/✘ 作者已同意投稿/.test(out)) || ('exit=' + r.status + ' out=' + out.replace(/\n/g, ' | ').slice(0, 200));
+  });
   check('cover·必失败面：漏"未一稿多投"必须报缺；刊名与契约不一致必须 FAIL（交叉核）', () => {
     const { spawnSync } = require('node:child_process');
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cov2-'));
@@ -1327,6 +1337,34 @@ function runSelftest() {
     let txt = '';
     try { txt = fs.readFileSync(o, 'utf8'); } catch {}
     return (r.status === 0 && /未交叉核对/.test(txt) && /不等于通过/.test(txt)) || ('exit=' + r.status + ' 报告=' + txt.slice(0, 160));
+  });
+  check('★preflight·只有提醒（rc=1）时：结论必须是"可投（有 N 项提醒）"且退出码 1 —— 既不得报"不可投"，也不得报"全绿"', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-warn-only-'));
+    const d = path.join(tmp, 'm.md'); const k = path.join(tmp, 'k.json');
+    /* 图题被声明但正文从不引用 ⇒ figure_table_xref 给 WARN ⇒ 契约门 rc=1（纯提醒，无 FAIL） */
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nA few words here for the abstract.\n\n**Figure 1.** Never cited in the body.\n');
+    fs.writeFileSync(k, JSON.stringify({ journal: 'J', publisher: 'P', verified_at: '2026-01-01', verified_from: 'u' }));
+    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--contract', k], { encoding: 'utf8' });
+    const out = String(r.stdout) + String(r.stderr);
+    const okConcl = /结论：\*\*可投（有 \d+ 项提醒/.test(out);
+    const notBlock = !/不可投/.test(out);
+    return (r.status === 1 && okConcl && notBlock) || ('exit=' + r.status + ' 含提醒结论=' + okConcl + ' 无不可投=' + notBlock + ' out=' + out.replace(/\n/g, ' | ').slice(0, 220));
+  });
+  check('★preflight·返修步骤必须真被执行（防"声明了步骤却没跑"的死变量）', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pf-reply-'));
+    const d = path.join(tmp, 'm.md'); const c = path.join(tmp, 'com.md'); const l = path.join(tmp, 'let.md');
+    fs.writeFileSync(d, '# T\n\n## Abstract\n\nA few words here for the abstract.\n');
+    fs.writeFileSync(c, '1. Please clarify the threshold used for the health indicator.\n');
+    fs.writeFileSync(l, '**Comment 1:** Please clarify the threshold used for the health indicator.\n\n**Response:** 已修改\n');
+    const r = spawnSync(process.execPath, [__filename, 'preflight', '--draft', d, '--letter', l, '--comments', c], { encoding: 'utf8' });
+    const out = String(r.stdout) + String(r.stderr);
+    /* 该步若只"声明"不执行，段落里会是「退出码 未运行」；真执行时响应 exit 1（空回应） */
+    /* ★ 断言落在**控制台那一层**：步进行 `⚠ 返修回复信核对（退出码 1）` 证明该步**真被调用**且返回 1；
+       报告里的 `## 四、…` 只写在报告文件里、stdout 没有（首版断言盯错了层）。 */
+    return (/返修回复信核对（退出码 1）/.test(out) && !/返修回复信核对（退出码 未运行）/.test(out))
+      || ('exit=' + r.status + ' out=' + out.replace(/\n/g, ' | ').slice(0, 280));
   });
   check('response·正控：逐条有回应且指明改动位置 ⇒ 通过', () => {
     const { spawnSync } = require('node:child_process');
@@ -2463,7 +2501,10 @@ function splitComments(raw) {
  *  本命令只核"在场/一致"这类可机械判定的事；信写得好不好仍属人读。 */
 const COVER_ITEMS = [
   { id: 'not-under-consideration', label: '未一稿多投 / 未同时投他刊', re: /(?:not\s+(?:under|being)\s+consideration|not\s+submitted\s+elsewhere|exclusively\s+submitted|has\s+not\s+been\s+(?:published|submitted)|未一稿多投|未同时投(?:稿|递)|专投)/i },
-  { id: 'all-authors-approve', label: '全体作者已同意投稿', re: /(?:all\s+authors?\s+(?:have\s+)?(?:read|approv|agree)|all\s+author\s+contributions?\s+approved|作者(?:均|都)同意|全体作者同意)/i },
+  { id: 'all-authors-approve', label: '作者已同意投稿（单作者稿写 the author / I 即正确）',
+    /* ★ 假阴性修正：单作者稿写 "The author approved the submission" 是**正确**写法；
+       首版只认 all authors ⇒ 把真稿的投稿信误报成"缺该声明"。 */
+    re: /(?:all\s+authors?\s+(?:have\s+)?(?:read|approv|agree)|all\s+author\s+contributions?\s+approved|the\s+author\s+(?:has\s+)?(?:read|approv|agree|consent)|author\s+(?:has\s+)?approved\s+the\s+submission|i\s+(?:have\s+)?(?:read|approv|agree|consent)|作者(?:均|都|已)同意|全体作者同意)/i },
   { id: 'no-conflict', label: '无利益冲突（或与稿件一致）', re: /(?:no\s+(?:known\s+)?(?:competing|conflict)|declar(?:e|es|ation)\s+(?:that\s+)?(?:there\s+is\s+)?no\s+(?:competing|conflict)|无(?:利益)?冲突|无竞争性利益)/i },
   { id: 'originality', label: '原创、未发表（且不涉重复发表）', re: /(?:original|has\s+not\s+been\s+published|not\s+published\s+before|原创|未曾发表|未公开发表)/i },
 ];
@@ -2789,6 +2830,15 @@ function cmdPreflight(args, argv) {
     steps.push({ label: '投稿信要素核对', rc: null, out: '未给 --cover ⇒ **未检查**（未检查 ≠ 通过）' });
   }
 
+  /* 2.8) 返修回复信核对（给了 --letter 与 --comments 才跑）—— 把"返修阶段"也纳入总检 */
+  if (val('letter')) {
+    run('返修回复信核对', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'response',
+      '--letter', path.resolve(val('letter'))]
+      .concat(val('comments') ? ['--comments', path.resolve(val('comments'))] : []));
+  } else {
+    steps.push({ label: '返修回复信核对', rc: null, out: '未给 --letter ⇒ **未检查**（未检查 ≠ 通过）' });
+  }
+
   // 3) 合规门（给了包才跑）
   if (pkgDir) {
     run('投稿合规门', process.execPath, [path.join(ROOT, 'bin', 'studio.cjs'), 'compliance', path.resolve(pkgDir)]);
@@ -2798,9 +2848,14 @@ function cmdPreflight(args, argv) {
   // 4) 图件规格（契约里声明了 figure_spec 才相关；由契约门覆盖 ⇒ 这里只提示）
   const specNote = contractArg ? '见契约门输出里的 figure_spec 项（若契约声明了 limits.figure_spec）' : '未给契约 ⇒ 未检查';
 
-  const bad = steps.filter((s) => s.rc !== null && s.rc !== 0);
-  const unchecked = steps.filter((s) => s.rc === null || s.rc === -1 && /未检查|不可用/.test(s.out));
-  const verdict = bad.length ? '不可投（有门未通过）' : (steps.some((s) => s.rc === null) || steps.some((s) => /未检查/.test(s.out)) ? '待定（有项目未检查）' : '可投（当前所有必过项通过）');
+  /* ★ v3.2.29：三桶分清 —— **rc≥2＝未通过（阻断）** · **rc=1＝有提醒（不阻断，逐条确认）** · **rc=null＝未检查**。
+     首版把 rc≠0 一律当"未通过" ⇒ 一条提醒（如图表数量建议区间）把整篇报成"不可投"。 */
+  const bad = steps.filter((s) => s.rc !== null && s.rc >= 2);
+  const warned = steps.filter((s) => s.rc === 1);
+  const unchecked = steps.filter((s) => s.rc === null);
+  const verdict = bad.length ? '不可投（有门未通过）'
+    : (warned.length ? '可投（有 ' + warned.length + ' 项提醒，须逐条确认）'
+      : (unchecked.length ? '待定（有项目未检查）' : '可投（当前所有必过项通过）'));
 
   const L = [];
   L.push('# 投稿前总检（preflight）· ' + path.basename(draftAbs));
@@ -2813,14 +2868,15 @@ function cmdPreflight(args, argv) {
   L.push('- 期刊契约：' + (contractArg ? '`' + path.basename(contractArg) + '`' : '**未给** ⇒ 契约门未检查'));
   L.push('- 引用锚点表：' + (val('anchors') ? '`' + path.basename(val('anchors')) + '`（已透传给第 14 道门）' : '**未给** ⇒ claim-anchor 门按"无锚点"判 ⇒ 已计入下方结果'));
   L.push('- 投稿信：' + (val('cover') ? '`' + path.basename(val('cover')) + '`（已核要素与刊名一致性）' : '**未给** ⇒ 投稿信要素未检查'));
-  L.push('- 结论：**' + verdict + '**（未通过 ' + bad.length + ' 项 · 未检查 ' + unchecked.length + ' 项 · 共 ' + steps.length + ' 步）');
+  L.push('- 返修回复信：' + (val('letter') ? '`' + path.basename(val('letter')) + '`' + (val('comments') ? ' + 意见 `' + path.basename(val('comments')) + '`' : '（**未给 --comments ⇒ 核不了覆盖**）') : '**未给** ⇒ 回复信未检查'));
+  L.push('- 结论：**' + verdict + '**（未通过 ' + bad.length + ' 项 · **提醒 ' + warned.length + ' 项** · 未检查 ' + unchecked.length + ' 项 · 共 ' + steps.length + ' 步）');
   L.push('');
   const CN = ['一', '二', '三', '四', '五', '六', '七', '八'];
   steps.forEach((s, i) => {
     /* ★ 标题**由步名派生**（此前按下标写死 ⇒ 少一步就整排错位、把别人的报告顶到"一、门执行器"下） */
     L.push('## ' + (CN[i] || (i + 1)) + '、' + s.label);
     L.push('');
-    L.push('退出码：' + (s.rc === null ? '（未运行）' : s.rc) + '　' + (s.rc === 0 ? '⇒ 通过' : (s.rc === null ? '' : '⇒ **未通过**')));
+    L.push('退出码：' + (s.rc === null ? '（未运行）' : s.rc) + '　' + (s.rc === 0 ? '⇒ 通过' : (s.rc === 1 ? '⇒ **有提醒（不阻断，逐条确认）**' : (s.rc === null ? '' : '⇒ **未通过**'))));
     L.push('');
     if (s.report) {
       L.push('```markdown');
@@ -2865,12 +2921,13 @@ function cmdPreflight(args, argv) {
       steps: steps.map((s) => ({ label: s.label, rc: s.rc })) }, null, 2));
   } else {
     console.log('投稿前总检（preflight）· ' + path.basename(draftAbs));
-    for (const s of steps) console.log('  ' + (s.rc === 0 ? '✓' : (s.rc === null ? '·' : '✘')) + ' ' + s.label + '（退出码 ' + (s.rc === null ? '未运行' : s.rc) + '）');
+    for (const s of steps) console.log('  ' + (s.rc === 0 ? '✓' : (s.rc === 1 ? '⚠' : (s.rc === null ? '·' : '✘'))) + ' ' + s.label + '（退出码 ' + (s.rc === null ? '未运行' : s.rc) + '）');
     console.log('  结论：**' + verdict + '**');
     console.log('  报告：' + outPath);
     console.log('  说明：本命令只汇总，不判定；"未检查/不可用"不得当通过。');
   }
-  return bad.length ? 1 : 0;
+  /* ★ 有提醒或有未检查项 ⇒ 1（否则"未给 --package"这类未检查会被读成"全绿"） */
+  return (bad.length || warned.length || unchecked.length) ? 1 : 0;
 }
 
 function cmdFormats(args, argv) {

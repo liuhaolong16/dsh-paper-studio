@@ -203,16 +203,15 @@
           "class": "error",
           "submit_blocking": true,
           "aris": "ERROR"
-        }
-      },
-      "reserved": {
+        },
         "warn": {
           "class": "warn",
           "submit_blocking": false,
           "aris": "WARN",
-          "note": "**保留态**：本插件目前没有门会发 WARN（有问题的项按行号进『需修改』清单）。保留它是因为 ARIS 的六态里 WARN 是『发现了问题但不致命』，将来若要区分『致命/非致命』不该另起名字。"
+          "note": "**v3.2.29 起启用**：`rc=1` 的门判为 warn（如期刊契约门的 WARN「由作者定夺」——图表数量建议区间等）。语义＝**已判定、有提醒、不阻断**；它**不等于通过**（`summarize` 会给退出码 1，让\"有提醒\"无法被读成\"全绿\"）。"
         }
       },
+      "reserved": {},
       "assurance": {
         "levels": [
           "draft",

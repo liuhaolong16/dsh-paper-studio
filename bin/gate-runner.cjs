@@ -180,8 +180,10 @@ function runOneGate(gate, inputs, pipeline, opts) {
     rec.note = 'rc≠0 且 stdout 为空 ⇒ 前提层失败（不是"结果为空"）';
     return rec;
   }
-  rec.verdict = r.status === 0 ? 'pass' : 'fail';
-  rec.note = r.status === 0 ? '通过' : `退出码 ${r.status}（见 exit_codes 释义）`;
+  /* ★ v3.2.29：**rc=1 ≠ 失败**。契约门等以 rc=1 表达「已判定、有提醒、由作者定夺」（如图表数量建议区间）；
+     首版把 rc≠0 一律判 fail ⇒ 一条提醒会把整链判成"门未通过"（真实后果：A 稿被报成"不可投"）。 */
+  rec.verdict = r.status === 0 ? 'pass' : (r.status === 1 ? 'warn' : 'fail');
+  rec.note = r.status === 0 ? '通过' : (r.status === 1 ? '退出码 1 = **有提醒**（不阻断；作者定夺）' : `退出码 ${r.status}（见 exit_codes 释义）`);
   return rec;
 }
 
@@ -243,12 +245,15 @@ function summarize(gateResults, assurance, pipeline) {
   const hasGap = gateResults.some((g) => g.verdict === 'skipped_missing_input');
   const hasPass = gateResults.some((g) => g.verdict === 'pass');
   const hasNA = gateResults.some((g) => g.verdict === 'skipped_not_applicable');
+  const hasWarn = gateResults.some((g) => g.verdict === 'warn');
   if (hasPre) return 2;
   if (hasFail) return 2;
   // ★ V2.6：blocked（缺输入）在 submission 下与 fail 同权 —— 「应该有却没有」必须阻断，
   //   否则「体裁判错 / 前提没给 ⇒ 门全跳过 ⇒ 退出码 0」就是一条静默假绿通道。
   if (hasGap && blocksSubmission('skipped_missing_input', assurance || 'draft', pipeline)) return 2;
   if (hasGap) return 1;
+  /* ★ v3.2.29：**有提醒必须给 1**（不能读成"全绿"）；warn 不阻断（submit_blocking:false ⇒ 作者定夺）。 */
+  if (hasWarn) return 1;
   // ★ V1.5：**全不适用 ≠ 全通过**。一个门都没实际判定时给 1（需人工确认体裁是否判错），
   //   否则「体裁判错 ⇒ 所有门都不适用 ⇒ 退出码 0」会变成一条静默的假绿通道。
   if (hasNA && !hasPass) return 1;
@@ -294,16 +299,16 @@ function runGates(gates, inputs, pipeline, opts) {
 function printTable(gateResults, pipeline) {
   console.log('门执行结果（真源：references/pipeline.json）：');
   for (const g of gateResults) {
-    const flag = { pass: '通过', fail: '失败', skipped_missing_input: '跳过(缺输入)', skipped_not_applicable: '不适用(体裁)', precondition_fail: '前提层失败' }[g.verdict] || g.verdict;
+    const flag = { pass: '通过', warn: '提醒', fail: '失败', skipped_missing_input: '跳过(缺输入)', skipped_not_applicable: '不适用(体裁)', precondition_fail: '前提层失败' }[g.verdict] || g.verdict;
     const ec = ((pipeline.gates || []).find((x) => x.id === g.id) || {}).exit_codes || {};
-    const meaning = (g.verdict === 'pass' || g.verdict === 'fail') && g.rc !== null && ec[String(g.rc)] ? ' · ' + ec[String(g.rc)] : '';
+    const meaning = (g.verdict === 'pass' || g.verdict === 'fail' || g.verdict === 'warn') && g.rc !== null && ec[String(g.rc)] ? ' · ' + ec[String(g.rc)] : '';
     console.log(`  [${flag}] ${g.id}：${g.label}`);
     console.log(`        rc=${g.rc} · stdout=${g.stdout_len}B${g.stdout_empty ? '（空）' : ''} · ${g.note}${meaning}`);
     if (g.stderr_head) console.log(`        stderr: ${g.stderr_head}`);
   }
   const counts = gateResults.reduce((a, g) => (a[g.verdict] = (a[g.verdict] || 0) + 1, a), {});
   console.log(`\n合计 ${gateResults.length} 门：` + Object.entries(counts).map(([k, v]) => `${k}=${v}`).join(' · '));
-  console.log('判据：任一 precondition_fail 或 fail ⇒ 退出码 2；仅 skipped_missing_input ⇒ 1（**draft 档**；`--assurance submission` 时亦 ⇒ 2）。');
+  console.log('判据：任一 precondition_fail 或 fail ⇒ 退出码 2；**有 warn（rc=1 的提醒）或 skipped_missing_input ⇒ 1**（`--assurance submission` 时缺输入亦 ⇒ 2；**warn 不阻断，作者定夺**）。');
   console.log('      skipped_not_applicable（体裁不适用）不参与判定，但**全不适用 ⇒ 1** —— 不许读成「全通过」。');
 }
 
@@ -385,6 +390,21 @@ function runSelftest() {
          && applicableTo({ applies_to: ['review'] }, 'review', p) === true
          && applicableTo({}, 'empirical', p) === true) ? true : '适用性判定不对';
   });
+  check('★ rc=1 ⇒ verdict=warn（不是 fail、也不是 pass）：提醒不得被当成"门未通过"', () => {
+    const p = fakePipeline([g('warny', 'fx-exit1.cjs')]);
+    const r = runOneGate(p.gates[0], {}, p);
+    return (r.verdict === 'warn' && r.rc === 1) ? true : `verdict=${r.verdict} rc=${r.rc}`;
+  });
+  check('★ 有 warn ⇒ 退出码 1（有提醒 ≠ 全通过）；且 warn 不阻断（draft 与 submission 都是 1）', () => {
+    const a = summarize([{ verdict: 'warn' }], 'draft', pipeline);
+    const b = summarize([{ verdict: 'warn' }], 'submission', pipeline);
+    return (a === 1 && b === 1) ? true : `draft=${a} · submission=${b}（都应 1：提醒不阻断，但必须可见）`;
+  });
+  check('★ 回归：warn 与 fail 不得混淆 —— warn+pass ⇒ 1；fail ⇒ 仍 2', () => {
+    const a = summarize([{ verdict: 'warn' }, { verdict: 'pass' }], 'draft', pipeline);
+    const b = summarize([{ verdict: 'fail' }], 'draft', pipeline);
+    return (a === 1 && b === 2) ? true : `warn+pass=${a}（应 1）· fail=${b}（应 2）`;
+  });
   check('必失败：全不适用 ⇒ 退出码 1（不许把「全不适用」读成「全通过」）', () => {
     const s = summarize([{ verdict: 'skipped_not_applicable' }]);
     return s === 1 ? true : `summarize 给了 ${s}（0 就是静默假绿通道）`;
@@ -402,7 +422,7 @@ function runSelftest() {
 
   // ★ V2.6 六条（外部吸收：ARIS assurance-contract.md）—— 判定状态机 + 保证级别轴
   check('判定类别：执行器会产出的 5 个 verdict 全部有类别映射（漏一个就报错，绝不默认成无害）', () => {
-    const set = ['pass', 'fail', 'skipped_missing_input', 'skipped_not_applicable', 'precondition_fail'];
+    const set = ['pass', 'warn', 'fail', 'skipped_missing_input', 'skipped_not_applicable', 'precondition_fail'];
     const bad = set.filter((v) => !verdictClassOf(v, pipeline));
     return bad.length === 0 ? true : `未映射：${bad.join(', ')}`;
   });
