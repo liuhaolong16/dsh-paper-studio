@@ -2,10 +2,17 @@
 # 前置（在 npmjs.com 网站上一次即可，你的浏览器已登录）：
 #   Package → Settings → Trusted Publisher → 选 GitHub Actions
 #   填 Organization/user = liuhaolong16 · Repository = dsh-paper-studio · Workflow = publish-npm.yml
-# 之后每次手动触发本工作流即可发布，凭据由 OIDC 短时签发，仓库里不存任何 secret。
+# 之后：① 打 v* 标签（push 触发）或 ② 网页手动触发，即可发布；凭据由 OIDC 短时签发，仓库里不存任何 secret。
+# 说明：标签触发时 inputs.dry_run 为空 ⇒ 下方 `!inputs.dry_run` 为真 ⇒ 走**真发布**（演练请用网页手动触发）。
 name: publish-npm
 
 on:
+  # 方式一（推荐给"只想发版"的场景）：打版本标签即发布。
+  # ★ 只匹配 v*，因此回滚标签 pre-v* 不会误触发发布。
+  push:
+    tags:
+      - 'v*'
+  # 方式二：网页手动触发（可先跑 dry_run=true 演练）。
   workflow_dispatch:
     inputs:
       dry_run:
