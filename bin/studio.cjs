@@ -1328,6 +1328,52 @@ function runSelftest() {
     const row = j && j.rows ? j.rows.find((x) => /Authors/.test(x.field)) : null;
     return (row && row.state === 'ok' && /Hao Liu/.test(String(row.value))) ? true : ('row=' + JSON.stringify(row));
   });
+  /* ★ v3.2.46：**同类扫查**（承 v3.2.45）—— 证据挑选必须排除"工作件/模板/清单"。
+     真身事故：B 稿工作目录里 `0-一页速查.md` 被当成"稿件"去核声明段（✔/✘ 全无意义）；
+     且 `9-投稿前总检查表.md` 因名字含"投**稿**前"被当成稿件（打分改成 manuscript>paper/draft>稿）。 */
+  check('v3.2.46·工作件不是稿件：声明段必须从真稿件读，不得从速查表/检查表读', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'decl-'))
+    fs.writeFileSync(path.join(tmp, '0-一页速查.md'), '# 速查\n\n**Data Availability** 有\n**Ethics** 有\n');
+    fs.writeFileSync(path.join(tmp, '9-投稿前总检查表.md'), '# 总检查表（含"投稿"二字）\n\n正文。\n');
+    fs.writeFileSync(path.join(tmp, 'manuscript-x.md'), '# T\n\n## Abstract\n\nBody.\n\n**Funding** 无资助。\n');
+    const r = spawnSync(process.execPath, [__filename, 'compliance', tmp, '--json'], { encoding: 'utf8' });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    if (!j) return 'JSON 解析失败';
+    const rows = (j.scan.items || []).filter((x) => /^decl:/.test(x.key));
+    if (!rows.length) return '没有声明段行';
+    const users = Array.from(new Set(rows.map((x) => (x.files || [])[0])));
+    if (users.indexOf('manuscript-x.md') < 0) return '没用真稿件，用的是：' + JSON.stringify(users);
+    const da = rows.find((x) => /Data Availability/.test(x.key));
+    if (da && da.state === 'hit') return '把速查表里的 Data Availability 当成了稿件的（应为 missing）';
+    return true;
+  });
+  check('v3.2.46·脚本不是参考文献：refcheck.cjs / mkrefs.py 不得被算作参考文献清单', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'refs-'))
+    fs.writeFileSync(path.join(tmp, 'manuscript-x.md'), '# T\n\n## Abstract\n\nBody.\n');
+    fs.writeFileSync(path.join(tmp, 'mkrefs.cjs'), '// ref tool\n');
+    fs.writeFileSync(path.join(tmp, 'refcheck-openalex.py'), '# ref tool\n');
+    fs.writeFileSync(path.join(tmp, 'refs.md'), '# Reference list\n');
+    const r = spawnSync(process.execPath, [__filename, 'compliance', tmp, '--json'], { encoding: 'utf8' });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    const row = j && (j.scan.items || []).find((x) => x.key === 'references');
+    const bad = ((row && row.files) || []).filter((f) => /\.(cjs|py|js)$/.test(f));
+    if (bad.length) return '把脚本当参考文献了：' + JSON.stringify(bad);
+    return (row && (row.files || []).some((f) => /refs\.md$/.test(f))) ? true : 'refs.md 应被认作参考文献：' + JSON.stringify(row);
+  });
+  check('v3.2.46·取不到就不判定：目录里只有工作件（无可信稿件）⇒ 声明段记 unreadable，不得从工作件读', () => {
+    const { spawnSync } = require('node:child_process');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'decl2-'))
+    fs.writeFileSync(path.join(tmp, '0-一页速查.md'), '# 速查\n\n**Data Availability** 有\n');
+    const r = spawnSync(process.execPath, [__filename, 'compliance', tmp, '--json'], { encoding: 'utf8' });
+    const o = String(r.stdout); const b0 = o.indexOf('{'), e0 = o.lastIndexOf('}');
+    let j = null; try { j = JSON.parse(o.slice(b0, e0 + 1)); } catch {}
+    const row = j && (j.scan.items || []).find((x) => x.key === 'decl');
+    return (row && row.state === 'unreadable') ? true : ('row=' + JSON.stringify(row));
+  });
   check('★报告默认落点不得写进投稿包目录（**逐个会写报告的命令都测**：cover / anchors / preflight）', () => {
     const { spawnSync } = require('node:child_process');
     const results = [];
@@ -3107,7 +3153,7 @@ function findEvidence(text, patterns) {
  *   两条修法：① **排除工作件/要求清单/证据表/参考文献**这类"不是本稿元数据"的文件；
  *   ② 把"像作者块"的文件（投稿信/声明/标题页/作者页）**排在前面**再取第一个命中。
  *   取不到就**如实判缺失** —— 宁缺勿借。 */
-const PKG_NOT_EVIDENCE = /清单|要求|核实|模板|template|checklist|requirements?|refs?\b|reference|evidence|证据|摘要集|abstracts|注记|notes|速查|决策依据|成本|checklist/i;
+const PKG_NOT_EVIDENCE = /清单|要求|核实|检查表|总检|核查|模板|template|checklist|requirements?|refs?\b|reference|evidence|证据|摘要集|abstracts|注记|notes|速查|决策依据|成本/i;
 const PKG_AUTHORFILE = /cover|letter|declar|声明|title|作者|author|submission|投稿/i;
 function findInPackage(dir, patterns) {
   if (!dir) return null;
@@ -4396,13 +4442,19 @@ function complianceScan(dir) {
     .filter(([rel, base]) => isForbidden(rel, base))
     .map(([rel, base]) => rel + '（' + forbidWhy(rel, base) + '）');
   out.forbidden = offenders;
-  const pick = (re, extra) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i])) && !isForbidden(f.split(path.sep).join('/'), basenames[i]));
+  /* ★ v3.2.46：**同类扫查**（承 v3.2.45）。上轮修的是"包内证据搜索会借要求清单里被引论文的作者"；
+     扫同类发现 `compliance` 也在按名字挑文件当证据，且更隐蔽 —— 在 B 稿工作目录上它把 `0-一页速查.md`（速查表）
+     当成**稿件**去核声明段，于是 `✔ Data Availability / ✘ CRediT / ✘ Funding` 全是**从错文件读来的**；
+     参考文献那一项还把 `mkrefs.cjs`、`refcheck*.py` 这些**脚本**算了进去。
+     统一纪律：**工作件/模板/要求清单/证据表/参考文献**都不是"本稿文件"，不得当证据（宁缺勿借）。 */
+  const pick = (re, extra) => rels.filter((f, i) => re.test(basenames[i]) && (!extra || !extra.test(basenames[i]))
+    && !PKG_NOT_EVIDENCE.test(basenames[i]) && !isForbidden(f.split(path.sep).join('/'), basenames[i]));
   const add = (key, level, label, hits) => out.items.push({ key, level, label, state: hits.length ? 'hit' : 'missing', files: hits.slice(0, 5) });
   add('manuscript', 'hard', '稿件主文件（.md/.docx，不含投稿信/回复信）', pick(/\.(md|docx)$/i, NOT_MANU));
   out.items.push({ key: 'package_hygiene', level: 'hard', label: '包卫生（内部产物/陈旧/临时文件不得进包）', state: offenders.length ? 'offenders' : 'clean', files: offenders.slice(0, 8) });
   add('cover_letter', 'hard', 'Cover Letter / 投稿信（单独文件）', pick(/cover[-_ ]?letter|投稿信/i));
   add('figures', 'soft', '图件文件（独立图件或 figures/ 目录）', pick(/\.(tif|tiff|png|eps|svg)$/i));
-  add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i));
+  add('references', 'soft', '参考文献清单文件', pick(/ref|参考文献/i, /\.(cjs|mjs|js|ts|py|sh|ps1|json5?)$/i));   // v3.2.46：脚本不算参考文献
   // ★ v3.2.4：契约项缺失时**直接告诉作者包内已备好哪一份**（此前只报 ✘，作者不知道去哪拿）。
   //   纪律不变：这一项仍判 missing（投稿包里确实没有），只是把"可执行下一步"写进 label。
   const CONTRACTS = (() => { try { return fs.readdirSync(path.join(ROOT, 'references', 'contracts')).filter((f) => /\.json$/.test(f)); } catch { return []; } })();
@@ -4411,7 +4463,25 @@ function complianceScan(dir) {
     ? '｜包内已备好可复制：references/contracts/' + CONTRACTS.join(' · references/contracts/')
     : '｜包内暂无契约模板，需向期刊页面取证后自建'));
   add('journal_contract', 'soft', jcLabel, jcHits);
-  const manu = pick(/\.md$/i, NOT_MANU)[0];
+  /* ★ v3.2.46：**声明段必须从"可信的稿件"读**。此前取"名字排序第一的 .md" ⇒ 工作目录里 `0-一页速查.md`
+     排在 `manuscript-*` 前面，于是声明段判定建立在一张**速查表**上（✔/✘ 都无意义）。
+     现在：优先选名字像稿件的（manuscript/稿/paper/draft），否则选**最大的** .md；都没有 ⇒ 不判定（取不到≠通过）。 */
+  const manuCands = pick(/\.md$/i, NOT_MANU);
+  const pickManu = () => {
+    /* ★ 打分而不是"找第一个"：单靠 `稿` 会把 `9-投稿前总检查表.md` 当成稿件（投**稿**前）——实测踩到。
+       打分：manuscript 3 · paper/draft 2 · 稿/正文 1 · 其他 0；同分取**最大的**文件。 */
+    const score = (f) => {
+      const b = path.basename(f);
+      if (/manuscript/i.test(b)) return 3;
+      if (/paper|draft/i.test(b)) return 2;
+      if (/稿|正文|full[-_ ]?text/i.test(b)) return 1;
+      return 0;
+    };
+    const sized = manuCands.map((f) => { let n = 0; try { n = fs.statSync(path.join(out.dir, f)).size; } catch {} return { f, n, s: score(f) }; });
+    sized.sort((a, b) => (b.s - a.s) || (b.n - a.n));
+    return sized.length ? sized[0].f : null;
+  };
+  const manu = pickManu();
   // ★ v3.2.0 修正（自查出的假阴性）：声明段标题各家措辞不同，只认一种会误报缺件。
   //   BMC/Springer 用 Competing interests 与 Availability of data；IEEE 用 Conflicts of Interest；
   //   中文刊用「利益冲突」「数据可用性」。宁可宽一点，也不要把"写了的"读成"没写"。
@@ -4426,7 +4496,7 @@ function complianceScan(dir) {
     'Ethics': /ethic|伦理|informed consent/i,
   };
   if (!manu) {
-    out.items.push({ key: 'decl', level: 'soft', label: '稿件声明段（无 .md 稿件可核 ⇒ 取不到，不当作通过）', state: 'unreadable', files: [] });
+    out.items.push({ key: 'decl', level: 'soft', label: '稿件声明段（**找不到可信的稿件文件** ⇒ 取不到，不当作通过；工作件/模板/清单不算稿件）', state: 'unreadable', files: [] });
   } else {
     let txt = null;
     try { txt = fs.readFileSync(path.join(out.dir, manu), 'utf8'); } catch { txt = null; }
