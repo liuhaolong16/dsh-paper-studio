@@ -201,6 +201,172 @@
     "deferred": {
       "graduation-design-report": "与学位论文重叠高，待需求驱动；先登记不实现",
       "reading-report": "读书报告需求弱，待需求驱动"
+    },
+    "ask": {
+      "note": "启动问答真源：**问完才开工**。公共五问 + 形态专属（各形态 gate_extra）。未收齐不许开写（form gate 判据）。",
+      "questions": [
+        {
+          "key": "form",
+          "label": "① 论文形态",
+          "options": [
+            {
+              "value": "thesis",
+              "label": "学位论文（本科/硕士/博士，含开题与答辩）"
+            },
+            {
+              "value": "class-talk",
+              "label": "课堂演讲论文（课上讲一份短论文）"
+            },
+            {
+              "value": "sci-journal",
+              "label": "SCI/EI 期刊论文（投国际期刊）"
+            },
+            {
+              "value": "proposal",
+              "label": "开题报告 / 研究计划书"
+            },
+            {
+              "value": "course-paper",
+              "label": "课程论文 / 学期作业论文"
+            },
+            {
+              "value": "conference",
+              "label": "会议论文"
+            },
+            {
+              "value": "review-only",
+              "label": "综述（独立交付）",
+              "deferred": true
+            },
+            {
+              "value": "other",
+              "label": "其他（我自己描述）"
+            }
+          ]
+        },
+        {
+          "key": "lang",
+          "label": "② 语言",
+          "options": [
+            {
+              "value": "zh",
+              "label": "中文"
+            },
+            {
+              "value": "en",
+              "label": "英文"
+            },
+            {
+              "value": "zh2en",
+              "label": "中译英"
+            }
+          ]
+        },
+        {
+          "key": "target",
+          "label": "③ 目标去向",
+          "options": [
+            {
+              "value": "cn-journal",
+              "label": "国内期刊（有刊名更好）"
+            },
+            {
+              "value": "intl-journal",
+              "label": "国外期刊（有刊名更好）"
+            },
+            {
+              "value": "campus",
+              "label": "校内（学位论文 / 答辩 / 课程）"
+            },
+            {
+              "value": "conference",
+              "label": "会议（名称与届次）"
+            },
+            {
+              "value": "undecided",
+              "label": "还没定"
+            }
+          ]
+        },
+        {
+          "key": "carrier",
+          "label": "④ 载体要求（格式从哪来）",
+          "options": [
+            {
+              "value": "template",
+              "label": "有模板（我把文件给你）"
+            },
+            {
+              "value": "generic",
+              "label": "按通用规范（你给建议版式）"
+            },
+            {
+              "value": "journal-driven",
+              "label": "按目标期刊决定（自动取契约；没有就抓官方作者指南）"
+            },
+            {
+              "value": "unsure",
+              "label": "不确定（你替我选并说明理由）"
+            }
+          ]
+        },
+        {
+          "key": "mode",
+          "label": "⑤ 创作模式",
+          "options": [
+            {
+              "value": "full",
+              "label": "全代写"
+            },
+            {
+              "value": "collab",
+              "label": "共同创作"
+            },
+            {
+              "value": "assist",
+              "label": "辅助创作（我给素材你成文）"
+            },
+            {
+              "value": "polish",
+              "label": "润色"
+            },
+            {
+              "value": "other",
+              "label": "其他"
+            }
+          ]
+        }
+      ],
+      "conflicts": [
+        {
+          "when": {
+            "lang": "zh",
+            "target": "intl-journal"
+          },
+          "warn": "中文稿投国际期刊：需要明确的翻译与本地化策略（不是逐句直译）"
+        },
+        {
+          "when": {
+            "carrier": "journal-driven",
+            "target": "undecided"
+          },
+          "warn": "选了「按目标期刊决定」但目标还没定 ⇒ 先定期刊才谈格式"
+        },
+        {
+          "when": {
+            "form": "class-talk",
+            "target": "intl-journal"
+          },
+          "warn": "课堂演讲论文一般不是投稿形态：确认你是否真的要投刊"
+        },
+        {
+          "when": {
+            "form": "thesis",
+            "target": "conference"
+          },
+          "warn": "学位论文一般投校内送审：确认目标去向"
+        }
+      ]
     }
   },
   "gate_meta": {

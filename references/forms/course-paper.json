@@ -112,5 +112,15 @@
     "references": [
       "参考文献"
     ]
-  }
+  },
+  "gate_extra": [
+    {
+      "key": "course",
+      "label": "课程名称与任课要求"
+    },
+    {
+      "key": "deadline",
+      "label": "截止时间"
+    }
+  ]
 }

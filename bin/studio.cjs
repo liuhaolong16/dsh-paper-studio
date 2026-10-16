@@ -133,6 +133,35 @@ function localPathHint(v) {
   return String(v || '').indexOf('__LOCAL__') === 0 ? LOCAL_HINT : '';
 }
 
+function formGateReport(answers, form, p) {
+  /* 启动问答齐备判据（纯函数）：公共五问 + 该形态专属必问（gate_extra）。
+     ★缺项与「值不在选项里」都判不通过 —— 未收齐不许开写；冲突只给警告，不阻断。 */
+  const a = (answers && typeof answers === 'object') ? answers : {};
+  const ask = (p && p.forms && p.forms.ask) || { questions: [], conflicts: [] };
+  const missing = [], unknown = [], warnings = [];
+  const val = (k) => (a[k] === undefined || a[k] === null) ? '' : String(a[k]).trim();
+  for (const q of (ask.questions || [])) {
+    if (q.key === 'form') continue;
+    const v = val(q.key);
+    if (!v) { missing.push(q.label + '（' + q.key + '）'); continue; }
+    const opts = (q.options || []).map((o) => o.value);
+    if (opts.length && opts.indexOf(v) < 0) unknown.push(q.label + '=' + v + '（可选：' + opts.join(' / ') + '）');
+  }
+  for (const it of ((form && form.gate_extra) || [])) {
+    if (!val(it.key)) missing.push(it.label + '（' + it.key + '）');
+  }
+  for (const c of (ask.conflicts || [])) {
+    const w = c.when || {};
+    let hit = true;
+    for (const k of Object.keys(w)) {
+      const expect = (k === 'form') ? (form && form.id) : w[k];
+      if (val(k) !== expect) { hit = false; break; }
+    }
+    if (hit) warnings.push(c.warn);
+  }
+  return { ok: missing.length === 0 && unknown.length === 0, form: (form && form.id) || '', missing, unknown, warnings };
+}
+
 function loadForms(repoRoot) {
   /* 形态（form）真源加载：目录与 id 表来自 pipeline.forms；缺文件/JSON 非法一律判前提层失败（不许静默跳过）。
      与体裁（genre）正交：形态决定框架/必备件/字数/工作流/重点，体裁决定哪些门适用。 */
@@ -3209,6 +3238,91 @@ function runSelftest() {
         });
 
 
+
+        // ── v3.2.70 · 启动问答（未收齐不许开写）────────────────────────
+        check('v3.2.70·ask·问答真源必须含五个公共问与全部形态选项（含载体四选项）', () => {
+          const p = readPipeline();
+          const q = (p.forms && p.forms.ask && p.forms.ask.questions) || [];
+          const keys = q.map((x) => x.key);
+          for (const k of ['form', 'lang', 'target', 'carrier', 'mode']) if (!keys.includes(k)) return '缺公共问：' + k;
+          const formOpts = (q.find((x) => x.key === 'form').options || []).map((o) => o.value);
+          for (const need of ['thesis', 'class-talk', 'sci-journal', 'proposal', 'course-paper', 'conference']) if (!formOpts.includes(need)) return '形态选项缺：' + need;
+          const carrier = (q.find((x) => x.key === 'carrier').options || []).map((o) => o.value);
+          for (const need of ['template', 'generic', 'journal-driven', 'unsure']) if (!carrier.includes(need)) return '载体选项缺：' + need;
+          return true;
+        });
+
+        check('v3.2.70·gate·未收齐必须判不通过（只填形态 ⇒ 必退 2 且点名缺项）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const rep = formGateReport({ form: 'thesis' }, f, readPipeline());
+          if (rep.ok) return '只填了形态却判齐备 —— 这正是"没问清就开写"的漏洞';
+          if (rep.missing.length < 6) return '缺项数偏少：' + rep.missing.length;
+          for (const k of ['lang', 'target', 'carrier', 'mode']) if (!rep.missing.some((x) => x.includes('（' + k + '）'))) return '缺项没点名 ' + k;
+          return true;
+        });
+
+        check('v3.2.70·gate·收齐（含形态专属）必须判齐备', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const a = { form: 'thesis', lang: 'zh', target: 'campus', carrier: 'template', mode: 'collab', degree: '硕士', school_template: '无', data_status: '有' };
+          const rep = formGateReport(a, f, readPipeline());
+          if (rep.missing.length || rep.unknown.length) return '齐全的答案被判缺：' + rep.missing.concat(rep.unknown).join('、');
+          return rep.ok === true ? true : 'ok 应为 true';
+        });
+
+        check('v3.2.70·gate·★形态差异化：课堂演讲缺「演讲时长」必须判不通过（公共问全填也不行）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const base = { form: 'class-talk', lang: 'zh', target: 'campus', carrier: 'generic', mode: 'assist' };
+          const f = r.list.find((x) => x.id === 'class-talk');
+          const rep1 = formGateReport(base, f, readPipeline());
+          if (rep1.ok) return '公共问填了但缺 talk_minutes 仍判齐备 ⇒ 形态专属必问形同虚设';
+          if (!rep1.missing.some((x) => x.includes('talk_minutes'))) return '没点名 talk_minutes：' + rep1.missing.join('、');
+          const rep2 = formGateReport(Object.assign({}, base, { talk_minutes: '15', audience: '非本专业' }), f, readPipeline());
+          if (!rep2.ok) return '补齐专属项后仍判缺：' + rep2.missing.concat(rep2.unknown).join('、');
+          return true;
+        });
+
+        check('v3.2.70·gate·值不在选项里必须判不通过（不许瞎填当通过）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'thesis');
+          const a = { form: 'thesis', lang: '中文', target: 'campus', carrier: 'template', mode: 'collab', degree: '硕士', school_template: '无', data_status: '有' };
+          const rep = formGateReport(a, f, readPipeline());
+          if (rep.ok) return 'lang=中文（应为 zh）竟然通过';
+          if (!rep.unknown.length) return '没报"值不在选项里"';
+          return true;
+        });
+
+        check('v3.2.70·gate·冲突只给警告、不阻断（lang=zh 投国际刊）', () => {
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'sci-journal');
+          const a = { form: 'sci-journal', lang: 'zh', target: 'intl-journal', carrier: 'journal-driven', mode: 'full', target_journal: '待定' };
+          const rep = formGateReport(a, f, readPipeline());
+          if (!rep.warnings.length) return '该组合应给警告（中文稿投国际刊）';
+          if (rep.ok !== true) return '警告不应阻断（当前判为不通过）';
+          return true;
+        });
+
+        check('v3.2.70·gate·端到端（子进程·静默）：未收齐退 2、收齐退 0、未知形态退 2', () => {
+          const { execFileSync } = require('child_process');
+          const r = loadForms(ROOT); if (!r.ok) return '前提层失败：' + r.reason;
+          const f = r.list.find((x) => x.id === 'course-paper');
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-gate-'));
+          const p1 = path.join(dir, 'incomplete.json'), p2 = path.join(dir, 'complete.json'), p3 = path.join(dir, 'bad-form.json');
+          fs.writeFileSync(p1, JSON.stringify({ form: 'course-paper', lang: 'zh' }), 'utf8');
+          fs.writeFileSync(p2, JSON.stringify({ form: 'course-paper', lang: 'zh', target: 'campus', carrier: 'generic', mode: 'assist', course: '数据库原理', deadline: '下周五' }), 'utf8');
+          fs.writeFileSync(p3, JSON.stringify({ form: 'no-such-form', lang: 'zh', target: 'campus', carrier: 'generic', mode: 'assist' }), 'utf8');
+          const run = (args) => { try { execFileSync(process.execPath, [path.join(ROOT, 'bin', 'studio.cjs')].concat(args), { stdio: ['ignore', 'ignore', 'ignore'] }); return 0; } catch (e) { return (e && e.status) || 1; } };
+          const s1 = run(['form', 'gate', '--answers', p1]);
+          const s2 = run(['form', 'gate', '--answers', p2]);
+          const s3 = run(['form', 'gate', '--answers', p3]);
+          try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* 清不掉不影响判据 */ }
+          if (s1 !== 2) return '未收齐应退 2，实退 ' + s1;
+          if (s2 !== 0) return '收齐应退 0，实退 ' + s2;
+          if (s3 !== 2) return '未知形态应退 2，实退 ' + s3;
+          return true;
+        });
+
   const failed = results.filter((r) => !r.ok);
   if (!JSON_OUT) for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   const __pass = results.length - failed.length;
@@ -6218,6 +6332,54 @@ if (cmd === 'form') {
           console.log('用法：form show <id> | form check --form <id> --draft <稿.md> [--json]');
         }
         return 0;
+      }
+      if (sub === 'ask') {
+        const forced = flag('--form');
+        const f = forced ? forms.list.find((x) => x.id === forced) : null;
+        if (forced && !f) { console.error('前提层失败：未知形态「' + forced + '」——可选：' + forms.list.map((x) => x.id).join(' / ')); return 2; }
+        const p = readPipeline();
+        const ask = (p.forms && p.forms.ask) || { questions: [], conflicts: [] };
+        if (json) console.log(JSON.stringify({ ask_order: (p.forms || {}).ask_order || [], questions: ask.questions, form: f ? { id: f.id, label: f.label, gate_extra: f.gate_extra || [], next_ask: f.next_ask || [] } : null }, null, 2));
+        else {
+          console.log('启动问答（**问完才开工**；未收齐答案一律不许开写）');
+          for (const q of ask.questions) {
+            if (q.key === 'form' && f) continue;
+            console.log('  ' + q.label + '  [' + q.key + ']');
+            for (const o of (q.options || [])) console.log('      ' + o.value.padEnd(16) + o.label + (o.deferred ? '（暂缓，先登记）' : ''));
+          }
+          if (f) {
+            console.log('  ' + f.label + ' 的专属必问（该形态才有）：');
+            for (const it of (f.gate_extra || [])) console.log('      ' + it.key.padEnd(20) + it.label);
+            if ((f.next_ask || []).length) { console.log('  该形态的深入追问（next_ask）：'); for (const x of f.next_ask) console.log('      · ' + x); }
+          } else {
+            console.log('  提示：加 --form <id> 可一并打印该形态的专属必问项。');
+          }
+          console.log('  收齐后自检：form gate --answers <答案.json>（缺项一律退 2）');
+        }
+        return 0;
+      }
+      if (sub === 'gate') {
+        const ap = flag('--answers');
+        if (!ap) { console.error('用法：node bin/studio.cjs form gate --answers <答案.json> [--form <id>] [--json]'); return 2; }
+        if (!fs.existsSync(ap)) { console.error('前提层失败：答案文件不存在 ' + ap); return 2; }
+        let answers = null;
+        try { answers = JSON.parse(fs.readFileSync(ap, 'utf8')); }
+        catch (e) { console.error('前提层失败：答案文件不是合法 JSON —— ' + String((e && e.message) || e).slice(0, 90)); return 2; }
+        if (!answers || typeof answers !== 'object' || Array.isArray(answers)) { console.error('前提层失败：答案必须是 JSON 对象（键=问题 key）'); return 2; }
+        const id = flag('--form') || String(answers.form || '').trim();
+        const f = forms.list.find((x) => x.id === id);
+        if (!f) { console.error('前提层失败：未知或未填形态「' + (id || '(空)') + '」——可选：' + forms.list.map((x) => x.id).join(' / ')); return 2; }
+        const p = readPipeline();
+        const rep = formGateReport(answers, f, p);
+        if (json) console.log(JSON.stringify(rep, null, 2));
+        else {
+          console.log('启动问答齐备检查：' + f.label + '（' + f.id + '）');
+          console.log(rep.ok ? '  判定：齐备 —— 可以开工' : '  判定：不齐备 —— **不许开写**');
+          if (rep.missing.length) { console.log('  还缺（必须问清）：'); for (const x of rep.missing) console.log('    ✘ ' + x); }
+          if (rep.unknown.length) { console.log('  值不在选项里（要么改值，要么我加选项）：'); for (const x of rep.unknown) console.log('    ✘ ' + x); }
+          if (rep.warnings.length) { console.log('  提醒（不阻断，但请确认）：'); for (const x of rep.warnings) console.log('    ⚠ ' + x); }
+        }
+        return rep.ok ? 0 : 2;
       }
       if (sub === 'show' || sub === 'check') {
         const id = (rest[1] && !rest[1].startsWith('--')) ? rest[1] : flag('--form');

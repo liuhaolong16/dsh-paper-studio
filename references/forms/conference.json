@@ -137,5 +137,23 @@
     "references": [
       "References"
     ]
-  }
+  },
+  "gate_extra": [
+    {
+      "key": "conference_name",
+      "label": "会议名称与届次"
+    },
+    {
+      "key": "page_limit",
+      "label": "页数上限"
+    },
+    {
+      "key": "deadline_abstract",
+      "label": "摘要截稿日"
+    },
+    {
+      "key": "deadline_full",
+      "label": "全文截稿日"
+    }
+  ]
 }

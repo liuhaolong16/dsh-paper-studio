@@ -179,5 +179,11 @@
       "Cover Letter",
       "投稿信"
     ]
-  }
+  },
+  "gate_extra": [
+    {
+      "key": "target_journal",
+      "label": "目标期刊（没有就写「待定」）"
+    }
+  ]
 }

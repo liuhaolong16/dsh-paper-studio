@@ -169,5 +169,15 @@
     "references": [
       "参考文献"
     ]
-  }
+  },
+  "gate_extra": [
+    {
+      "key": "deadline",
+      "label": "提交截止时间"
+    },
+    {
+      "key": "resources",
+      "label": "可用资源（数据 / 设备 / 团队）"
+    }
+  ]
 }
