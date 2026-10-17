@@ -1,0 +1,15 @@
+{
+  "ref": "v3.47.0",
+  "sha": "f24fda820eab275fffc030f8c619669115bdef84",
+  "job_status": "failure",
+  "steps": {
+    "npm11": "success",
+    "npmci": "success",
+    "selfchecks": "failure",
+    "pack": "skipped",
+    "publish": "skipped"
+  },
+  "runner": "ubuntu-latest",
+  "npm": "11.21.1",
+  "node": "v22.23.3"
+}
