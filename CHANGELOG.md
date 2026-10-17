@@ -3,6 +3,19 @@
 
 # 变更记录
 
+## v3.44.0 —— 2026-10-17
+
+**`definition-first` 的 R6 定位修掉三处真缺陷；论文 A 补「度量口径」段后 R4+R6 双双 OK；顺带清出投稿包里 6 个备份件（合规硬项由 FAIL 转通过）。**
+
+- **★R6 的「第一个结果数字」定位有三处错**（都是论文 A 实跑暴露的）：
+  1. **从摘要开始找** —— IMRaD 稿件摘要必然在引言之前，定义按惯例在其后 ⇒ 永远判「定义滞后」。改为**只在正文（Introduction 起）里找**。
+  2. **裸 `f1` 与特征集名 `F1/F2/F3` 撞名** —— 表格里 "F1–F3" 被当成 F1-score 指标行 ⇒ 只认 `f1-score` / `F1 score`。
+  3. **定义句只按中文跳** —— 英文定义句（`is defined as` / `reported as` / `measured by`）仍被当作结果行 ⇒ 中英都跳。
+- **判定/计量规则的同义词表补齐**：`read as` / `interpreted as` / `taken as` / `not read as`（论文 A 的原句是 "is not read as an improvement"，之前判不出）。
+- **★论文 A 实跑结果（两处缺口都补上）**：加 **Scope** 段后 R4 → **SCOPE_OK**；再加 **Measured quantity and reported metric** 段（SOH＝当前放电容量/额定容量、0.80 判据、R² 与 MAE 口径、10 seed 均值、小于 seed 散布的差不读作改进）后 R6 → **DEFINITION_OK**，总判定 **OK**。`presubmit-all` 总结论由 **WARN** 转 **未完全核对**（只剩两个未给参数的 SKIP）。
+- **★投稿包卫生（合规硬项）**：`compliance` 门报 **[硬] 包卫生** 违规，源头是包内留了 6 个备份件——`13-英文投稿稿-v1.md.bak-…before-ethics`（既存）、`.bak-…before-scope`（本次）与 4 个 `figures/*.png.200dpi.bak`。**全部移到包外 `_archive/`**（只归档不删，移动前核对绝对路径），复跑 `compliance` ⇒ **通过（硬项齐）**，只剩 2 个软项（参考文献清单、该刊契约 json，注释说明这类文件常放上一级、需人工确认）。
+- 自检：`definition-first` **11/11**；`absence` 12/12 · `number-consistency` 12/12 · `presubmit-all` 5/5；`audit` **6/6 全绿**。
+
 ## v3.43.0 —— 2026-10-17
 
 **三个新门接进 `presubmit-all`：投稿前一键出口现在覆盖「内容级」三项；同时给论文 A 补了可核边界并验证 R4 转 OK。**

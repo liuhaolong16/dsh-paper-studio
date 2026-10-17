@@ -53,7 +53,7 @@ const DEF_ELEMENTS = [
   { key: '对象/任务定义', re: /(定义[^。；;\n]{0,16}为|定义为|定义是|即|所谓|指的是|指\s*[^。]{0,10}|define[sd]?\s+as|is\s+defined\s+as|refers\s+to|we\s+define|we\s+consider)/i },
   { key: '对照/基线', re: /(对照|基线|基准|baseline|versus|\bvs\.?\b|compared\s+(?:to|with)|relative\s+to)/i },
   { key: '坐标/尺度/口径', re: /(单位|口径|尺度|坐标系|阈值|阈值化|指标|以\s*[^。]{0,8}\s*计|unit|units|metric|threshold|scale|scale\s+of)/i },
-  { key: '判定/计量规则', re: /(判定|判据|视为|算作|计入|记为|criteria|criterion|considered\s+as|counted\s+as|treated\s+as|scored\s+as)/i }
+  { key: '判定/计量规则', re: /(判定|判据|视为|算作|计入|记为|criteria|criterion|considered\s+as|counted\s+as|treated\s+as|scored\s+as|read\s+as|interpreted\s+as|taken\s+as|not\s+read\s+as)/i }
 ];
 
 function firstSection(text) {
@@ -113,18 +113,22 @@ function checkScope(text) {
 
 function checkDefinition(text) {
   const lines = text.split(/\r?\n/);
-  // 第一个"结果数字"：含数字、且像指标或带百分号、且不是标题/引用/图表号行
+  // ★ 只在**正文**里找第一个结果数字：摘要按惯例是正文的摘要，定义通常在其后（IMRaD 稿件摘要必然在引言前）
+  const introIdx = lines.findIndex((l) => /^#{1,6}\s*(?:\d+\.?\s*)?(introduction|引言|前言)/i.test(l));
+  const from = introIdx >= 0 ? introIdx : 0;
+  // 第一个"结果数字"：含数字、且像指标或带百分号、且不是标题/引用/图表号/定义句
   let idx = -1;
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = from; i < lines.length; i++) {
     const l = lines[i];
     if (!l.trim() || /^#{1,6}\s/.test(l)) continue;
     if (!/\d/.test(l)) continue;
     if (/^\s*[|｜]/.test(l)) continue;            // 表格另行处理
     if (/(Fig(?:ure)?|Table|图|表)\s*\d/i.test(l) && !/(%|accuracy|auc|rmse|mae|bleu|准确|误差|率)/i.test(l)) continue;
     if (/(\d{4})\s*年|references|参考文献/i.test(l)) continue;
-    // 定义性句子本身不算"结果数字"（"单位容量相对初始容量的比值"里也有"容量"）
-    if (/(定义|口径|判据|criteri|standard\s+of)/i.test(l)) continue;
-    if (/(%|accuracy|auc|aupr|auprc|rmse|mae|bleu|rouge|f1|precision|recall|准确|误差|召回|率|得分|损失|容量|效率)/i.test(l)) { idx = i; break; }
+    // 定义性句子本身不算"结果数字"（中英都要跳：SOH 定义句里也会出现"容量/accuracy/reported as"）
+    if (/(定义|口径|判据|criteri|standard\s+of|is\s+defined\s+as|are\s+defined\s+as|we\s+define|reported\s+as|measured\s+by)/i.test(l)) continue;
+    // ★ 指标词：不认裸 `f1`（会与特征集名 F1/F2/F3 撞名），只认 f1-score / F1 score
+    if (/(%|accuracy|auc|aupr|auprc|rmse|mae|bleu|rouge|precision|recall|f1[-\s]?score|准确|误差|召回|率|得分|损失|容量|效率)/i.test(l)) { idx = i; break; }
   }
   if (idx < 0) {
     // 表格里的数值也算结果，退化为"表格前的正文"
