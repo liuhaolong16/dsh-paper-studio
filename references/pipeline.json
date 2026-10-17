@@ -1320,7 +1320,8 @@
     "no_third_party_content_copy": true,
     "exit_code_and_stdout_both_checked": true,
     "require_interpreter_precheck": true,
-    "missing_input_is_not_pass": true
+    "missing_input_is_not_pass": true,
+    "presubmit_split": "投稿前自检分两层、**都要跑**：门层/包层 = `studio.cjs preflight`（契约、投稿信要素、返修回复信、门户字段）；内容层 = `presubmit-all.cjs`（保真、查重、误判、声明、终稿门）。只跑一层时，回执里必须写明另一层\"未核对\"。"
   },
   "lessons_coverage": {
     "note": "经验 → 门的映射写在这里（唯一真源），经验库 md 只写「可检性」，两边不得各写一份链路。null = 人读项，不假装是门。 L-14…L-18 属**投稿执行阶段**，全部为 null：本轮无对应机器门。L-19（换刊改造）部分可机检：标题层级 / 短标题 / 摘要词数 / 引用递增 / 图件是否内嵌 / 资助关键词；L-20（两道闸）与 L-21（取证通路）属运维与取证约定，登记为 null。",
@@ -1564,7 +1565,7 @@
         "bin/plagself.cjs（**查重预检**：新稿 vs 自己旧稿集合，n-gram 字面重合 + 按来源汇总；不是任何查重系统的判定）",
         "bin/misflag.cjs（**误判风险画像**：套话/句长波动/具体性密度 + 具体化缺口清单；**不是 AI 概率，不做降 AI 率改写**）",
         "bin/disclose.cjs（**AI 使用披露**：检查/生成声明 + 过程证据清单（只查存在性，缺项报未准备））",
-        "bin/presubmit-all.cjs（**一条命令跑完投稿前全部机检**：保真/查重/误判/声明/终稿 → 一张表 + 一个总结论；SKIP=未核对≠通过，FAIL 才 exit 1）"
+        "bin/presubmit-all.cjs（**投稿前·内容层总检**：保真/查重/误判/AI 声明/终稿门 → 一张表 + 一个总结论；与 `studio.cjs preflight`（门层·包层）**互补不重叠**；SKIP=未核对≠通过，FAIL 才 exit 1）"
       ],
       "boundaries": [
         "**改动账本**：每处改动必须留 kind 与 reason，缺了拒收",
@@ -1584,7 +1585,8 @@
         "AI tone",
         "figure caption",
         "anonymize"
-      ]
+      ],
+      "agent_facing": []
     },
     {
       "id": "paper-citing",
@@ -1732,5 +1734,6 @@
       ]
     }
   ],
-  "skill_modules_note": "★ v3.2.96 模块化技能包：把 agent_facing 命令按「何时用」切成 7 个模块（各自一个 SKILL.md，发现器可按需单独加载）。硬约束由 bin/sync-skill-modules.cjs 机器核对：每模块命令必须真实存在于 SUBCOMMANDS · 并集必须恰好等于 agent_facing（不许漏 / 幽灵 / 重复认领）· when 不得少于 20 字。生成物：skills/<id>/SKILL.md + 两份入口文档的「能力模块索引」段（均由生成器维护，勿手改）。 【v3.3.0】每模块新增 `triggers`（触发短语，吸收自 SkillHub `academic-research` 的做法：它的 description 用 Triggers on 列短语，利于被发现）；由生成器写入各模块 frontmatter。"
+  "skill_modules_note": "★ v3.2.96 模块化技能包：把 agent_facing 命令按「何时用」切成 7 个模块（各自一个 SKILL.md，发现器可按需单独加载）。硬约束由 bin/sync-skill-modules.cjs 机器核对：每模块命令必须真实存在于 SUBCOMMANDS · 并集必须恰好等于 agent_facing（不许漏 / 幽灵 / 重复认领）· when 不得少于 20 字。生成物：skills/<id>/SKILL.md + 两份入口文档的「能力模块索引」段（均由生成器维护，勿手改）。 【v3.3.0】每模块新增 `triggers`（触发短语，吸收自 SkillHub `academic-research` 的做法：它的 description 用 Triggers on 列短语，利于被发现）；由生成器写入各模块 frontmatter。",
+  "preflight_cmd": "bin/studio.cjs preflight --draft <稿> [--package <包>] [--contract <契约>] [--out <报告.md>]（**投稿前总检·门层与包层**：汇门执行器/期刊契约门/投稿信要素/返修回复信/投稿门户字段，只汇总不判定，\"未检查/不可用\"不得当通过） ＋ bin/presubmit-all.cjs --draft <稿> [--src 原文] [--corpus 旧稿目录] [--pkg 包目录]（**投稿前总检·内容层**：保真出口/查重预检/误判风险/AI 使用声明/终稿门 → 一张表 + 一个总结论，fail-closed：任一 FAIL⇒FAIL、任一 SKIP⇒\"未完全核对\"）。【分工裁决 · 2026-10-17】两者**不重叠**：`preflight` 管\"门与包\"（契约/声明件/门户字段的齐全与自洽），`presubmit-all` 管\"文本与合规\"（改后有没有丢东西、与自己旧作重不重、像不像机器写的、有没有声明）。投稿前**两条都跑**；只跑一条时必须说明另一层\"未核对\"。"
 }
