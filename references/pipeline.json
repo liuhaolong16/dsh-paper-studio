@@ -1388,7 +1388,8 @@
     "polish-losscheck.cjs": "node bin/polish-losscheck.cjs --selftest",
     "plagself.cjs": "node bin/plagself.cjs --selftest",
     "misflag.cjs": "node bin/misflag.cjs --selftest",
-    "disclose.cjs": "node bin/disclose.cjs --selftest"
+    "disclose.cjs": "node bin/disclose.cjs --selftest",
+    "presubmit-all.cjs": "node bin/presubmit-all.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1562,7 +1563,8 @@
         "bin/polish-losscheck.cjs（跨语言丢信息检测：数字/引用/**超参数 key=value 成对**/对冲词/缩写；只查在不在，WARN≠通过）",
         "bin/plagself.cjs（**查重预检**：新稿 vs 自己旧稿集合，n-gram 字面重合 + 按来源汇总；不是任何查重系统的判定）",
         "bin/misflag.cjs（**误判风险画像**：套话/句长波动/具体性密度 + 具体化缺口清单；**不是 AI 概率，不做降 AI 率改写**）",
-        "bin/disclose.cjs（**AI 使用披露**：检查/生成声明 + 过程证据清单（只查存在性，缺项报未准备））"
+        "bin/disclose.cjs（**AI 使用披露**：检查/生成声明 + 过程证据清单（只查存在性，缺项报未准备））",
+        "bin/presubmit-all.cjs（**一条命令跑完投稿前全部机检**：保真/查重/误判/声明/终稿 → 一张表 + 一个总结论；SKIP=未核对≠通过，FAIL 才 exit 1）"
       ],
       "boundaries": [
         "**改动账本**：每处改动必须留 kind 与 reason，缺了拒收",
