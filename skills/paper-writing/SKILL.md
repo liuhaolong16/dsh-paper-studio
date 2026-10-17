@@ -36,6 +36,7 @@ description: |
 - `bin/polish-metrics.cjs（润色质量代理指标：句长/变异/被动/名词化/AI味/TTR；代理≠质量，需盲评）`
 - `bin/polish.cjs（润色：**rewrite 规则化改写引擎**（去名词化/冗余/AI味，fail-closed 过 guard）+ guard 保真 + 改动账本 + 通道检查）`
 - `bin/blind-pack.cjs（盲评装置：去标识打包 + 四维 rubric；代号按内容哈希，mapping 判完才回表）`
+- `bin/polish-losscheck.cjs（跨语言丢信息检测：数字/引用/对冲词守恒/缩写；只查在不在，WARN≠通过）`
 
 ## 边界（这些事本模块不做）
 

@@ -399,7 +399,8 @@ function main(argv) {
     if (cmd === 'rewrite') {
       const f = opt('--file');
       if (!f || !fs.existsSync(f)) { console.error('前提层失败：rewrite 需要 --file <稿>'); return 2; }
-      const r = rewrite(fs.readFileSync(f, 'utf8'));
+      const fid = argv.includes('--fidelity');
+      const r = rewrite(fs.readFileSync(f, 'utf8'), fid ? { maxShrink: 0 } : {});
       if (argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return r.accepted ? 0 : (r.changes.length ? 0 : 0); }
       const outF = opt('--out');
       if (outF && r.accepted) { fs.writeFileSync(outF, r.text, 'utf8'); console.log('已写出：' + outF); }
