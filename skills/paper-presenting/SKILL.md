@@ -25,6 +25,7 @@ description: |
 
 - `references/forms/class-talk.json（课堂演讲形态）`
 - `references/external-adoptions.md（吸收自 lifecycle-skills，Apache-2.0）`
+- `bin/poster.cjs（会议海报：A0/A1/A2 可打印 HTML + 逐槽位字数预算 + P1–P7 机检；不判美学）`
 
 ## 边界（这些事本模块不做）
 

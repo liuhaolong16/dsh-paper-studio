@@ -1380,7 +1380,8 @@
     "relevance-gate.cjs": "node bin/relevance-gate.cjs --selftest",
     "cfp.cjs": "node bin/cfp.cjs --selftest",
     "camera-ready.cjs": "node bin/camera-ready.cjs --selftest",
-    "rehearse.cjs": "node bin/rehearse.cjs --selftest"
+    "rehearse.cjs": "node bin/rehearse.cjs --selftest",
+    "poster.cjs": "node bin/poster.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1651,7 +1652,8 @@
       ],
       "assets": [
         "references/forms/class-talk.json（课堂演讲形态）",
-        "references/external-adoptions.md（吸收自 lifecycle-skills，Apache-2.0）"
+        "references/external-adoptions.md（吸收自 lifecycle-skills，Apache-2.0）",
+        "bin/poster.cjs（会议海报：A0/A1/A2 可打印 HTML + 逐槽位字数预算 + P1–P7 机检；不判美学）"
       ],
       "boundaries": [
         "**槽位时长必须由用户给出**，绝不从记忆或场所档案臆测",
