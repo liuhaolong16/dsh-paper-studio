@@ -35,6 +35,7 @@ description: |
 - `references/lessons-from-first-draft.md`
 - `bin/bakeoff.cjs（真对拍判分：中性机检 / 自家门单列 / 人读项标判者）· run/bakeoff/`
 - `bin/fit-pages.cjs（页数预算机检：逐节页数估算 + 削减方案；证据受保护，只可压缩措辞）`
+- `bin/cfp.cjs（征稿启事解析：截止/页数/双盲/模板/系统/主题/强制声明；逐项给行号与原文，未找到项单列）`
 
 ## 边界（这些事本模块不做）
 

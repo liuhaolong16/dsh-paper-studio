@@ -3,6 +3,24 @@
 
 # 变更记录
 
+## v3.18.0 —— 2026-10-17
+
+**backlog 收敛第 8 项：`parse-cfp`（征稿启事解析）—— 用户缺口表：要么没做，要么没机检。**
+
+- **★新增 `bin/cfp.cjs`（自检 8/8）**：从征稿自由文本里抽 **7 类要素**，每项都带**证据行号 + 原文片段 + 置信度**：
+  - **各类截止日期**（摘要/全文/通知/终稿/rebuttal；同句有日期 + 类型关键词才算），支持 **`2027-02-01` / `15 January 2027` / `April 1, 2027` / `2027年5月10日`** 四种写法并统一成 ISO；
+  - **页数上限**（必须与 limit/max/at most/不超过 **同句**；**补充材料/附录的页数单独记为 `supplementaryLimit`，不会顶掉主页数上限**）；
+  - **双盲要求**（明确区分 double-blind 与 single-blind）；
+  - **模板/排版**（acmart / IEEEtran / llncs / AAAI / ACL / elsarticle / LaTeX / Word…）；
+  - **投稿系统**（EasyChair / HotCRP / OpenReview / CMT / Editorial Manager / ScholarOne）；
+  - **主题范围**（Topics/征稿范围 之后的条目，中英混排都收）；
+  - **强制声明**（可复现 / 伦理 / 数据代码 / **LLM 使用** / 利益冲突）。
+- **★诚实设计**：① 全部抽取都是**启发式**，回执逐项给**行号与原文**供复核；② **`missing` 单列"未找到项"并明写「未找到 ≠ 没有要求」**；③ 完全不像征稿的文本 ⇒ **SKIP**（未识别 ≠ 没有要求），绝不因为"没抽出东西"就报通过。
+- **★直接接上流水线**：解析后给出**可直接跑的下一步命令** —— `plan-submission --venue` · **`fit-pages --limit N`** · `anonymize --blind double`（双盲时）· `preflight`。
+- **真形态实跑**（仿 JoES 专刊征稿，中英混排）：4 个截止全部认出（含 `2027年5月10日`）· **主页数 12 页**（补充材料 20 页被正确分列）· 双盲 required · elsarticle · Editorial Manager · 3 条主题（含中文条）· data-code + LLM 两条强制声明 ⇒ 状态 **OK · 未找到 0 项**。
+- **真文件现状**：本机**没有现成 CFP 文件**（如实记）—— 本轮的真形态验证用的是**按真实格式写的**征稿，不是机械拼的夹具。
+- **接线**：真源 `selfchecks` + `paper-process` 资产 + 登记表 `env.paper-cfp`。
+
 ## v3.17.0 —— 2026-10-17
 
 **backlog 收敛第 7 项：引用核验的**多源回落**——顺带测出"四源齐全"其实没那么齐。**
