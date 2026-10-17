@@ -12,7 +12,8 @@
  *   ① 这是**字面重合的估计**，**不是任何查重系统的判定**（各系统语料、切词、去重规则、阈值都不同）；
  *   ② 语料库只有**你给的那个目录** —— 不包含期刊库、网页、学位论文库 ⇒ **低估是必然的**；
  *   ③ 常见门槛：期刊多要求总重复率 ≤10–15%、学位论文 ≤5–10%，**但以你目标单位的规定为准**；
- *   ④ 本工具**不提供**"降重/洗稿"建议 —— 重合要么来自**自引未标**、要么来自**转述不够**，
+ *   ④ **语料若含本稿旧版/草稿（单源近乎全同）⇒ 会显式标注"这不是查重读数"**，因为自比自必然 100%；
+ *   ⑤ 本工具**不提供**"降重/洗稿"建议 —— 重合要么来自**自引未标**、要么来自**转述不够**，
  *      正确的修法是**补引用 + 真正改写（改结构不是改词）**，不是替换同义词。
  *
  * 用法：
@@ -107,13 +108,18 @@ function check(newText, corpusTexts, opts) {
   const longest = hits.reduce((a, h) => Math.max(a, h.end - h.start), 0);
   const ratio = overlapped / newTok.length;
   const runs = hits.map((h) => ({ from: h.start, len: h.end - h.start, srcs: Array.from(h.srcs).slice(0, 3), sample: newTok.slice(h.start, Math.min(h.end, h.start + 24)).join(' ') }));
+  const bySource = new Map(); for (const h of hits) for (const s of h.srcs) bySource.set(s, (bySource.get(s) || 0) + (h.end - h.start));
   const longestRun = runs.sort((a, b) => b.len - a.len)[0] || null;
   /* 阈值：单段 ≥ 2n（连续过长）或总占比 ≥ 3% ⇒ WARN；总占比 ≥ 8% 或单段 ≥ 4n ⇒ FAIL
      —— 这些**只是我们自己的保守刻度**，不对应任何系统 */
   let status = 'PASS';
   if (ratio >= 0.08 || longest >= 4 * n) status = 'FAIL';
   else if (ratio >= 0.03 || longest >= 2 * n) status = 'WARN';
-  return { status, n, unit: CJK.test(newText) ? '字符' : '词', tokens: newTok.length, overlapped, longest, ratio: Math.round(ratio * 1000) / 10, runs: runs.sort((a, b) => b.len - a.len).slice(0, 8), corpusFiles: corpusTexts.length, refsExcluded: nw.excludedTailChars > 0 };
+  /* ★ 真稿抓到的'假读数'：语料目录里装了本稿的旧版/草稿 ⇒ 自比自 100%。
+     这种情况**不是查重结果**，必须在结论里显式推翻它，否则用户会以为自己抄袭了自己。 */
+  const selfDraft = Array.from(bySource.entries()).filter(([, v]) => v / newTok.length >= 0.8).map(([k]) => k);
+  const statusEff = selfDraft.length ? 'WARN' : status;
+  return { status: statusEff, rawStatus: status, selfDraft, n, unit: CJK.test(newText) ? '字符' : '词', tokens: newTok.length, overlapped, longest, ratio: Math.round(ratio * 1000) / 10, runs: runs.sort((a, b) => b.len - a.len).slice(0, 8), corpusFiles: corpusTexts.length, refsExcluded: nw.excludedTailChars > 0 };
 }
 
 function render(r) {
@@ -123,6 +129,9 @@ function render(r) {
   L.push('  n=' + r.n + r.unit + ' · 新稿 ' + r.tokens + ' token · 重合 ' + r.overlapped + '（' + r.ratio + '%） · 最长连续 ' + r.longest + r.unit + ' · 语料 ' + r.corpusFiles + ' 篇' + (r.refsExcluded ? ' · 已排除参考文献节' : ''));
   for (const x of r.runs) L.push('  · ' + x.len + r.unit + ' @' + x.from + ' ← ' + x.srcs.join(',') + ' | ' + x.sample.slice(0, 90));
   const bySrc = new Map(); for (const x of r.runs) for (const s of x.srcs) bySrc.set(s, (bySrc.get(s) || 0) + x.len);
+  if (r.selfDraft && r.selfDraft.length) {
+    L.push('  ⇒ **★这不是查重读数**：语料里有一篇与本研究稿几乎全同（≥80%）⇒ ' + r.selfDraft.join(',') + ' 极可能是**本稿的旧版/草稿**。请把 --corpus 指向**已发表作品**集合再跑；当前数字不代表查重结果。');
+  }
   if (bySrc.size) L.push('  按来源：' + Array.from(bySrc.entries()).sort((a, b) => b[1] - a[1]).map(([s, v]) => s + ' ' + v + r.unit).join(' · ') + '（**样板句/机构名/投稿信常造成这类重合，删或改写即可**）');
   L.push('  ⇒ 门槛参考：期刊多要求 ≤10–15%、学位论文 ≤5–10%（**以你目标单位为准**）；语料库只含你给的目录 ⇒ **低估是必然的**。');
   if (r.status !== 'PASS') L.push('  ⇒ 修法：**补引用（自引要标）+ 真正改写（改结构不是换同义词）**；本工具不给"洗稿"建议。');
@@ -135,8 +144,9 @@ function selftest() {
   const para = 'Public aging datasets make it possible to compare state of health prediction methods under controlled operating conditions and the analysis in this paper is built on the NASA battery aging dataset';
   ck('★必失败面：整段照抄自己的旧稿 ⇒ FAIL（并报出最长连续段）', () => {
     const r = check(para, [{ file: 'old.md', text: para }], { n: 8 });
-    /* ★ 夹具只有 31 token ⇒ 断言 32 是"夹具没达阈值"（自己踩过 3 次的坑）；按实际长度断言 */
-    return (r.status === 'FAIL' && r.longest >= 24) ? true : JSON.stringify(r);
+    /* ★ 口径修正：单源近全同（本稿旧版/草稿）会被降级为 WARN 并带 selfDraft ——
+       所以这里断言的是"**原始读数仍是 FAIL**，且**被显式标注**"，不是"最终状态 FAIL"。 */
+    return (r.rawStatus === 'FAIL' && r.longest >= 24 && r.selfDraft.length === 1) ? true : JSON.stringify(r);
   });
   ck('正控：完全改写（结构与词都换）⇒ PASS', () => {
     const r = check('We re-analysed cells from a public battery aging archive; comparisons were made under fixed test conditions.', [{ file: 'old.md', text: para }], { n: 8 });
