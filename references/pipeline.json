@@ -1351,6 +1351,7 @@
     "studio.cjs": "node bin/studio.cjs selftest --json",
     "absence.cjs": "node bin/absence.cjs --selftest",
     "number-consistency.cjs": "node bin/number-consistency.cjs --selftest",
+    "definition-first.cjs": "node bin/definition-first.cjs --selftest",
     "gate-runner.cjs": "node bin/gate-runner.cjs --selftest",
     "keys-store.cjs": "node bin/keys-store.cjs --selftest",
     "schema-check.cjs": "node bin/schema-check.cjs selftest",
