@@ -131,12 +131,19 @@ function fetchWithFallback(doi, opts) {
   const chain = o.chain || [fetchOpenAlex, fetchSemanticScholar, fetchDataCite];
   const tried = [];
   let notFound = 0, neutral = 0;
-  for (const fn of chain) {
+  for (let i = 0; i < chain.length; i++) {
+    const fn = chain[i];
     let r;
-    try { r = fn(doi); } catch (e) { r = { kind: 'error', reason: String((e && e.message) || e) , via: (fn && fn.name) || '?' }; }
+    try { r = fn(doi); } catch (e) { r = { kind: 'error', reason: String((e && e.message) || e), via: (fn && fn.name) || '?' }; }
     tried.push((r && r.via) || (fn && fn.name) || '?');
     if (r && r.kind === 'ok') { r.via = r.via || 'unknown'; r.tried = tried; return r; }
-    if (r && r.kind === 'not_found') { notFound += 1; continue; }   /* 一个源说不存在 ≠ 全都说不存在 */
+    if (r && r.kind === 'not_found') {
+      notFound += 1;
+      /* ★ v3.23.0（真对拍换来的）：**主源（第一个来源）明确 404 就直接结案** —— 主源权威，
+         且不必再遍历后备源：对拍实测这一条把「假 DOI」从 10.1 秒降到秒级，语义也从"未核对"变成"不存在"。 */
+      if (i === 0) return { kind: 'not_found', via: tried[0], tried };
+      continue;
+    }
     if (r && r.kind === 'not_in_source') { neutral += 1; continue; } /* 该源未收录此 DOI：中性，不算失败也不算不存在 */
   }
   /* 有一源明确 404、其余只是"未收录"（中性）⇒ 视为 not_found（疑似伪造）；
@@ -369,9 +376,16 @@ function selftest() {
     return (r.kind === 'ok' && r.via === 'semanticscholar' && r.tried.join(',') === 'openalex,semanticscholar') ? true : JSON.stringify(r);
   });
 
-  ck('v3.17.0·回落·★必失败面：**某源 not_found 但另一源 ok** ⇒ 判 ok（一个源说不存在 ≠ 全都说不存在）', () => {
-    const r = fetchWithFallback('10.1/y', { chain: [mk('not_found', 'openalex'), mk('ok', 'datacite', { title: 'T', year: 2020 })] });
+  ck('v3.17.0·回落·**非主源** not_found 但另一源 ok ⇒ 判 ok（一个源说不存在 ≠ 全都说不存在）', () => {
+    const r = fetchWithFallback('10.1/y', { chain: [mk('error', 'openalex'), mk('not_found', 'semanticscholar'), mk('ok', 'datacite', { title: 'T', year: 2020 })] });
     return (r.kind === 'ok' && r.via === 'datacite') ? true : JSON.stringify(r);
+  });
+
+  ck('v3.23.0·★★主源（第一个来源）明确 404 ⇒ **直接结案 not_found 且不再遍历**（对拍换来：更清楚且更快）', () => {
+    const r = fetchWithFallback('10.1/fake', { chain: [mk('not_found', 'openalex'), mk('error', 'semanticscholar'), mk('ok', 'datacite', { title: 'T' })] });
+    if (r.kind !== 'not_found') return '应为 not_found：' + JSON.stringify(r);
+    if (r.tried.length !== 1) return '不应再遍历后备源，tried=' + JSON.stringify(r.tried);
+    return true;
   });
 
   ck('v3.17.0·回落·★必失败面：**全部来源 404** ⇒ not_found（疑似伪造），而不是 error', () => {

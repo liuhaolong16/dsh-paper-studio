@@ -176,3 +176,61 @@ skill/      ← 平铺 SKILL.md 副本，放进 ~/.agents/skills/ 让 DSH 发现
 - **呈现类缺口状态（2026-10-17 Task B 后）**：`talk`（预算 / 口播 / deck lint）**已补**；deck 侧与唯一对手 `lifecycle-skills` **同档**（交叉工具对拍：两份独立 linter 对三份 deck 给出同样风险数），并据其对拍补齐 `no-marp-header`/`tiny-font`/`aspect-ratio` 三项、改正 `bullet-overload`/`generic-title`/`dense` 的严重度口径。
   **仍缺**：`make-poster`（海报 + 2/5 分钟 pitch）· `rehearse-qa`（问答彩排）· `fit-page-limit` · `parse-cfp` · `camera-ready`。
 - **引用核验缺口状态（2026-10-17 Task C 后）**：`refs-verify` 已补（离线结构 + 在线元数据比对 + 撤稿 + fail-soft），判定分类法与对手同表；**仍缺**多源回落（DataCite/arXiv/DBLP/S2）· canonical-instance（预印本 vs 正式版）· relevance gate（离题条目）。
+
+---
+
+## 附录 A · 2026-10-17 复核（v3.23.0）——**缺口清单逐项结清 + 两次真对拍**
+
+> 本文件第 0 节记录的取证限制（`raw.githubusercontent.com` / `api.github.com` 不通 ⇒ 只能做 README/结构级对比）**仍然成立**。
+> 但 2026-10-17 新增了**两条真取证路径**：① 对手工具**从 npm 真装真跑**；② 我方工具在**真稿/真文件**上实跑。
+> 下面是逐项复核结果。**凡未做到的不写"已覆盖"。**
+
+### A1 · 缺口清单（本文件前文的"仍缺"项）逐项结清
+
+| 原缺口 | 现状 | 落点 | 证据 |
+|---|---|---|---|
+| 时态规范（方法/结论用现在时等） | ✅ 已补 | `bin/tense-check.cjs` | 自检 6/6 |
+| 段落级逻辑检查（原"只有软规则，不算机检"） | ✅ 已补（**启发式**） | `bin/paragraph-logic.cjs` | 自检 8/8；状态用 `OK/REVIEW/ISSUES/SKIP`，**不叫 PASS** |
+| 呈现类：slides / talk-script | ✅ 已有 | `bin/talk.cjs` | 自检 10/10 |
+| 呈现类：poster | ✅ 已补 | `bin/poster.cjs` | 自检 7/7；真稿生成 A0（3.6KB · 3 栏 · 5 节 · QR），版面计划报出「结论槽位 156 词 > 90」 |
+| parse-cfp（会议征稿解析） | ✅ 已补 | `bin/cfp.cjs` | 自检 8/8；真形态征稿抽出 4 个截止（含 `2027年5月10日`）· 主页数 12 · 双盲 · elsarticle · Editorial Manager · 3 主题 |
+| camera-ready | ✅ 已补 | `bin/camera-ready.cjs` | 自检 9/9；论文 A 真包（36.8KB 稿 + 5 PDF）⇒ **PASS · 0 ERROR · 6 WARN · 12 INFO** |
+| fit-page-limit | ✅ 已补 | `bin/fit-pages.cjs` | 自检 8/8；论文 B 实测**超 7.32 页** |
+| simulate-reviewers | ✅ 已补 | `bin/rehearse.cjs` | 自检 6/6；论文 A 报 2 条（缺伦理 + 图表未解读）、论文 B 报 4 条；**明确标注"模拟≠真实意见"** |
+| triage-reviews | ✅ 已补 | `bin/triage.cjs` | 自检 8/8 |
+| venue 预算合规 | ✅ 已补 | `bin/venue-budget.cjs` | 自检 6/6；论文 A × 12 页/250 词/6 图 ⇒ 页 11.69 ✔ · 摘要 237 ✔ · 图 4 ✔ |
+| **润色域**（原文：「竞品最集中的域，也是我方最大缺口」） | ❌ **该结论已被推翻** | — | 真对拍 Task A：ours ≡ lifecycle-skills，另两家 FAIL（丢数字与引用）。**不是缺口。** |
+
+### A2 · 真对拍（2026-10-17 · npm 真装真跑）——引用任务
+
+**对手**：`dsh-lit-search@0.2.2`（npm 真装，有 CLI：`search/cite/bib/related`，Crossref + OpenAlex + Semantic Scholar）
+**同输入**：2 条真 DOI（AlphaFold `10.1038/s41586-021-03819-2` · PRISMA `10.1136/bmj.n71`）+ 1 条假 DOI（`10.1234/fabricated2026`）
+
+| 维度 | dsh-lit-search 0.2.2 | 我方 v3.22.0（修前） | 我方 **v3.23.0（修后）** |
+|---|---|---|---|
+| 2 条真 DOI | ✅ 完整 **BibTeX**（title/journal/year/**volume/number**/author 全，key 规范 `jumper2021highly`） | 仅核验（不生成 bib，**任务方向不同**） | 同 |
+| 假 DOI | ✅ 明确 `-- missing: 10.1234/fabricated2026` | ⚠️ `CHECK_SKIPPED`「未核对」——**不如对手清楚** | ✅ **`NOT_FOUND` + `ERROR/UNRESOLVED`**（与对手对等） |
+| 耗时 | **2.4 秒** | 10.1 秒 | **3.9 秒**（快 2.6×） |
+| 撤稿标记 | ❌ 无 | ✅ 有 | ✅ 有 |
+| 标题/年份/重复 DOI 交叉核对 | ❌ 无 | ✅ 有（`TITLE_MISMATCH`/`YEAR_MISMATCH`/`DUPLICATE_DOI`） | ✅ 有 |
+| 版本核验（预印本 vs 正式版） | ❌ 无 | ✅ 有（`--canonical`，只提醒不自动改） | ✅ 有 |
+
+**修法（由对拍直接换来）**：主源（第一个来源）**明确 404 就直接结案 `not_found`，不再遍历后备源** —— 语义从"未核对"变成"不存在"，同时省掉 6 秒。**这是"对拍 → 改代码"的实例，不是名目对齐。**
+
+**如实记我方仍输的一项**：**速度**（3.9s vs 2.4s）—— 我方多做了撤稿/标题/年份/重复/版本五类交叉核对，这部分成本是"更全"的价格。**没有免费的全。**
+
+### A3 · `@ai4paper/dsh-ipaper@0.1.2` 实测（npm 真装）
+
+- 包结构：113 文件 · `lib/index.js` + `preset/` + `cordis.patch.yml` + `client.js`（Web UI）。
+- 提供的核心：**注册 `agentPresets` 的写作 preset（`ipaper`）+ Web 界面**。
+- **可机检的门/自检：未发现**（`lib/` 内无 gate/check/test/audit/lint 文件）。
+- **结论（只说我测到的）**：它是**产品形态/界面与预设**层面更强（有 Web UI、开箱即用），**但我们没测到它的机检能力**；它的写作效果需要在其宿主里加载 preset 才能评，**本轮未做**（不计入对拍结论）。
+
+### A4 · 仍**不能**声称的（更新）
+
+1. **不能说"市面最优质"** —— 上面三家（PaperDebugger 1546★ / dsh-ipaper / academic-research-skills 5.2 万★）里：
+   - `dsh-ipaper` 已真装、已看结构，**但写作效果未评**（需宿主加载）；
+   - `PaperDebugger` 需 Overleaf 环境，**本轮无法跑**；
+   - `academic-research-skills` 在 npm 与 Gitee 搜索均**未取到**（非 npm 包）。
+2. **能说（可复核）**：在**同输入的引用任务**上，我方与 `dsh-lit-search` 各有胜项（它快而会生成 BibTeX；我方核验维度更多且会判撤稿/版本）；**假 DOI 的判定在 v3.23.0 已与对手对等**。
+3. **速度**：我方引用核验 3.9 秒 / 3 条（对手 2.4 秒），差异原因已列（五类交叉核对）。
