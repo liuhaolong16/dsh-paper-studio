@@ -3,6 +3,21 @@
 
 # 变更记录
 
+## v3.43.0 —— 2026-10-17
+
+**三个新门接进 `presubmit-all`：投稿前一键出口现在覆盖「内容级」三项；同时给论文 A 补了可核边界并验证 R4 转 OK。**
+
+- **`presubmit-all` 新增三项**（原 6 项 → 9 项）：
+  - **缺席断言三档**：`absence` 的 `PASS n · WARN n · FAIL n` → FAIL>0 判 FAIL、WARN>0 判 WARN；`SKIP（未含缺席断言 / 分析笔记）` 一律记 **SKIP = 未核对**，**绝不当通过**。
+  - **承重数字四处一致（含单位）**：读它自己打印的 `⇒ PASS/WARN/FAIL`。
+  - **起首边界＋定义先行（启发式·需人读）**：`OK`→PASS、`REVIEW`→**WARN**（只提醒，不判死）；名称里就写明「启发式·需人读」，避免被当机器结论。
+  - 每项都配 **TIP**（怎么修），例如缺席断言要标 `〔缺席=未见; 检索=a*|b; 范围=p.x–y〕`、数字冲突要在正文写一句同时交代两处。
+- **总结论仍 fail-closed**：FAIL > WARN > SKIP > PASS；exit code FAIL=1 其余 0。`presubmit-all --selftest` **5/5**。
+- **★论文 A 补了可核边界**（新门抓出的真缺口）：在 §1.1 末新增 **Scope** 段——覆盖 NASA PCoE 锂离子电芯的三个温度（4/24/43 °C）、三组特征（F1–F3）、两种协议（A 内温；B 跨温留一），**不覆盖**其他化学体系（LFP/NMC）、4–43 °C 之外的温度、新循环实验、BMS 在线部署。
+- **改后验证（关键）**：`definition-first --check scope` 由 **REVIEW → OK**（可核项：对象/数据类型 · 规模区间 · 显式清单）；**改前备份仍 REVIEW**（区分度成立）；契约门**改前改后完全一致**（pass=5 / fail=1，该 fail 是既存的 compliance-scan，缺 `--anchors/--manifest` 输入，与本次改动无关）。
+- **★修 `definition-first` 两处判据缺陷（v3.42.1）**：① 首节原取「第一个标题块」——真实稿里那是**论文题目+作者块**，改为以 **Introduction** 为起点到同级/更高级标题为止；② `SCOPE_SENT` 缺英文 `covers`，补上后又把 `exclud` 放太宽（把「What the framework deliberately excludes」当成范围声明）⇒ 收紧为**必须有范围主语**（this paper/study/work 或 本文/本研究），`out of scope` 类另开一支。
+- 自检：`absence` 12/12 · `number-consistency` 12/12 · `definition-first` 11/11 · `presubmit-all` 5/5；`audit` **6/6 全绿**；package-audit 11/11。
+
 ## v3.42.0 —— 2026-10-17
 
 **三个新门加固：文档类型守卫（分析笔记不是稿件）＋ 真阳性控制跑通 ＋ 一处真实漏报修掉。**

@@ -58,6 +58,23 @@ function statusFrom(out, kind) {
     if (/判定：FAIL/.test(t)) return 'FAIL';
     return 'SKIP';
   }
+  if (kind === 'absence') {
+    if (/⇒\s*SKIP/.test(t)) return 'SKIP';                       // 未含缺席断言 / 分析笔记 ⇒ 未核对
+    const m = t.match(/PASS (\d+) · WARN (\d+) · FAIL (\d+)/);
+    if (m) { if (+m[3]) return 'FAIL'; if (+m[2]) return 'WARN'; return 'PASS'; }
+    return 'SKIP';
+  }
+  if (kind === 'numcon') {
+    if (/⇒\s*FAIL/.test(t)) return 'FAIL';
+    if (/⇒\s*WARN/.test(t)) return 'WARN';
+    if (/⇒\s*PASS/.test(t)) return 'PASS';
+    return 'SKIP';
+  }
+  if (kind === 'deffirst') {
+    if (/总判定：REVIEW/.test(t)) return 'WARN';                  // 启发式，要人看，不判死
+    if (/总判定：OK/.test(t)) return 'PASS';
+    return 'SKIP';
+  }
   return 'SKIP';
 }
 
@@ -67,6 +84,9 @@ const TIP = {
   plagself: '--corpus 只放**已发表/已投出**的作品；重合来自自引就补引用，来自转述不够就改结构',
   presubmit: '按第 1 关报告补回丢失的数字/引用/超参数，别靠换同义词',
   camera: '按 ERROR 项逐条修；WARN 项确认该刊是否要求',
+  absence: '每个"无/没有/从未"句都要标档：〔缺席=未做〕/〔缺席=未报; 位置=…〕/〔缺席=未见; 检索=a*|b; 范围=p.x–y〕；未标注一律不过',
+  numcon: '同指标出现两个不同值 ⇒ 在正文写一句同时交代两处（或统一）；单位要一致（0.86 与 86% 不是一回事）',
+  deffirst: '**启发式**：R4 补一句「覆盖 X、不覆盖 Y」且含可核项；R6 把对象/对照/口径/判定四要素移到第一个结果数字之前。报 REVIEW 只是要人读，不等于稿子错',
 };
 
 function main(argv) {
@@ -94,6 +114,13 @@ function main(argv) {
   items.push({ name: '误判风险画像（非 AI 概率）', tip: TIP.misflag, status: statusFrom(mi, 'misflag'), detail: (mi.split('\n').find((l) => /画像：/.test(l)) || '').trim().slice(0, 160) });
   const di = run('disclose.cjs', ['--check', '--draft', draft]);
   items.push({ name: 'AI 使用声明', tip: TIP.disclose, status: statusFrom(di, 'disclose'), detail: (di.split('\n')[0] || '').trim().slice(0, 160) });
+  /* ── 图谱反查带来的三个内容级门（v3.39–3.42 落地，v3.43.0 接入本出口）── */
+  const ab = run('absence.cjs', ['--draft', draft]);
+  items.push({ name: '缺席断言三档（未做/未报/未见）', tip: TIP.absence, status: statusFrom(ab, 'absence'), detail: (ab.split('\n').find((l) => /⇒|未含缺席断言|分析笔记/.test(l)) || '').trim().slice(0, 160) });
+  const nc = run('number-consistency.cjs', ['--draft', draft]);
+  items.push({ name: '承重数字四处一致（含单位）', tip: TIP.numcon, status: statusFrom(nc, 'numcon'), detail: (nc.split('\n').find((l) => /⇒|无重复指标/.test(l)) || '').trim().slice(0, 160) });
+  const df = run('definition-first.cjs', ['--draft', draft]);
+  items.push({ name: '起首边界＋定义先行（启发式·需人读）', tip: TIP.deffirst, status: statusFrom(df, 'deffirst'), detail: (df.split('\n').filter((l) => /^[✔△·] /.test(l)).map((l) => l.trim()).join(' · ') || '').slice(0, 160) });
   if (pkg && fs.existsSync(pkg)) {
     const out = run('camera-ready.cjs', ['--pkg', pkg, '--draft', draft]);
     items.push({ name: '终稿门（包级）', tip: TIP.camera, status: statusFrom(out, 'camera'), detail: (out.split('\n').find((l) => /ERROR \d+ · WARN/.test(l)) || '').trim().slice(0, 160) });
