@@ -37,6 +37,36 @@ const sentences = (t) => String(t).split(/(?<=[.!?。！？])\s+|\n{2,}/).map((x
 const words = (t) => (String(t).match(/[A-Za-z]+(?:['-][A-Za-z]+)*|\d+(?:\.\d+)?|[\u4e00-\u9fff]/g) || []).length;
 const paragraphs = (t) => String(t).split(/\n\s*\n/).map((x) => x.trim()).filter((x) => x.length > 40);
 
+/** ★ 段落角色：决定"该补什么"——统一一句"补具体物"没有指导价值。
+    用关键词打分（各角色互斥取最高），拿不准就归 'other'（仍会列出，只给通用建议）。 */
+const ROLE_RULES = [
+  /* ★ 真稿逼出来的两条：声明段与设计说明段**天然没有数字**，把它们当"缺陷"是误报。
+     真数据里论文 A 的 6 个"零具体物"段落中，至少 4 段是这类。 */
+  ['declaration', /\b(no ai (?:tool|system)|ai[- ]assisted|ethic|data availability|competing interest|consent|declaration)\b/i, /(声明|利益冲突|数据可用|伦理|未使用)/],
+  ['rationale', /\b(framework|deliberately|design (?:choice|rationale)|scope|exclud\w+|criterion|constraint|conceptual)\b/i, /(框架|有意|范围|不测|判据|约束)/],
+  ['limitation', /\b(limitation|limited|caveat|future work|shortcoming|remains? (?:unclear|open))\b/i, /(局限|不足|未来工作|有待)/],
+  ['method', /\b(we (?:used|use|trained|collected|measured|ran|set|fixed)|dataset|procedure|protocol|hyper-?parameter|parameter)\b/i, /(方法|实验|数据集|参数|流程)/],
+  ['result', /\b(results?|we (?:found|observed|obtained|report)|achiev|outperform|improv\w+|reduc\w+)\b/i, /(结果|我们发现|提升|下降|优于)/],
+  ['background', /\b(has (?:been|become)|over the past|in recent years|plays? a|widely)\b/i, /(近年来|随着|广泛|重要性)/],
+];
+function classifyPara(p) {
+  let best = 'other'; let bestScore = 0;
+  for (const [role, reEn, reZh] of ROLE_RULES) {
+    const s = ((p.match(reEn) || []).length) + ((p.match(reZh) || []).length) * 2;
+    if (s > bestScore) { bestScore = s; best = role; }
+  }
+  return best;
+}
+const ROLE_ASK = {
+  limitation: '补**具体**的失败模式或例外（哪一组/哪种工况失效、差多少），而不是"有一定局限"',
+  method: '补**实验条件与样本量**（温度/倍率/截止电压/单元数/重复次数），或**超参数与选取理由**',
+  result: '补**关键数值与区间**（提升多少 %、标准差、p 值或效应量），并指出对照基线',
+  background: '补**一条具体文献或一个具体事实**（谁在什么条件下报告了什么），或**删掉这句泛化陈述**',
+  declaration: '**这类段落通常不该塞数字** ⇒ 只需确认：声明是否完整（工具名/范围/未参与内容）、是否有伦理或数据可用性要求被漏掉；按刊要求补一句"不适用"即可',
+  rationale: '**这类段落也不该塞数字** ⇒ 若怕审稿人问"凭什么这样定"，补**一条方法学依据或标准编号**，或写清"依据是 X，代价是 Y"的取舍',
+  other: '补一处作者特有的事实：数值 / 条件 / 取舍理由 / 一条支撑文献',
+};
+
 function analyse(text) {
   const raw = String(text || '');
   const S = sentences(raw);
@@ -77,10 +107,12 @@ function analyse(text) {
     const pw = words(p);
     const pspec = (p.match(/\d+(?:\.\d+)?%?/g) || []).length + (p.match(/\[\d+(?:[,\-–]\d+)*\]/g) || []).length
       + (p.match(/\d\s*(?:%|℃|mV|V|A|mAh|kW|Hz|mm|cm|km|kg)/g) || []).length;
-    if (pw >= 40 && pspec === 0) {
-      asks.push({ para: i + 1, words: pw, ask: '这段（约 ' + pw + ' 词）没有任何数字/引用/单位 ⇒ 请补：具体实验条件或样本量 · 关键数值或区间 · 失败模式或例外 · 你的取舍理由' });
-    } else if (pw >= 40 && pspec / pw * 100 < 1) {
-      asks.push({ para: i + 1, words: pw, ask: '这段具体性偏低（' + pspec + ' 个具体物 / ' + pw + ' 词）⇒ 可补一处数值或一条引用' });
+    if (pw >= 40 && (pspec === 0 || pspec / pw * 100 < 1)) {
+      /* ★ 角色感知：同一个"补具体物"对方法段/局限段/背景段的含义完全不同，
+         统一话术等于没指导。锚点取首 18 词，作者才能定位到那一段。 */
+      const role = classifyPara(p);
+      const anchor = p.replace(/\s+/g, ' ').split(' ').slice(0, 18).join(' ');
+      asks.push({ para: i + 1, words: pw, spec: pspec, role, anchor, ask: ROLE_ASK[role] || ROLE_ASK.other });
     }
   });
 
@@ -102,7 +134,7 @@ function render(r) {
   if (r.templateSamples.length) L.push('  模板命中示例：' + r.templateSamples.join(' / '));
   if (r.asks.length) {
     L.push('  ⇒ **具体化缺口（要你补，不是要你改词）**：');
-    for (const a of r.asks) L.push('     · 第 ' + a.para + ' 段：' + a.ask);
+    for (const a of r.asks) L.push('     · 第 ' + a.para + ' 段（' + a.words + ' 词 · 角色 ' + a.role + '）：' + a.ask + '\n       锚点：' + a.anchor + '…');
   } else L.push('  ⇒ 没有发现"零具体物"的段落（未发现 ≠ 写得好；论证有效性仍属人读项）');
   L.push('  边界：' + r.boundary);
   return L.join('\n');
@@ -133,6 +165,23 @@ function selftest() {
   ck('★必失败面：回执必须自证「这不是 AI 概率」（防误用成"降 AI 率"）', () => {
     const out = render(analyse(vague));
     return (/这不是 AI 概率/.test(out) && /不做"降 AI 率"改写/.test(out)) ? true : out.slice(0, 120);
+  });
+  ck('★角色识别：方法段/局限段/结果段/背景段各归其位（提示才对得上段）', () => {
+    const m = classifyPara('We trained the model on 30 cells with n_estimators=300 under a fixed protocol.');
+    const l = classifyPara('A limitation of this work is that future work should extend it to low temperature.');
+    const r2 = classifyPara('Results show we obtained a 27% improvement over the baseline in all runs.');
+    const b = classifyPara('Over the past decade this topic has become widely studied and plays a key role.');
+    return (m === 'method' && l === 'limitation' && r2 === 'result' && b === 'background') ? true : [m, l, r2, b].join(',');
+  });
+  ck('★必失败面：零具体物段落必须进清单且带锚点（锚点为空 = 作者找不到那段）', () => {
+    const r = analyse('Over the past decade battery health prediction has become widely studied and plays a key role in industry applications everywhere, and many groups have proposed pipelines that combine signal processing with machine learning models of varying complexity and ambition across a wide range of conditions. ');
+    return (r.asks.length >= 1 && r.asks[0].anchor.split(' ').length >= 8 && /补/.test(r.asks[0].ask)) ? true : JSON.stringify(r.asks);
+  });
+  ck('★必失败面：AI 声明段/设计说明段零数字是**正常**的，不得建议塞数字', () => {
+    const decl = analyse('During the preparation of this work the author used DeepSeek (an AI-assisted technology) in order to draft and polish the language of this manuscript, and the author reviewed and edited the content as needed and takes full responsibility for the final text as published. No generative tool produced any result, number, or conclusion reported here, and the author confirms that all analyses were performed with the deposited scripts.');
+    const rat = analyse('This study uses a conceptual framework, not a theoretical one, and the distinction is worth stating explicitly because reviewers often assume that a conceptual framework must be validated against measured variables, which this design deliberately excludes in order to keep the scope of the claim identical to the scope of the evidence actually collected.');
+    const bads = [decl, rat].filter((r) => (r.asks || []).some((a) => /补\*\*实验条件与样本量\*\*/.test(a.ask)));
+    return (bads.length === 0 && (decl.asks || []).length + (rat.asks || []).length >= 0) ? true : JSON.stringify(bads.map((r) => r.asks));
   });
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.name + (c.ok ? '' : '  ← ' + c.d));
