@@ -67,3 +67,16 @@
 - GPTZero 官方 FAQ · How do I interpret burstiness or perplexity? —— https://support.gptzero.me/articles/9585228410-how-do-i-interpret-burstiness-or-perplexity （2026-10-17 取；**含"2023 秋起不再使用"的官方声明**）
 - Liang W. et al. *GPT detectors are biased against non-native English writers*, arXiv:2304.02819（Patterns 2023）—— https://arxiv.org/abs/2304.02819
 - HEPI 关于 AI 检测与国际学生公平性的讨论（**本次 403 未取到正文**，只从检索摘要得知存在）—— https://www.hepi.ac.uk/2026/07/20/catching-the-wrong-students-ai-detection-international-students-and-the-fairness-crisis-in-uk-universities/
+
+
+## 五、已落地的工具（2026-10-17 · v3.33.0–v3.35.0）
+
+| 命令 | 作用 | 自检 | 边界 |
+|---|---|---|---|
+| `plagself --new <新稿> --corpus <旧稿目录>` | 自我重复/字面重合预检，**按来源汇总**（能指认"重合来自投稿信 86 词"） | 5/5 | 字面估计，**不是任何查重系统的判定**；语料只含给定目录 ⇒ 低估必然 |
+| `misflag --file <稿>` | 误判风险画像（套话密度 / 句长 SD / 具体性密度）+ **逐段具体化缺口清单** | 5/5 | **不是 AI 概率**；不做"降 AI 率"改写；只要求补作者特有内容 |
+| `disclose --check --draft <稿>` | 扫稿内**有无** AI 使用声明 | 5/5 | 口径以目标期刊为准 |
+| `disclose --draft <稿> --journal <刊> --tools <模型> --out <文件>` | 生成不夸大的披露声明 + **过程证据清单**（缺项报"未准备"） | 同上 | 不写"未使用 AI"除非事实如此；不判断证据是否充分 |
+| `polish presubmit --src --out` | 出口四关（丢信息/保真/指标/**交付面**） | 20/20 | 不证明写得好，只证明没丢东西 |
+
+**组合用法（"能提交且经得起查"）**：`plagself` 过查重 → `misflag` 补具体化 → `presubmit` 过保真 → `disclose` 出声明与证据。
