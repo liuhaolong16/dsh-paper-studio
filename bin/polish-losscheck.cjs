@@ -33,6 +33,22 @@ const citesOf = (s) => {
 };
 const acrOf = (s) => Array.from(new Set(String(s).match(/\b[A-Z]{2,6}\b/g) || []));
 const hedgesIn = (s, re) => (String(s).match(re) || []).length;
+/* ★ v3.32.0 **超参数级**保真：`key=value` 必须成对存活。
+   起因：Task A' 里 academic 那家把 `n_estimators=300, max_depth=4, learning_rate=0.08, subsample=0.9,
+   colsample_bytree=0.9, random_state=0` 整批删掉。只查"数字在不在"能抓到这一种，
+   但抓不到更隐蔽的两种：① 数字还在却挂错键（300 被写成 max_depth=300）；② 键还在值被改（0.08 → 0.1）。 */
+const PARAM_RE = /`?\b([A-Za-z_][A-Za-z0-9_]{1,30})\s*=\s*(-?\d+(?:\.\d+)?)`?/g;
+function paramsOf(s) {
+  const m = new Map();
+  let x; PARAM_RE.lastIndex = 0;
+  while ((x = PARAM_RE.exec(String(s)))) {
+    const k = x[1].toLowerCase(); const v = x[2];
+    if (!m.has(k)) m.set(k, new Set());
+    m.get(k).add(v);
+  }
+  return m;
+}
+
 
 /** ★ 真稿抓出的坑：原文头部有元数据行（`# contestant:` / `<!-- … -->` / 日期行），
     翻译本不该带它们，但按"数字缺失"会被误报 ⇒ 抽取前先剥元数据行。 */
@@ -59,6 +75,28 @@ function losscheck(srcRaw, outRaw) {
   const outCSet = new Set(outC);
   const missingC = srcC.filter((c) => !outCSet.has(c));
   if (missingC.length) problems.push({ rule: 'citation-missing', detail: '原文的引用标记缺失：' + Array.from(new Set(missingC)).join(' ') });
+  /* 2b. 超参数（key=value 成对保真） */
+  const srcP = paramsOf(src), outP = paramsOf(out);
+  const outVals = new Set(); for (const vs of outP.values()) for (const v of vs) outVals.add(v);
+  /* ★ 判据修正（同一个"量错对象"家族）：要在**产出全文的数字**里找值，
+     而不是只在产出的 key=value 集合里找 —— 否则「We grew 300 trees」这种
+     把值写成散文的情况会被误判成"值也没了"（本该是 WARN 的键丢失）。 */
+  const outNums = new Set(numbersOf(out));
+  const paramMissing = []; const paramChanged = []; const paramKeyLost = [];
+  for (const [k, vs] of srcP) {
+    if (!outP.has(k)) {
+      const keptAll = Array.from(vs).every((v) => outNums.has(v));
+      if (keptAll) paramKeyLost.push(k + '=' + Array.from(vs).join('|'));
+      else paramMissing.push(k + '=' + Array.from(vs).join('|'));
+      continue;
+    }
+    const ov = outP.get(k);
+    const okv = Array.from(vs).some((v) => ov.has(v));
+    if (!okv) paramChanged.push(k + '：原文 ' + Array.from(vs).join('|') + ' → 产出 ' + Array.from(ov).join('|'));
+  }
+  if (paramMissing.length) problems.push({ rule: 'param-missing', detail: '超参数整项缺失（值也没了）：' + paramMissing.join(' , ') });
+  if (paramChanged.length) problems.push({ rule: 'param-value-changed', detail: '超参数键还在但值被改（复现性受损）：' + paramChanged.join(' ; ') });
+  if (paramKeyLost.length) notes.push({ rule: 'param-key-lost', detail: '数值仍在但键名没了（写成散文了，读者可能对不上超参数）：' + paramKeyLost.join(' , ') });
   /* 3. 对冲词（数量守恒） */
   const hz = hedgesIn(src, HEDGE_ZH), he = hedgesIn(out, HEDGE_EN);
   if (hz > 0 && he < hz) notes.push({ rule: 'hedge-weakened', detail: '原文对冲词 ' + hz + ' 处，产出仅 ' + he + ' 处 ⇒ 不确定性被弱化（这是"改原意"，不是"润色"）' });
@@ -68,7 +106,8 @@ function losscheck(srcRaw, outRaw) {
   if (missingA.length) problems.push({ rule: 'acronym-missing', detail: '原文缩写缺失：' + missingA.join(', ') });
   if (!srcN.length) notes.push({ rule: 'no-numbers', detail: '原文没有数字 ⇒ 该项未核对（≠ 通过）' });
 
-  const status = problems.length ? 'FAIL' : (notes.some((n) => n.rule === 'hedge-weakened') ? 'WARN' : 'PASS');
+  const WARN_RULES = ['hedge-weakened', 'param-key-lost'];
+  const status = problems.length ? 'FAIL' : (notes.some((x) => WARN_RULES.includes(x.rule)) ? 'WARN' : 'PASS');
   return { status, problems, notes, counts: { numbers: srcN.length, cites: srcC.length, hedgesZh: hz, hedgesEn: he, acronyms: srcA.length } };
 }
 
@@ -113,6 +152,18 @@ function selftest() {
     return (r.status === 'FAIL' && r.problems.some((p) => p.rule === 'acronym-missing')) ? true : JSON.stringify(r);
   });
 
+  ck('★ v3.32.0 超参数成对保真：值还在但键没了 ⇒ WARN（不等于通过）', () => {
+    const r = losscheck('Set `n_estimators=300` and `max_depth=4`.', 'We grew 300 trees to a depth of 4.');
+    return (r.status === 'WARN' && r.notes.some((n) => n.rule === 'param-key-lost')) ? true : JSON.stringify(r);
+  });
+  ck('★必失败面：超参数键还在但值被改 ⇒ FAIL（param-value-changed）', () => {
+    const r = losscheck('Set `n_estimators=300`.', 'Set `n_estimators=200`.');
+    return (r.status === 'FAIL' && r.problems.some((p) => p.rule === 'param-value-changed')) ? true : JSON.stringify(r);
+  });
+  ck('★必失败面：超参数整项删除 ⇒ FAIL（param-missing）', () => {
+    const r = losscheck('Set `n_estimators=300` and `max_depth=4`.', 'Set the hyper-parameters by hand.');
+    return (r.status === 'FAIL' && r.problems.some((p) => p.rule === 'param-missing')) ? true : JSON.stringify(r);
+  });
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.n + (c.ok ? '' : '  ← ' + c.d));
   console.log('\nlosscheck 自检：' + (cases.length - bad.length) + '/' + cases.length + ' 通过');

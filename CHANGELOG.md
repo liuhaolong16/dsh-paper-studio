@@ -3,6 +3,20 @@
 
 # 变更记录
 
+## v3.32.0 —— 2026-10-17
+
+**`losscheck` 升级为「超参数级」保真 —— 起因是真段落 Task A' 里 academic 那家把整批超参数删光。**
+
+- **★新增 2b 段检查：`key=value` 必须成对存活**（自检 5/5 → **8/8**，+3 臂）：
+  - `param-missing`（**FAIL**）：原文的超参数**整项消失**（键和值都没了）；
+  - `param-value-changed`（**FAIL**）：**键还在但值被改**（`n_estimators=300 → 200`，复现性受损）；
+  - `param-key-lost`（**WARN**）：**值仍在但键名没了**（"We grew 300 trees" 这种写成散文，读者对不上超参数）。
+  ⇒ 比"数字在不在"强：能抓 **值挂错键** 与 **值被改** 两种更隐蔽的失血。
+- **★真数据读数（Task A' · 论文 A 真段落）**：`ours` PASS · `lifecycle` PASS · `awesome` PASS · **`academic` FAIL** —— `n_estimators=300, max_depth=4, learning_rate=0.08, subsample=0.9, colsample_bytree=0.9, random_state=0` **六项全丢**（键与值都没了）。
+- **★本轮连修两处"判据量错对象"**（同族第三次）：
+  1. 判"键丢失"时在**产出的 key=value 集合**里找值 ⇒ 散文写法（"300 trees"）被误判成"值也没了"；改成在**产出全文的数字**里找。
+  2. `param-key-lost` 只进了 notes，状态机仍判 **PASS** ⇒ 把 WARN 类规则**并列**（`hedge-weakened` + `param-key-lost`），否则"WARN 规则"永远不生效。
+- **工具边界**：只做**字面**配对（同义改写如 `learning_rate`→`step size` 会判成缺失）；**WARN ≠ 通过**。
 ## v3.31.0 —— 2026-10-17
 
 **把"元信息不该混进正文"从结论变成出口检查（`polish layout` + presubmit 第 4 关）。**
