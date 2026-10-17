@@ -443,7 +443,14 @@ function main(argv) {
       if (!src || !got || !fs.existsSync(src) || !fs.existsSync(got)) { console.error('前提层失败：presubmit 需要 --src <原文> --out <产出>'); return 2; }
       const srcT = fs.readFileSync(src, 'utf8'), outT = fs.readFileSync(got, 'utf8');
       const lc = require('./polish-losscheck.cjs');
-      const loss = lc.losscheck(srcT, outT);
+      /* ★ v3.46.0：跨语言对比默认排除参考文献区 —— 文献表被重排时（编号顺序/arXiv 号/文献来源缩写），
+         按字符串比必然误报为"丢信息"（2026-10-17 实测：中文初稿 vs 英文投稿稿）。
+         要保留旧行为（连文献区一起比）用 `--keep-refs`。 */
+      const crossLang = (/[\u4e00-\u9fff]/.test(srcT) !== /[\u4e00-\u9fff]/.test(outT));
+      const skipRefs = crossLang && !argv.includes('--keep-refs');
+      /* ★ v3.46.0：跨语言对比还排除**工作稿元信息**（进度条/待办/中文批注/内部文件名）—— 英文投稿稿不该含它们 */
+      const skipDraftMeta = crossLang && !argv.includes('--keep-draft-meta');
+      const loss = lc.losscheck(srcT, outT, { skipRefs, skipDraftMeta });
       const isZh = (s) => /[\u4e00-\u9fff]/.test(s);
       /* ★ 判据：源是中文就是翻译对比（产出里常混中文改动账本，不能用「产出无 CJK」来判）
          ⇒ 跨语言时只查命令与数学是否存活，不查新增特殊字符（# 是 markdown 标题，不是 LaTeX 违规） */

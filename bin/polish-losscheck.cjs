@@ -61,10 +61,47 @@ function stripMeta(s) {
     return true;
   }).join('\n');
 }
-function losscheck(srcRaw, outRaw) {
-  const src = stripMeta(srcRaw), out = stripMeta(outRaw);
+/** 参考文献区：从 `References / Bibliography / Works cited / 参考文献` 标题起到下一个同级或更高级标题（或 EOF）。
+ *  起因（2026-10-17 实测）：中文初稿 + 英文投稿稿，英文稿**重排了文献表** ⇒ 按字符串比，文献编号、arXiv 号、
+ *  文献来源缩写必然"缺失"⇒ 报 FAIL。那不是丢信息，是**换了排列**。⇒ 跨语言对比时默认排除文献区。 */
+function stripRefs(s) {
+  const lines = String(s).split('\n');
+  let start = -1, level = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,6})\s*(?:\d+\.?\s*)?(references?|bibliography|works\s+cited|参考文献|引用文献)\s*$/i);
+    if (m) { start = i; level = m[1].length; break; }
+  }
+  if (start < 0) return String(s);
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,6})\s/);
+    if (m && m[1].length <= level) { end = i; break; }
+  }
+  return lines.slice(0, start).concat(lines.slice(end)).join('\n');
+}
+/** 工作稿元信息（**不是正文**）：进度条（`████ 100%`）、待办勾选框、`>` 中文批注/说明块、内部文件名（`02-选题.md`）。
+ *  起因（2026-10-17 实测）：中文初稿自带「结构 ████ 100%」「[ ] Cover Letter（可参考 Ultron v1.6）」「页码 4765–4774 未一手核实」
+ *  这类工作稿附属区，英文投稿稿本来就不该包含它们 ⇒ 报"丢信息"是**判错了对象**。 */
+function stripDraftMeta(s) {
+  return String(s).split('\n').filter((L) => {
+    if (/^\s*>/.test(L)) return false;                       // 工作稿批注/说明块（中文初稿以 > 标中文批注）
+    if (/█/.test(L)) return false;                           // 进度条行
+    if (/^\s*(?:[-*]\s*)?\[[ xX]\]/.test(L)) return false;   // 待办勾选框
+    if (/\b\d{2}-[^\s|]+\.(?:md|json|csv|py)\b/.test(L)) return false;  // 内部文件名引用
+    if (/^\s*(?:[-*]\s*)?(?:★|⚠|✔|✘)/.test(L)) return false;            // 工作稿自检/核验记录（SHA256、figkit 自检等）
+    return true;
+  }).join('\n');
+}
+function losscheck(srcRaw, outRaw, opts) {
+  const o = opts || {};
+  let s0 = srcRaw, o0 = outRaw;
+  if (o.skipRefs) { s0 = stripRefs(s0); o0 = stripRefs(o0); }
+  if (o.skipDraftMeta) { s0 = stripDraftMeta(s0); }
+  const src = stripMeta(s0), out = stripMeta(o0);
   const problems = [];
   const notes = [];
+  if (o.skipRefs) notes.push({ rule: 'refs-skipped', detail: '已排除参考文献区（文献重排时按字符串比必然误报，不等于丢信息）' });
+  if (o.skipDraftMeta) notes.push({ rule: 'draftmeta-skipped', detail: '已排除工作稿元信息（进度条/待办/批注/内部文件名）——它们不是正文' });
   /* 1. 数字 */
   const srcN = numbersOf(src), outN = numbersOf(out);
   const outSet = new Set(outN);
@@ -163,6 +200,34 @@ function selftest() {
   ck('★必失败面：超参数整项删除 ⇒ FAIL（param-missing）', () => {
     const r = losscheck('Set `n_estimators=300` and `max_depth=4`.', 'Set the hyper-parameters by hand.');
     return (r.status === 'FAIL' && r.problems.some((p) => p.rule === 'param-missing')) ? true : JSON.stringify(r);
+  });
+  /* ── v3.46.0：参考文献区排除（跨语言/文献重排的必然误报） ── */
+  const srcZhRefs = '# 正文\n结果是 0.874。\n\n## 参考文献\n[1] 张三. 某文. arXiv:1603.02754. 2020.\n';
+  const outEnRefs = '# Body\nThe result is 0.874.\n\n## References\n[1] Zhang S. Some paper. arXiv:1603.02754. 2020.\n';
+  ck('文献区排除：文献编号/arXiv 号在产出里"换了位置" ⇒ 不再报 missing', () => {
+    const r = losscheck(srcZhRefs, outEnRefs, { skipRefs: true });
+    const still = r.problems.some((p) => p.rule === 'number-missing');
+    return (!still && r.notes.some((n) => n.rule === 'refs-skipped')) ? true : JSON.stringify(r);
+  });
+  ck('★必失败面：正文数字真丢时，排除文献区**也必须**照样抓到', () => {
+    const src = '# 正文\n结果是 0.874，误差 1.2%。\n\n## 参考文献\n[1] 某文 2020.\n';
+    const out = '# Body\nThe result is 0.874.\n\n## References\n[1] Some paper 2020.\n';
+    const r = losscheck(src, out, { skipRefs: true });
+    return (r.status === 'FAIL' && r.problems.some((p) => p.rule === 'number-missing' && /1\.2/.test(p.detail))) ? true : JSON.stringify(r);
+  });
+  /* ── 工作稿元信息排除 ── */
+  const srcWork = '# 正文\n结果是 0.874。\n\n结构 ██████████ 100% 全节齐备\n- [ ] Cover Letter（参考 Ultron v1.6）\n> 注：页码 4765–4774 未一手核实\n依据 `02-选题.md`\n';
+  const outClean = '# Body\nThe result is 0.874.\n';
+  ck('工作稿元信息排除：进度条/待办/批注/内部文件名里的数字不再报 missing', () => {
+    const r = losscheck(srcWork, outClean, { skipDraftMeta: true });
+    const still = r.problems.some((p) => p.rule === 'number-missing');
+    return (!still && r.notes.some((n) => n.rule === 'draftmeta-skipped')) ? true : JSON.stringify(r);
+  });
+  ck('★必失败面：排除工作稿元信息后，正文数字真丢仍要 FAIL', () => {
+    const src = '# 正文\n精度 93.0%。\n\n结构 ████ 100%\n';
+    const out = '# Body\nAccuracy looks good.\n';
+    const r = losscheck(src, out, { skipDraftMeta: true });
+    return (r.status === 'FAIL' && r.problems.some((p) => p.rule === 'number-missing' && /93/.test(p.detail))) ? true : JSON.stringify(r);
   });
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.n + (c.ok ? '' : '  ← ' + c.d));
