@@ -1554,7 +1554,7 @@
         "bin/tense-check.cjs（时态规范机检：方法/结果节现在时描述动作 ⇒ WARN；结论节过去时下一般断言 ⇒ INFO）",
         "bin/paragraph-logic.cjs（段落级逻辑启发式弱机检：段长带 / 断言有无支撑 / 相邻段共词；不用 PASS，状态 OK 不等于逻辑没问题）",
         "bin/polish-metrics.cjs（润色质量代理指标：句长/变异/被动/名词化/AI味/TTR；代理≠质量，需盲评）",
-        "bin/polish.cjs（rewrite 规则化改写 + guard 保真 + ledger 账本 + check 通道 + **presubmit 出口三关**：丢信息/保真/指标，FAIL 即不放行；写作约束：保留原文对冲词与限定语，宁可啰嗦不许删）",
+        "bin/polish.cjs（rewrite 规则化改写 + guard 保真 + ledger 账本 + check 通道 + **layout 交付面**（元信息不得混进正文）+ **presubmit 出口四关**：丢信息/保真/指标/交付面，FAIL 即不放行；写作约束：保留原文对冲词与限定语，宁可啰嗦不许删）",
         "bin/blind-pack.cjs（盲评装置：去标识 + 四维 rubric + **--only-body 只发正文**（元信息挡在评分面外）；代号按内容哈希，mapping 判完才回表）",
         "bin/polish-losscheck.cjs（跨语言丢信息检测：数字/引用/对冲词守恒/缩写；只查在不在，WARN≠通过）"
       ],

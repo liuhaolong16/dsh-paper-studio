@@ -244,6 +244,14 @@ function runSelftest() {
     return (stopOnly.allowed && !contentLoss.allowed) ? true : JSON.stringify({ stopOnly, contentLoss });
   });
 
+  check('★ v3.31.0 交付面：正文里混进「改动账本/自检读数」必须被检出', () => {
+    const r = layoutCheck('## 译文\n\nWe reviewed 30 studies [12].\n\n## 改动账本\n\n| kind | reason |\n\n## 自检读数\n\nstylecheck 通过。\n');
+    return (!r.ok && r.blocks.length === 2) ? true : JSON.stringify(r);
+  });
+  check('正控 · 干净的正文（无元信息块）⇒ 判通过', () => {
+    const r = layoutCheck('## 译文\n\nWe reviewed 30 studies and found largely consistent gains [12].\n');
+    return (r.ok && r.blocks.length === 0) ? true : JSON.stringify(r);
+  });
   const failed = results.filter((r) => !r.ok);
   for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   console.log(`\npolish 自检：${results.length - failed.length}/${results.length} 通过`);
@@ -366,6 +374,27 @@ function rewrite(text, opts) {
 }
 
 
+/* ★ v3.31.0 交付面洁净度：**元信息不得与正文混在一起**
+   证据：① 三名 LLM 判者把贴在英文正文后的「中文改动账本 + 自检读数」算进了语气/密度（判者 3 还误读成内容缺失）；
+        ② 人类判者读散文、没被干扰 ⇒ 同一份产出，LLM 给我方第三、人类给满分第一；
+        ③ 真实投稿件里也不该出现中文账本与工具自检读数。
+   ⇒ 扫描产出里的元信息块，**只报不删**（删不删是作者决定，但必须显形）。 */
+/* ★ 真跑抓到的判据 bug：原来写成 `…改动账本\b`，但 **\b 在中文后面永远不成立**（中文不是 \w）
+   ⇒ `## 改动账本（…）` 根本不匹配。改成「词后只允许 结束/空白/标点」的前瞻。 */
+const META_BLOCK = /^\s*#{1,6}\s*(改动账本|change\s*ledger|change\s*log|ledger|自检读数|self[-\s]*check(?:\s*readout)?|prompt\s*used|their\s*own\s*gates|说明|备注|notes?)(?=$|[\s（(：:\u00b7\-\u3001])/i;
+function layoutCheck(text) {
+  const lines = String(text).split('\n');
+  const blocks = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (META_BLOCK.test(lines[i])) {
+      blocks.push({ heading: lines[i].trim(), line: i + 1 });
+    }
+  }
+  /* 正文里夹了中文（英文稿里出现整段中文块）也算交付面问题 */
+  const cjkLines = lines.filter((L) => /[\u4e00-\u9fff]/.test(L) && !/^\s*[-|>]/.test(L)).length;
+  return { ok: blocks.length === 0, blocks, cjkBodyLines: cjkLines };
+}
+
 function main(argv) {
   if (argv.includes('--selftest')) return runSelftest();
   const opt = (k) => { const i = argv.indexOf(k); return i > -1 ? argv[i + 1] : null; };
@@ -397,6 +426,16 @@ function main(argv) {
       for (const p of r.problems) console.log(`  ✘ [${p.rule}] ${p.detail}`);
       return r.problems.length ? 1 : 0;
     }
+    if (cmd === 'layout') {
+      const f = opt('--file');
+      if (!f || !fs.existsSync(f)) { console.error('前提层失败：layout 需要 --file <产出>'); return 2; }
+      const r = layoutCheck(fs.readFileSync(f, 'utf8'));
+      console.log('交付面洁净度：' + (r.ok ? '✔ 正文与元信息已分离' : '✘ 正文里混进了 ' + r.blocks.length + ' 个元信息块'));
+      for (const b of r.blocks) console.log('  ✘ L' + b.line + ' ' + b.heading);
+      if (r.cjkBodyLines) console.log('  · 有 ' + r.cjkBodyLines + ' 行中文（英文稿里出现整段中文也算交付面问题；若是引用/题名可忽略）');
+      console.log('  ⇒ 元信息（改动账本/自检读数/Notes）应单独成文件或折叠区；**投稿件里不该出现工具自检读数**。');
+      return r.ok ? 0 : 1;
+    }
     if (cmd === 'presubmit') {
       /* ★ 出口三关合一：丢信息（对原文）+ LaTeX 保真 + 语言指标。
          任何一关 FAIL ⇒ 退出码 1（**交付前必须过**；WARN 不等于通过）。 */
@@ -417,7 +456,11 @@ function main(argv) {
       console.log('  2) LaTeX 保真：' + (g.violations.length ? '✘ ' + g.violations.length + ' 项' : '✔ 通过'));
       for (const v of g.violations) console.log('     ✘ [' + v.rule + '] ' + v.detail);
       if (met) console.log('  3) 语言指标：' + met.status + (met.flags && met.flags.length ? ' · ' + met.flags.map((x) => x.rule).join(',') : ''));
-      const fail = loss.status === 'FAIL' || g.violations.length > 0;
+      /* ★ 第 4 关：交付面洁净度（元信息不得与正文混在一起）。默认 WARN，加 --strict-layout 才阻断。 */
+      const lay = layoutCheck(outT);
+      console.log('  4) 交付面：' + (lay.ok ? '✔ 正文与元信息已分离' : '✘ 混进 ' + lay.blocks.length + ' 个元信息块：' + lay.blocks.map((b) => b.heading).join(' / ')));
+      if (!lay.ok) console.log('     · LLM 判者会把账本/自检算进语气与密度（实测：同一份产出，人类判我方满分第一、LLM 判第三）⇒ 交付前请把元信息挪出正文');
+      const fail = loss.status === 'FAIL' || g.violations.length > 0 || (argv.includes('--strict-layout') && !lay.ok);
       console.log(fail ? '  ⇒ **不放行**：先修上面 ✘ 项（WARN 也要人工看一眼，WARN ≠ 通过）' : '  ⇒ 放行（数字/引用/缩写齐全、LaTeX 未被动、指标无硬伤）；**这不证明写得好，只证明没丢东西**');
       return fail ? 1 : 0;
     }    if (cmd === 'rewrite') {
@@ -442,4 +485,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { guard, checkChannel, ledgerAdd, ledgerRead, ledgerRender, protectedSpans, unescapedSpecials, rewrite, shrinkVerdict, contentWords, hedges, NOM_MAP, FIXED_TERMS, KINDS, main, runSelftest };
+module.exports = { guard, checkChannel, ledgerAdd, ledgerRead, ledgerRender, protectedSpans, unescapedSpecials, rewrite, shrinkVerdict, contentWords, hedges, layoutCheck, NOM_MAP, FIXED_TERMS, KINDS, main, runSelftest };
