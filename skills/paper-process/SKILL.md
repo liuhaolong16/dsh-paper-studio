@@ -37,6 +37,7 @@ description: |
 - `bin/fit-pages.cjs（页数预算机检：逐节页数估算 + 削减方案；证据受保护，只可压缩措辞）`
 - `bin/cfp.cjs（征稿启事解析：截止/页数/双盲/模板/系统/主题/强制声明；逐项给行号与原文，未找到项单列）`
 - `bin/camera-ready.cjs（终稿总检：作者恢复/声明齐/图题注/引用自洽/字体嵌入/页面尺寸/元数据/文件命名）`
+- `bin/venue-budget.cjs（场馆预算合规：限额来自 cfp/显式参数，实测组合 fit-pages 与稿件计数；OK/OVER/UNVERIFIED/NO_LIMIT 并给差值）`
 
 ## 边界（这些事本模块不做）
 
