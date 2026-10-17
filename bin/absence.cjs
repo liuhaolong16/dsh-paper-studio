@@ -30,7 +30,19 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
+
+/**
+ * 文档类型守卫：**分析笔记不是稿件**。
+ * 实证（2026-10-17 反向验证）：拿本工具扫 paper-gene 的 10 份单篇结论（分析笔记），
+ * 会成片报 FAIL —— 因为它们本来就是"描述别人稿件里没有什么"的文本。
+ * ⇒ 命中「证据索引」节或「摘要式结论 / 7 栏论证表」标记时，直接 SKIP 并说明，**不许硬报**。
+ */
+function looksLikeAnalysisNote(text) {
+  if (/(^#{1,6}[^\n]*证据索引|^#{1,6}[^\n]*evidence\s+index)/im.test(text)) return '含「证据索引」节';
+  if (/(^##\s*0\.\s*摘要式结论|^\|\s*\*\*论证\*\*\s*\|)/m.test(text)) return '含「摘要式结论」或 7 栏论证表';
+  return null;
+}
 
 // ── 缺席断言识别（宁窄勿宽：只抓"断言不存在"，不抓普通否定） ──
 const ZH_PATTERNS = [
@@ -121,6 +133,13 @@ function judge(hit) {
 
 function run(file) {
   const text = fs.readFileSync(file, 'utf8');
+  const noteMark = looksLikeAnalysisNote(text);
+  if (noteMark) {
+    return {
+      status: 'SKIP', file, total: 0, hits: [], skipped: null,
+      note: `疑似分析笔记（${noteMark}），不是稿件 ⇒ 本门不适用。权威用法：扫**投稿稿**；分析笔记里的"无/没有"是在描述别人的稿件。`
+    };
+  }
   const { hits: raw, skipped } = scan(text);
   const hits = raw.map((h) => ({ ...h, ...judge(h) }));
   if (!hits.length) {
@@ -179,6 +198,8 @@ function selftest() {
   cases.push(['负控（代码块）', mk('i.md', '示例：\n```\nfinds no match\n```\n正文其余正常。'), 'SKIP']);
   // 9 英文缺席断言 + 未标注
   cases.push(['英文未标注', mk('j.md', 'No ablation was reported in the paper.'), 'FAIL']);
+  // 10 文档类型守卫：分析笔记 ⇒ SKIP（不许硬报）
+  cases.push(['负控（分析笔记）', mk('k.md', '# 某篇结论\n\n全文没有任何 Limitations 节。\n\n## 9. 证据索引\n| P1 §2 ‖ quote |\n'), 'SKIP']);
 
   let ok = 0;
   for (const [name, file, want] of cases) {

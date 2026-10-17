@@ -33,12 +33,19 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 
-const PAIR_RE = /([A-Za-z][A-Za-z0-9\-_.]{1,19}|[\u4e00-\u9fa5]{2,8})\s*(?:[|｜]\s*)?[:：=]?\s*(?:[|｜]\s*)?(\d+(?:\.\d+)?)\s*(%|％|‰|×|倍|ms|s\b|min\b|h\b|GB\b|MB\b)?/g;
+/** 文档类型守卫：分析笔记不是稿件（详见 absence.cjs 同名函数注释）。 */
+function looksLikeAnalysisNote(text) {
+  if (/(^#{1,6}[^\n]*证据索引|^#{1,6}[^\n]*evidence\s+index)/im.test(text)) return '含「证据索引」节';
+  if (/(^##\s*0\.\s*摘要式结论|^\|\s*\*\*论证\*\*\s*\|)/m.test(text)) return '含「摘要式结论」或 7 栏论证表';
+  return null;
+}
+
+const PAIR_RE = /([A-Za-z][A-Za-z0-9\-_.²³]{0,19}|[\u4e00-\u9fa5]{2,8})\s*(?:[|｜]\s*)?[:：=]?\s*(?:[|｜]\s*)?(\d+(?:\.\d+)?)\s*(%|％|‰|×|倍|ms|s\b|min\b|h\b|GB\b|MB\b)?/g;
 const NOISE = /^(?:fig|figure|table|tab|section|sec|chapter|p|pp|eq|equation|版本|第|图|表|节|章|页|式|年份|年|月|日)$/i;
 const STOPWORD = /^(?:a|an|the|of|in|on|at|by|for|to|from|with|without|and|or|but|as|is|are|was|were|be|been|being|this|that|these|those|its|their|our|we|it|they|than|then|also|each|both|more|less|per|over|under|into|such|all|any|some|only|very|can|may|might|must|should|would|could|will|shall|has|have|had|do|does|did|not|no|yes|vs|versus|etc|e\.g|i\.e)$/i;
-const METRIC_LEX = /(auc|aupr|auprc|roc|acc|accuracy|f1|f2|precision|recall|specificity|sensitivity|rmse|mae|mse|mape|bleu|rouge|meteor|perplexity|ppl|loss|error|score|rate|ratio|percent|percentage|kappa|iou|dice|hits|wape|soh|capacity|efficiency|latency|throughput|fps|gflops|footprint|memory|准确|精度|误差|召回|精确|损失|得分|分数|准确率|命中|覆盖|容量|效率|时长|延迟|吞吐|相关系数|方差|标准差|均值|中位数)/i;
+const METRIC_LEX = /(auc|aupr|auprc|roc|acc|accuracy|f1|f2|precision|recall|specificity|sensitivity|rmse|nrmse|mae|nmae|mse|mape|smape|mase|bleu|rouge|meteor|perplexity|ppl|loss|error|score|rate|ratio|percent|percentage|kappa|icc|cohen|iou|dice|hits|wape|r²|r\^2|r2\b|soh|capacity|efficiency|latency|throughput|fps|gflops|footprint|memory|准确|精度|误差|召回|精确|损失|得分|分数|准确率|命中|覆盖|容量|效率|时长|延迟|吞吐|相关系数|方差|标准差|均值|中位数|决定系数)/i;
 const CYCLE_RE = /(\bcycles?\b|轮)/i;
 const EPOCH_RE = /(\bepochs?\b|轮次|世代)/i;
 const UNIT_RE = /(%|％|‰|×|倍)/;
@@ -46,6 +53,7 @@ const UNIT_RE = /(%|％|‰|×|倍)/;
 /** 标签够不够格当"指标名"：命中词表 / 数值自带单位 / 全大写缩写。 */
 function isMetricLabel(label, unit) {
   if (!label) return false;
+  if (label.length > 40) return false;              // 长句不是指标名（表头误配的典型形态）
   if (NOISE.test(label)) return false;
   if (STOPWORD.test(label)) return false;
   // 标识符（电芯号 b002、cell3、Fig12…）不是指标名 —— 真实误报来源
@@ -95,7 +103,7 @@ function extract(text) {
         const rowLabel = cells.find((c, k) => k !== ci && c && !/\d/.test(c) && /[A-Za-z\u4e00-\u9fa5]/.test(c)) || '';
         let label = '';
         if (labelCol >= 0 && labelCol !== ci) label = cells[labelCol] || '';        // 竖排
-        else if (/^[A-Za-z]{0,5}\d{1,6}$/.test(headerCell)) label = rowLabel;      // 表头是编号 ⇒ 用行标签
+        else if (/\d/.test(headerCell)) label = rowLabel;                          // 表头含数字（如 "…(4 / 24 / 43 °C)"）⇒ 用行标签
         else label = rowLabel || headerCell;                                      // 横排：优先行标签
         label = String(label).replace(/[*`]/g, '').trim();
         const unit = (cell.match(UNIT_RE) || [])[0] || '';
@@ -142,6 +150,13 @@ function extract(text) {
 
 function run(file) {
   const text = fs.readFileSync(file, 'utf8');
+  const noteMark = looksLikeAnalysisNote(text);
+  if (noteMark) {
+    return {
+      status: 'SKIP', file, numbersSeen: 0, judged: 0, skipRate: 0, compared: 0, coverage: null, issues: [],
+      note: `疑似分析笔记（${noteMark}），不是稿件 ⇒ 本门不适用；请对**投稿稿**运行`
+    };
+  }
   const { pairs, numbersSeen, judged } = extract(text);
   const skipRate = numbersSeen ? 1 - judged / numbersSeen : 0;
   const lines = text.split(/\r?\n/);
@@ -245,6 +260,9 @@ function selftest() {
   cases.push(['负控（单值表）', mk('g.md', '| 指标 | 值 |\n|---|---|\n| RMSE | 1.2 |\n'), 'SKIP']);
   cases.push(['表号不算指标', mk('h.md', '# Abstract\n结果见表 2 与表 3。\n'), 'SKIP']);
   cases.push(['虚词不算指标', mk('i.md', 'the 41.8 of 26 with 10 and 24 also 11\n'), 'SKIP']);
+  cases.push(['负控（分析笔记）', mk('n.md', '# 某篇结论\n\nBLEU 41.8 与 BLEU 41.0 有分歧。\n\n## 9. 证据索引\n| P1 §2 ‖ quote |\n'), 'SKIP']);
+  // R² 这类带符号的短标签（真实漏报：改了 R² 数值却没抓到）
+  cases.push(['R² 双值未交代', mk('o.md', '# Abstract\nR² 0.874 表现最好。\n\n## 6.1\nR² 0.860 也接近。\n'), 'FAIL']);
 
   let ok = 0;
   for (const [name, file, want] of cases) {

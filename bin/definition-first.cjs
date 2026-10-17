@@ -33,7 +33,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
+
+/** 文档类型守卫：分析笔记不是稿件（详见 absence.cjs 同名函数注释）。 */
+function looksLikeAnalysisNote(text) {
+  if (/(^#{1,6}[^\n]*证据索引|^#{1,6}[^\n]*evidence\s+index)/im.test(text)) return '含「证据索引」节';
+  if (/(^##\s*0\.\s*摘要式结论|^\|\s*\*\*论证\*\*\s*\|)/m.test(text)) return '含「摘要式结论」或 7 栏论证表';
+  return null;
+}
 
 const SCOPE_SENT = /(本文|本研究|本篇|本工作|this\s+(?:paper|study|work)|we)[^。；;\n]{0,80}(覆盖|涵盖|不覆盖|不涉及|限于|聚焦|仅讨论|只讨论|focus(?:es|ed)?\s+on|limit(?:s|ed)?\s+to|restrict(?:s|ed)?\s+to|consider(?:s|ed)?\s+only)|(out\s+of\s+scope|beyond\s+the\s+scope|不包括|不包含|不予考虑)/i;
 const DELIMS = [
@@ -130,6 +137,13 @@ function checkDefinition(text) {
 
 function run(file, which) {
   const text = fs.readFileSync(file, 'utf8');
+  const noteMark = looksLikeAnalysisNote(text);
+  if (noteMark) {
+    return {
+      file, checks: {}, status: 'SKIP',
+      note: `疑似分析笔记（${noteMark}），不是稿件 ⇒ 本门不适用；请对**投稿稿**运行`
+    };
+  }
   const out = { file, checks: {}, status: 'OK' };
   const want = which || 'both';
   if (want === 'scope' || want === 'both') out.checks.scope = checkScope(text);
@@ -194,7 +208,12 @@ function selftest() {
   if (noPass && !passSeen) { ok++; console.log('  ✔ 无 PASS 档：状态集合内不含 PASS'); }
   else { console.log('  ✘ 出现了 PASS 档'); }
 
-  const total = cases.length + 2;
+  // 文档类型守卫：分析笔记 ⇒ SKIP（status 级判定，因为 checks 为空）
+  const noteFile = mk('n.md', '# 某篇结论\n\n本文覆盖大部分内容。\n\n## 9. 证据索引\n| P1 §2 ‖ quote |\n');
+  if (run(noteFile, 'scope').status === 'SKIP') { ok++; console.log('  ✔ 负控（分析笔记）：SKIP，不硬报'); }
+  else { console.log('  ✘ 分析笔记未被守卫拦下'); }
+
+  const total = cases.length + 3;
   console.log(`\ndefinition-first 自检：${ok}/${total} 通过`);
   process.exit(ok === total ? 0 : 1);
 }
