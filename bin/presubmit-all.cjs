@@ -75,6 +75,17 @@ function statusFrom(out, kind) {
     if (/总判定：OK/.test(t)) return 'PASS';
     return 'SKIP';
   }
+  if (kind === 'tense') {
+    if (/\[WARN\]/.test(t)) return 'WARN';                       // 做过的动作用现在时
+    if (/\[INFO\]/.test(t)) return 'PASS';                       // 只出 INFO ⇒ 未触发
+    return 'SKIP';
+  }
+  if (kind === 'paralogic') {
+    if (/状态：\**ISSUES/.test(t)) return 'WARN';                 // 启发式弱机检：硬提示也只是提醒
+    if (/状态：\**REVIEW/.test(t)) return 'WARN';
+    if (/状态：\**OK/.test(t)) return 'PASS';
+    return 'SKIP';                                               // SKIP／无可判段落
+  }
   return 'SKIP';
 }
 
@@ -87,6 +98,8 @@ const TIP = {
   absence: '每个"无/没有/从未"句都要标档：〔缺席=未做〕/〔缺席=未报; 位置=…〕/〔缺席=未见; 检索=a*|b; 范围=p.x–y〕；未标注一律不过',
   numcon: '同指标出现两个不同值 ⇒ 在正文写一句同时交代两处（或统一）；单位要一致（0.86 与 86% 不是一回事）',
   deffirst: '**启发式**：R4 补一句「覆盖 X、不覆盖 Y」且含可核项；R6 把对象/对照/口径/判定四要素移到第一个结果数字之前。报 REVIEW 只是要人读，不等于稿子错',
+  tense: '方法/结果节里**做过的动作**用过去时（we trained …）；`we propose/present` 与 `the results show` 属惯例现在时，不报',
+  paralogic: '**启发式弱机检**：段过长就拆、段首断言要带支撑（数字/引用/图表/因果）、相邻段至少共享一个词；它不判断论证是否成立',
 };
 
 function main(argv) {
@@ -121,6 +134,11 @@ function main(argv) {
   items.push({ name: '承重数字四处一致（含单位）', tip: TIP.numcon, status: statusFrom(nc, 'numcon'), detail: (nc.split('\n').find((l) => /⇒|无重复指标/.test(l)) || '').trim().slice(0, 160) });
   const df = run('definition-first.cjs', ['--draft', draft]);
   items.push({ name: '起首边界＋定义先行（启发式·需人读）', tip: TIP.deffirst, status: statusFrom(df, 'deffirst'), detail: (df.split('\n').filter((l) => /^[✔△·] /.test(l)).map((l) => l.trim()).join(' · ') || '').slice(0, 160) });
+  /* ── v3.45.0 再补两项：此前它们只能单独跑 ── */
+  const tc = run('tense-check.cjs', ['--draft', draft]);
+  items.push({ name: '时态规范（做过的动作用过去时）', tip: TIP.tense, status: statusFrom(tc, 'tense'), detail: (tc.split('\n').filter((l) => /\[WARN\]|\[INFO\]/.test(l)).slice(0, 2).map((l) => l.trim()).join(' · ') || '未触发').slice(0, 160) });
+  const pl = run('paragraph-logic.cjs', ['--draft', draft]);
+  items.push({ name: '段落表层逻辑（启发式·需人读）', tip: TIP.paralogic, status: statusFrom(pl, 'paralogic'), detail: (pl.split('\n').find((l) => /^状态：/.test(l)) || '').trim().slice(0, 160) });
   if (pkg && fs.existsSync(pkg)) {
     const out = run('camera-ready.cjs', ['--pkg', pkg, '--draft', draft]);
     items.push({ name: '终稿门（包级）', tip: TIP.camera, status: statusFrom(out, 'camera'), detail: (out.split('\n').find((l) => /ERROR \d+ · WARN/.test(l)) || '').trim().slice(0, 160) });

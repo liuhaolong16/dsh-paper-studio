@@ -3,6 +3,20 @@
 
 # 变更记录
 
+## v3.45.0 —— 2026-10-17
+
+**`presubmit-all` 补到 11 项（接入 `tense-check` 与 `paragraph-logic`）；论文 A 的两个 SKIP 转成实测、合规软项补齐。**
+
+- **新增两项（9 → 11）**：
+  - **时态规范**：`tense-check` 无状态行、只出 `[WARN]`/`[INFO]` ⇒ **有 WARN 判 WARN、只有 INFO 判 PASS**（INFO 是"未触发"，不是"判过了"）。
+  - **段落表层逻辑（启发式·需人读）**：读 `paragraph-logic` 自己的 `状态：` 行，`ISSUES`/`REVIEW` ⇒ **WARN**（它是自陈的**弱机检**，硬提示也只是提醒，不判死）；`OK` ⇒ PASS；无段落 ⇒ SKIP。
+  - 各自配 TIP：时态那条写明「`we propose/present` 与 `the results show` 属惯例现在时，不报」；段落那条写明「不判断论证是否成立」。
+- **★论文 A：两个 SKIP 的第一个已转实测**：找到中文初稿 `11-正文初稿-v1.md` 作 `--src`，保真出口由 **SKIP → WARN**，并抓出「1) 丢信息 FAIL · 3) 语言指标 REVIEW」。
+  - **⚠ 已知误报（如实记，不改判据）**：该「丢信息」列出的缺失项是 `02/09/06/429/0.87/1297/200/302/404/4765/…/1603.02754` 与缩写 `DOI/IPCC/DBLP/API/NTRS/README` —— 它们多为**参考文献编号、arXiv 号与文献来源缩写**；`--src` 是中文初稿而英文稿重排了文献表，**按字符串比必然误报**。⇒ 这条**不由机器结论判死**，须人读；也为将来把"参考文献区排除在保真比对之外"留了依据。
+  - 第二个 SKIP（查重预检）仍缺 `--corpus`：本机上**没有该文的已发表作品目录**，SKIP 是诚实的，不造目录凑数。
+- **★论文 A：合规门 11 项全 ✔（含两个软项）**：按门自己的检测规则落实——参考文献清单取名须匹配 `/ref|参考文献/i` 且非脚本后缀 ⇒ 复制 `refs-vancouver.md → submission/references-vancouver.md`；契约 json 须匹配 `/(contract|契约).*\.json$/i` ⇒ 复制插件自带 `joes-elsevier.json → submission/contract-joes-elsevier.json`。复跑 `compliance` ⇒ **通过（硬项齐、软项齐）**。
+- 自检：`presubmit-all` **5/5**；`audit` **6/6 全绿**。
+
 ## v3.44.0 —— 2026-10-17
 
 **`definition-first` 的 R6 定位修掉三处真缺陷；论文 A 补「度量口径」段后 R4+R6 双双 OK；顺带清出投稿包里 6 个备份件（合规硬项由 FAIL 转通过）。**
