@@ -42,7 +42,7 @@ function looksLikeAnalysisNote(text) {
   return null;
 }
 
-const SCOPE_SENT = /(本文|本研究|本篇|本工作|this\s+(?:paper|study|work)|we)[^。；;\n]{0,80}(覆盖|涵盖|不覆盖|不涉及|限于|聚焦|仅讨论|只讨论|focus(?:es|ed)?\s+on|limit(?:s|ed)?\s+to|restrict(?:s|ed)?\s+to|consider(?:s|ed)?\s+only)|(out\s+of\s+scope|beyond\s+the\s+scope|不包括|不包含|不予考虑)/i;
+const SCOPE_SENT = /(本文|本研究|本篇|本工作|this\s+(?:paper|study|work))[^。；;\n]{0,90}(覆盖|涵盖|不覆盖|不涉及|限于|聚焦|仅讨论|只讨论|cover(?:s|ed|ing)?|not\s+cover|focus(?:es|ed)?\s+on|limit(?:s|ed)?\s+to|restrict(?:s|ed)?\s+to|consider(?:s|ed)?\s+only)|(out\s+of\s+scope|beyond\s+the\s+scope|不在本文(?:的)?范围|本文不涉及)/i;
 const DELIMS = [
   { key: '时间窗', re: /((?:19|20)\d{2}\s*[–\-~至到]\s*(?:19|20)\d{2}|\d+\s*(?:年|个月|月|天|days?|months?|years?|weeks?))/i },
   { key: '对象/数据类型', re: /(锂离子|钠离子|电芯|电池|队列|患者|语料|数据集|样本|cell|batter|lithium|cohort|patient|dataset|corpus|corpora|series)/i },
@@ -58,17 +58,32 @@ const DEF_ELEMENTS = [
 
 function firstSection(text) {
   const lines = text.split(/\r?\n/);
+  // 首节 = **Introduction**（跳过标题/作者/摘要等前置块）——真实稿件里 "第 1 个标题" 往往是论文题目
+  const introRe = /^#{1,6}\s*(?:\d+\.?\s*)?(introduction|引言|前言)\b|^#{1,6}\s*1\.?\s*introduction/i;
   let start = -1;
-  let end = Math.min(lines.length, 40);
-  let seenHeading = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (/^#{1,6}\s+\S/.test(lines[i])) {
-      seenHeading++;
-      if (seenHeading === 1) { start = i; continue; }
-      if (seenHeading === 2) { end = i; break; }
-    }
+    if (introRe.test(lines[i])) { start = i; break; }
   }
-  if (start < 0) start = 0;
+  if (start < 0) {
+    // 退回旧行为：第一个标题块
+    let seenHeading = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^#{1,6}\s+\S/.test(lines[i])) {
+        seenHeading++;
+        if (seenHeading === 1) { start = i; continue; }
+        if (seenHeading === 2) return { lines: lines.slice(i === 0 ? 0 : start, i), startLine: (start || 0) + 1, endLine: i };
+      }
+    }
+    if (start < 0) start = 0;
+    return { lines: lines.slice(start, Math.min(lines.length, 40)), startLine: start + 1, endLine: Math.min(lines.length, 40) };
+  }
+  // 从 Introduction 起，到下一个**同级或更高级**标题为止
+  const level = (lines[start].match(/^#+/) || ['#'])[0].length;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^(#+)\s/);
+    if (m && m[1].length <= level) { end = i; break; }
+  }
   return { lines: lines.slice(start, end), startLine: start + 1, endLine: end };
 }
 
