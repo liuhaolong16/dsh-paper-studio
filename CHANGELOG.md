@@ -35,7 +35,7 @@
 - **★论文 A：合规门 11 项全 ✔（含两个软项）**：按门自己的检测规则落实——参考文献清单取名须匹配 `/ref|参考文献/i` 且非脚本后缀 ⇒ 复制 `refs-vancouver.md → submission/references-vancouver.md`；契约 json 须匹配 `/(contract|契约).*\.json$/i` ⇒ 复制插件自带 `joes-elsevier.json → submission/contract-joes-elsevier.json`。复跑 `compliance` ⇒ **通过（硬项齐、软项齐）**。
 - 自检：`presubmit-all` **5/5**；`audit` **6/6 全绿**。
 
-## v3.45.0 —— 2026-10-18
+## v3.47.0 —— 2026-10-18
 
 **`number-consistency` 支持语向限定（BLEU en-de / de-en）：把图谱 §9.3 指出的"不同语向被当同一指标两值"这一同族风险，实测后按覆盖缺口修掉。**
 
