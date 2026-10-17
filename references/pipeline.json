@@ -1376,7 +1376,8 @@
     "tense-check.cjs": "node bin/tense-check.cjs --selftest",
     "pdf-meta.cjs": "node bin/pdf-meta.cjs --selftest",
     "fit-pages.cjs": "node bin/fit-pages.cjs --selftest",
-    "paragraph-logic.cjs": "node bin/paragraph-logic.cjs --selftest"
+    "paragraph-logic.cjs": "node bin/paragraph-logic.cjs --selftest",
+    "relevance-gate.cjs": "node bin/relevance-gate.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
@@ -1580,7 +1581,8 @@
         "assets/csl/*.csl（3 个样式 · CC-BY-SA 3.0 · 见 assets/csl/PROVENANCE.md）",
         "references/csl-lock.json（样式 sha256 锁）",
         "bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）",
-        "bin/refs-verify.cjs（引用核验门：离线结构 + 在线元数据比对 + 撤稿 · fail-soft）"
+        "bin/refs-verify.cjs（引用核验门：离线结构 + 在线元数据比对 + 撤稿 · fail-soft）",
+        "bin/relevance-gate.cjs（引用相关性弱机检：主题词面重合 + 串簇降级 + 被引用即正当；只报疑似不出 FAIL）"
       ],
       "boundaries": [
         "**verify-or-drop**：核不实就删或打标，绝不编造",

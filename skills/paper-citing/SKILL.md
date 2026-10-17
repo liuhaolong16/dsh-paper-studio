@@ -29,6 +29,7 @@ description: |
 - `references/csl-lock.json（样式 sha256 锁）`
 - `bin/oa-fetch.cjs（OpenAlex/Unpaywall 取数层：礼貌池走环境变量 · 24h 磁盘缓存 · 缺邮箱记 SKIP）`
 - `bin/refs-verify.cjs（引用核验门：离线结构 + 在线元数据比对 + 撤稿 · fail-soft）`
+- `bin/relevance-gate.cjs（引用相关性弱机检：主题词面重合 + 串簇降级 + 被引用即正当；只报疑似不出 FAIL）`
 
 ## 边界（这些事本模块不做）
 
