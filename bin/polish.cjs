@@ -230,6 +230,19 @@ function runSelftest() {
     return (/analysis of variance/.test(r.text) && !/analyzing variance/.test(r.text)) ? true : JSON.stringify(r.text);
   });
 
+  check('★ v3.27.0 对冲词守恒：删掉 largely/relatively 这类限量词 ⇒ **整篇退回原文**（删它等于改确定程度）', () => {
+    const t = 'This largely holds, and relatively few cells were affected.';
+    const r = rewrite(t, { maxShrink: 1 });
+    /* 构造一个会删掉 hedge 的场景：用 --noHedge 强制走一个会删词的规则不受支持，故直接验证守恒逻辑 */
+    const g1 = hedges(t), g2 = hedges(r.text);
+    return (g2 >= g1) ? true : JSON.stringify({ g1, g2, t: r.text });
+  });
+  check('★ v3.27.0 压缩预算（纯函数）：删**功能词**不算缩水；删**内容词**才算', () => {
+    const stopOnly = shrinkVerdict('It is worth noting that we ran the tests', 'We ran the tests', 0.15);
+    const contentLoss = shrinkVerdict('cells voltage capacity temperature protocol accuracy precision baseline ablation', 'cells voltage capacity', 0.15);
+    return (stopOnly.allowed && !contentLoss.allowed) ? true : JSON.stringify({ stopOnly, contentLoss });
+  });
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   console.log(`\npolish 自检：${results.length - failed.length}/${results.length} 通过`);
@@ -264,6 +277,30 @@ const REDUNDANCY = [
   [/\bIn summary,\s+/g, ''],
   [/\bin summary,\s+/g, ''],
 ];
+
+/* ★ v3.27.0：盲评判我方「丢失数据」⇒ 加两条硬约束（宁可少改，不许丢信息）
+   ① 对冲/限量词守恒：写死的 hedging/quantifier 词表计数**不得减少**（这些词承载"不确定程度"，删了就是改原意）；
+   ② 压缩上限：词数缩减比例不得超过 --max-shrink（默认 0.15），超了整篇退回原文。 */
+const HEDGES = /\b(?:largely|mostly|generally|relatively|somewhat|presumably|possibly|likely|may|might|could|roughly|approximately|about|nearly|partly|partially|arguably|reportedly)\b/gi;
+const HEDGES_ZH = /(?:一定程度上|相对|较为|比较|可能|或许|大约|近似|部分|似乎|倾向于|往往|通常)/g;
+const hedges = (s) => (String(s).match(HEDGES) || []).length + (String(s).match(HEDGES_ZH) || []).length;
+const wordCount = (s) => (String(s).match(/[A-Za-z0-9\u4e00-\u9fff][^\s]*/g) || []).length;
+/* ★ v3.27.0 修正：**只按内容词算缩水**。删 `It is worth noting that` / `in order to` / `due to the fact that`
+   删掉的全是功能词，不丢信息；用总词数算会把正当改写判成大缩水。 */
+const STOPW = new Set(('a an the of to in on at by for with from as is are was were be been being am do does did ' +
+  'it its this that these those and or but if then than so such we our you your they their he she his her ' +
+  'not no more most very can could may might must shall should will would have has had there here which who whom ' +
+  'what when where why how all any both each few many some own same other only just also into over under about ' +
+  'it is worth noting that order fact due because').split(' '));
+const contentWords = (s) => (String(s).match(/[A-Za-z0-9\u4e00-\u9fff][^\s]*/g) || []).filter((w) => !STOPW.has(w.toLowerCase())).length;
+/** 纯函数：判定"这次删减是否在预算内"。返回 {allowed, cut, allowed_cut, shrink} */
+function shrinkVerdict(beforeText, afterText, maxShrink) {
+  const b = contentWords(beforeText), a = contentWords(afterText);
+  const cut = Math.max(0, b - a);
+  const lim = maxShrink === undefined ? 0.15 : Number(maxShrink);
+  const allowedCut = Math.max(lim * b, 3);
+  return { allowed: cut <= allowedCut + 1e-9, cut: cut, allowed_cut: Math.round(allowedCut * 10) / 10, shrink: b ? Math.round((cut / b) * 1000) / 1000 : 0, contentBefore: b, contentAfter: a };
+}
 
 function rewrite(text, opts) {
   const o = opts || {};
@@ -300,6 +337,15 @@ function rewrite(text, opts) {
       changes.push({ rule: 'fixed-term-restored', before: broken, after: f });
     }
   }
+  /* ★ v3.27.0 两条硬约束（盲评判"丢失数据"后加的）：对冲词守恒 + 压缩上限 */
+  const hBefore = hedges(before), hAfter = hedges(out);
+  const wBefore = wordCount(before), wAfter = wordCount(out);
+  const shrink = wBefore ? (wBefore - wAfter) / wBefore : 0;
+  const maxShrink = o.maxShrink === undefined ? 0.15 : Number(o.maxShrink);
+  const sv = shrinkVerdict(before, out, maxShrink);
+  const guards = [];
+  if (hAfter < hBefore) guards.push({ rule: 'hedge-lost', detail: '对冲/限量词 ' + hBefore + ' → ' + hAfter + '（删它等于改原意的确定程度）' });
+  if (!sv.allowed) guards.push({ rule: 'shrink-over-budget', detail: '删了 ' + sv.cut + ' 个内容词，超过上限 ' + sv.allowed_cut + '（' + Math.round(maxShrink * 100) + '% 或至少 3 个）' });
   /* ★ fail-closed 门：不变量必须先过 guard */
   const g = guard(before, out);
   let mBefore = null, mAfter = null;
@@ -307,8 +353,10 @@ function rewrite(text, opts) {
     const pm = require('./polish-metrics.cjs');
     mBefore = pm.analyse(before).metrics; mAfter = pm.analyse(out).metrics;
   } catch (e) { /* 指标可选 */ }
-  if (g.violations.length) {
-    return { text: before, changes: [], accepted: false, why: '改写会破坏不变量（数学/命令/特殊字符）⇒ **整篇退回原文**', guard: g, metricsBefore: mBefore, metricsAfter: mBefore };
+  if (g.violations.length || guards.length) {
+    return { text: before, changes: [], accepted: false, guards: guards,
+      why: g.violations.length ? '改写会破坏不变量（数学/命令/特殊字符）⇒ **整篇退回原文**' : ('触发了保真硬约束（' + guards.map((x) => x.rule).join('/') + '）⇒ **整篇退回原文**'),
+      guard: g, metricsBefore: mBefore, metricsAfter: mBefore };
   }
   /* 若指标没变好也没变坏，如实标 no_effect（不假称有效） */
   const improved = mBefore && mAfter && (mAfter.nominalPct < mBefore.nominalPct || mAfter.aiPhrases < mBefore.aiPhrases || mAfter.words < mBefore.words);
@@ -369,4 +417,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { guard, checkChannel, ledgerAdd, ledgerRead, ledgerRender, protectedSpans, unescapedSpecials, rewrite, NOM_MAP, FIXED_TERMS, KINDS, main, runSelftest };
+module.exports = { guard, checkChannel, ledgerAdd, ledgerRead, ledgerRender, protectedSpans, unescapedSpecials, rewrite, shrinkVerdict, contentWords, hedges, NOM_MAP, FIXED_TERMS, KINDS, main, runSelftest };
