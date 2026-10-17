@@ -42,7 +42,7 @@ function looksLikeAnalysisNote(text) {
   return null;
 }
 
-const PAIR_RE = /([A-Za-z][A-Za-z0-9\-_.²³]{0,19}|[\u4e00-\u9fa5]{2,8})\s*(?:[|｜]\s*)?[:：=]?\s*(?:[|｜]\s*)?(\d+(?:\.\d+)?)\s*(%|％|‰|×|倍|ms|s\b|min\b|h\b|GB\b|MB\b)?/g;
+const PAIR_RE = /([A-Za-z][A-Za-z0-9\-_.²³]{0,19}(?:\s*[a-z]{2}\s*[-–—→]\s*[a-z]{2})?|[\u4e00-\u9fa5]{2,8})\s*(?:[|｜]\s*)?[:：=]?\s*(?:[|｜]\s*)?(\d+(?:\.\d+)?)\s*(%|％|‰|×|倍|ms|s\b|min\b|h\b|GB\b|MB\b)?/g;
 const NOISE = /^(?:fig|figure|table|tab|section|sec|chapter|p|pp|eq|equation|版本|第|图|表|节|章|页|式|年份|年|月|日)$/i;
 const STOPWORD = /^(?:a|an|the|of|in|on|at|by|for|to|from|with|without|and|or|but|as|is|are|was|were|be|been|being|this|that|these|those|its|their|our|we|it|they|than|then|also|each|both|more|less|per|over|under|into|such|all|any|some|only|very|can|may|might|must|should|would|could|will|shall|has|have|had|do|does|did|not|no|yes|vs|versus|etc|e\.g|i\.e)$/i;
 const METRIC_LEX = /(auc|aupr|auprc|roc|acc|accuracy|f1|f2|precision|recall|specificity|sensitivity|rmse|nrmse|mae|nmae|mse|mape|smape|mase|bleu|rouge|meteor|perplexity|ppl|loss|error|score|rate|ratio|percent|percentage|kappa|icc|cohen|iou|dice|hits|wape|r²|r\^2|r2\b|soh|capacity|efficiency|latency|throughput|fps|gflops|footprint|memory|准确|精度|误差|召回|精确|损失|得分|分数|准确率|命中|覆盖|容量|效率|时长|延迟|吞吐|相关系数|方差|标准差|均值|中位数|决定系数)/i;
@@ -263,6 +263,9 @@ function selftest() {
   cases.push(['负控（分析笔记）', mk('n.md', '# 某篇结论\n\nBLEU 41.8 与 BLEU 41.0 有分歧。\n\n## 9. 证据索引\n| P1 §2 ‖ quote |\n'), 'SKIP']);
   // R² 这类带符号的短标签（真实漏报：改了 R² 数值却没抓到）
   cases.push(['R² 双值未交代', mk('o.md', '# Abstract\nR² 0.874 表现最好。\n\n## 6.1\nR² 0.860 也接近。\n'), 'FAIL']);
+  // 语向不同 ⇒ 不是同一指标两值（图谱 §9.3 修正的同族误报）
+  cases.push(['不同语向不算冲突', mk('p.md', '# Abstract\nBLEU en-de 41.8 and BLEU de-en 41.0.\n\n## 6.1\nBLEU.\n'), 'SKIP']);
+  cases.push(['同语向两值仍报', mk('q.md', '# Abstract\nBLEU en-de 41.8 on WMT.\n\n## 6.1\nBLEU en-de 40.2.\n'), 'FAIL']);
 
   let ok = 0;
   for (const [name, file, want] of cases) {

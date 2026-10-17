@@ -35,6 +35,17 @@
 - **★论文 A：合规门 11 项全 ✔（含两个软项）**：按门自己的检测规则落实——参考文献清单取名须匹配 `/ref|参考文献/i` 且非脚本后缀 ⇒ 复制 `refs-vancouver.md → submission/references-vancouver.md`；契约 json 须匹配 `/(contract|契约).*\.json$/i` ⇒ 复制插件自带 `joes-elsevier.json → submission/contract-joes-elsevier.json`。复跑 `compliance` ⇒ **通过（硬项齐、软项齐）**。
 - 自检：`presubmit-all` **5/5**；`audit` **6/6 全绿**。
 
+## v3.45.0 —— 2026-10-18
+
+**`number-consistency` 支持语向限定（BLEU en-de / de-en）：把图谱 §9.3 指出的"不同语向被当同一指标两值"这一同族风险，实测后按覆盖缺口修掉。**
+
+- **先实测再决定（不预设结论）**：造用例「BLEU en-de 41.8 与 BLEU de-en 41.0」跑本门 → 结果是 **判为指标值 0 个**（`BLEU` 与数字之间夹着 `en-de`，标签正则抽不到）。
+  ⇒ **"误报"不成立**（它抽不到，自然不会误报），真正的问题是**覆盖缺口**：带语向的指标根本进不了比较。
+- **修法**：标签正则允许在指标名后带一个**语向限定**（`en-de` / `zh→en` 等），并使语向**进入指标名**——这样不同语向是两个不同指标（不误报），同语向的两个值仍会被比对（不放过）。
+- **双向实测**：不同语向 ⇒ `判为指标值 2 个 · 无可比对象 ⇒ SKIP`（不当通过、也不误报）；同语向 `BLEU en-de 41.8` 与 `40.2` ⇒ **FAIL UNRECONCILED**，报出指标名「bleu en-de」。
+- **自检 12/12 → 14/14**：新增「不同语向不算冲突（SKIP）」与「同语向两值仍报（FAIL）」两条。论文 A 复跑仍 **533→540 数字 / 0 问题 ⇒ PASS**，未被改动波及。
+- 全量门：`sync-skill-modules --check` 7 模块一致 · `audit` **6/6 全绿** · absence 12/12 · definition-first 11/11 · presubmit-all 5/5 · package-audit 11/11。
+
 ## v3.44.0 —— 2026-10-17
 
 **`definition-first` 的 R6 定位修掉三处真缺陷；论文 A 补「度量口径」段后 R4+R6 双双 OK；顺带清出投稿包里 6 个备份件（合规硬项由 FAIL 转通过）。**
