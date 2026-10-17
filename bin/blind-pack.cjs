@@ -26,7 +26,25 @@ const crypto = require('crypto');
 
 const CODES = 'ABCDEFGHIJKL'.split('');
 
-function pack(files, outDir) {
+/* ★ v3.30.0：**只发正文**。三判盲评里我方被判「语气/密度」扣分，一部分来自把改动账本、
+   自检读数、Prompt used 这类**元信息块**贴在正文后面 —— 判者会把它们当正文噪声
+   （判者 3 甚至把中文账本误读成内容缺失）。⇒ 评分面只保留正文，元信息物理隔离。
+   规则：从**第一个非元信息标题**之后开始，到**下一个元信息标题**为止。 */
+const META_HEAD = /^\s*#{1,6}\s*(改动账本|change\s*ledger|change\s*log|ledger|notes?|自检读数|prompt\s*used|their\s*own\s*gates|说明|备注)/i;
+function bodyOnly(text) {
+  const lines = String(text).split('\n');
+  let start = -1; let end = lines.length;
+  for (let i = 0; i < lines.length; i += 1) {
+    const isHead = /^\s*#{1,6}\s+/.test(lines[i]);
+    if (start < 0) { if (isHead && !META_HEAD.test(lines[i])) start = i + 1; continue; }
+    if (isHead && META_HEAD.test(lines[i])) { end = i; break; }
+  }
+  if (start < 0) return String(text).trim();
+  return lines.slice(start, end).join('\n').trim();
+}
+
+function pack(files, outDir, opts) {
+  const onlyBody = !!(opts && opts.onlyBody);
   if (!Array.isArray(files) || !files.length) return { ok: false, why: '没有输入文件' };
   const stems = files.map((f) => path.basename(f).replace(/\.(md|txt)$/i, ''));
   /* ★ 真数据抓出的漏洞：产出文件**正文自带来源头**（如 `# contestant: **lifecycle-skills**…`），
@@ -41,7 +59,7 @@ function pack(files, outDir) {
   }).join('\n');
   const entries = files.map((f) => {
     const raw = fs.readFileSync(f, 'utf8');
-    const text = scrub(raw);
+    const text = onlyBody ? bodyOnly(scrub(raw)) : scrub(raw);
     const h = crypto.createHash('sha1').update(path.basename(f) + '\n' + text).digest('hex');
     return { file: f, base: path.basename(f), text, h, scrubbedLines: raw.split('\n').length - text.split('\n').length };
   });
@@ -124,6 +142,15 @@ function selftest() {
     return (r.ok && bad.length === 0 && !cjkBad && kept) ? true : JSON.stringify({ bad, cjkBad, kept });
   });
 
+  ck('★ v3.30.0 只发正文：元信息块（改动账本/自检读数/Notes）必须被挡在评分面外', () => {
+    const f1 = w('p1.md', '## 译文\n\nThe gain is 27 percent over 30 cells [12].\n\n## 改动账本（kind · reason）\n\n| kind | reason |\n|---|---|\n| 去套话 | 删开头 |\n\n## 自检读数（我方工具）\n\nstylecheck 通过。\n');
+    const out = path.join(tmp, 'out8');
+    const r = pack([f1], out, { onlyBody: true });
+    const b = fs.readFileSync(path.join(out, 'blind-bundle.txt'), 'utf8');
+    const meta = ['改动账本', '自检读数', 'stylecheck'].filter((x) => b.includes(x));
+    const kept = /27 percent/.test(b) && /30 cells/.test(b) && /\[12\]/.test(b);
+    return (r.ok && meta.length === 0 && kept) ? true : JSON.stringify({ meta, kept });
+  });
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.n + (c.ok ? '' : '  ← ' + c.d));
   console.log('\nblind-pack 自检：' + (cases.length - bad.length) + '/' + cases.length + ' 通过');
@@ -138,7 +165,7 @@ function main(argv) {
   const files = fs.readdirSync(dir).filter((f) => /\.(md|txt)$/i.test(f)).map((f) => path.join(dir, f));
   if (!files.length) { console.error('前提层失败：目录里没有 .md/.txt 产出'); return 2; }
   const out = path.resolve(val('--out') || path.join(dir, 'blind'));
-  const r = pack(files, out);
+  const r = pack(files, out, { onlyBody: argv.includes('--only-body') });
   if (!r.ok) { console.error('失败：' + r.why); return 2; }
   console.log('已打包 ' + r.codes.length + ' 份产出 ⇒ ' + out);
   console.log('   blind-bundle.txt（给判者，不含来源）· blind-rubric.md（四维 1–5 分 + JSON 输出）· mapping.json（判完再回表）');
@@ -147,4 +174,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { pack, selftest, main, CODES };
+module.exports = { pack, bodyOnly, selftest, main, CODES };
