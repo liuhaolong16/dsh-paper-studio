@@ -81,6 +81,70 @@ function offlineChecks(entries, opts) {
   return findings;
 }
 
+/** Semantic Scholar 取数（免 key · 本机实测可达）：返回 {kind:'ok'|'not_found'|'error', via} */
+function fetchSemanticScholar(doi) {
+  const { spawnSync } = require('child_process');
+  const url = 'https://api.semanticscholar.org/graph/v1/paper/DOI:' + encodeURIComponent(doi) + '?fields=title,year,citationCount,publicationTypes';
+  /* ★ v3.17.0 实测：S2 会 429 限流（对手整批中止正是这个原因）⇒ 429 时**退避重试一次** */
+  const once = () => {
+    const r = spawnSync('curl', ['-sS', '-o', '-', '-w', '\n%{http_code}', '--max-time', '25', '-H', 'User-Agent: paper-studio/3.16.0 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (r.status !== 0) return { code: '000', body: '' };
+    const out = String(r.stdout || '');
+    return { code: (out.match(/\n(\d{3})$/) || [])[1], body: out.replace(/\n\d{3}$/, '') };
+  };
+  let res = once();
+  if (res.code === '429') { const wait = 2000; const t0 = Date.now(); while (Date.now() - t0 < wait) { /* 退避 */ } res = once(); res.retried = true; }
+  if (res.code === '404') return { kind: 'not_found', via: 'semanticscholar', reason: 'HTTP 404' };
+  if (res.code !== '200') return { kind: 'error', via: 'semanticscholar', reason: 'HTTP ' + res.code + (res.retried ? '（已重试一次）' : '') };
+  try {
+    const j = JSON.parse(res.body);
+    return { kind: 'ok', via: 'semanticscholar', title: j.title, year: j.year, citations: j.citationCount || 0, type: (j.publicationTypes || [])[0] || null, is_retracted: false };
+  } catch (e) { return { kind: 'error', via: 'semanticscholar', reason: 'JSON 解析失败' }; }
+}
+
+/** DataCite 取数（免 key · 本机实测可达；DOI 不在 DataCite 时返回 404 —— 这不等于"伪造"，故标记为 not_in_source） */
+function fetchDataCite(doi) {
+  const { spawnSync } = require('child_process');
+  const url = 'https://api.datacite.org/dois/' + encodeURIComponent(doi);
+  const r = spawnSync('curl', ['-sS', '-o', '-', '-w', '\n%{http_code}', '--max-time', '25', '-H', 'User-Agent: paper-studio/3.16.0 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  if (r.status !== 0) return { kind: 'error', via: 'datacite', reason: 'curl 失败' };
+  const out = String(r.stdout || '');
+  const code = (out.match(/\n(\d{3})$/) || [])[1];
+  const body = out.replace(/\n\d{3}$/, '');
+  if (code === '404') return { kind: 'not_in_source', via: 'datacite', reason: 'HTTP 404（DataCite 未收录）' };
+  if (code !== '200') return { kind: 'error', via: 'datacite', reason: 'HTTP ' + code };
+  try {
+    const j = JSON.parse(body);
+    const a = (j.data && j.data.attributes) || {};
+    const yr = a.publicationYear || (a.dates || []).map((d) => parseInt(d.date, 10)).find((x) => x > 1900);
+    return { kind: 'ok', via: 'datacite', title: (a.titles && a.titles[0] && a.titles[0].title) || null, year: yr || null, citations: a.citationCount || 0, type: (a.types && a.types.resourceTypeGeneral) || null, is_retracted: false };
+  } catch (e) { return { kind: 'error', via: 'datacite', reason: 'JSON 解析失败' }; }
+}
+
+/**
+ * ★ v3.17.0 多源回落：OpenAlex → Semantic Scholar → DataCite。
+ * 纪律（对拍换来的）：**单一来源失败不拖垮整批**；且要能区分三件事 ——
+ *   · 三源都说 404 ⇒ not_found（疑似伪造）· 全失败 ⇒ error（未核对）· 某源不收录 ⇒ 继续下一源
+ */
+function fetchWithFallback(doi, opts) {
+  const o = opts || {};
+  const chain = o.chain || [fetchOpenAlex, fetchSemanticScholar, fetchDataCite];
+  const tried = [];
+  let notFound = 0, neutral = 0;
+  for (const fn of chain) {
+    let r;
+    try { r = fn(doi); } catch (e) { r = { kind: 'error', reason: String((e && e.message) || e) , via: (fn && fn.name) || '?' }; }
+    tried.push((r && r.via) || (fn && fn.name) || '?');
+    if (r && r.kind === 'ok') { r.via = r.via || 'unknown'; r.tried = tried; return r; }
+    if (r && r.kind === 'not_found') { notFound += 1; continue; }   /* 一个源说不存在 ≠ 全都说不存在 */
+    if (r && r.kind === 'not_in_source') { neutral += 1; continue; } /* 该源未收录此 DOI：中性，不算失败也不算不存在 */
+  }
+  /* 有一源明确 404、其余只是"未收录"（中性）⇒ 视为 not_found（疑似伪造）；
+     全都没给出 404（都是失败/未收录）⇒ error（未核对，不中止整批） */
+  if (notFound >= 1 && notFound + neutral === tried.length) return { kind: 'not_found', via: tried[0], tried };
+  return { kind: 'error', reason: '所有来源均未取到（' + tried.join(' → ') + '；其中 404 ' + notFound + ' 个）', tried };
+}
+
 /** 按标题找同名的其他版本（OpenAlex）。返回 [{id,doi,title,year,type,citations}]；失败返回 null（fail-soft） */
 function fetchTitleMatches(title, opts) {
   const o = opts || {};
@@ -175,7 +239,7 @@ function verify(entries, opts) {
       findings.push({ level: 'ERROR', check: 'UNRESOLVED', key: e.key, msg: 'DOI 在索引中不存在（404）：' + doi });
       continue;
     }
-    rows.push({ key: e.key, status: 'RESOLVED', index_title: r.title, index_year: r.year, is_retracted: !!r.is_retracted });
+    rows.push({ key: e.key, status: 'RESOLVED', index_title: r.title, index_year: r.year, is_retracted: !!r.is_retracted, via: r.via || 'injected', tried: r.tried || null });
     for (const x of compareMetadata(e, r)) findings.push(x);
     /* ★ v3.13.0 版本核验（默认关，`--canonical` 开）：同名的**其他实例**（预印本 vs 正式版 / 报告 vs 论文） */
     if (o.canonical && e.fields.title) {
@@ -184,7 +248,10 @@ function verify(entries, opts) {
     }
   }
   const nErr = findings.filter((x) => x.level === 'ERROR').length;
-  return { entries: rows, findings, summary: { entries: entries.length, resolved: rows.filter((r) => r.status === 'RESOLVED').length, not_found: rows.filter((r) => r.status === 'NOT_FOUND').length, skipped: rows.filter((r) => r.status === 'CHECK_SKIPPED').length, errors: nErr, warns: findings.filter((x) => x.level === 'WARN').length }, status: nErr ? 'FAIL' : 'PASS' };
+  /* ★ v3.17.0 来源分布：让"这次到底靠哪个源查到的"可见（单一来源失败不影响整批） */
+  const viaCounts = {};
+  for (const r of rows) if (r.via) viaCounts[r.via] = (viaCounts[r.via] || 0) + 1;
+  return { entries: rows, findings, summary: { entries: entries.length, resolved: rows.filter((r) => r.status === 'RESOLVED').length, not_found: rows.filter((r) => r.status === 'NOT_FOUND').length, skipped: rows.filter((r) => r.status === 'CHECK_SKIPPED').length, errors: nErr, warns: findings.filter((x) => x.level === 'WARN').length, sources: viaCounts }, status: nErr ? 'FAIL' : 'PASS' };
 }
 
 /** 默认在线取数（OpenAlex；用 curl，404 与取数失败分三态） */
@@ -192,14 +259,14 @@ function fetchOpenAlex(doi) {
   const { spawnSync } = require('child_process');
   const url = 'https://api.openalex.org/works/doi:' + encodeURIComponent(doi) + '?select=id,doi,title,publication_year,is_retracted,cited_by_count';
   const r = spawnSync('curl', ['-sS', '-o', '-', '-w', '\n%{http_code}', '--max-time', '25', '-H', 'User-Agent: paper-studio/3.6.0 (mailto:local)', url], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  if (r.status !== 0) return { kind: 'error', reason: 'curl 退出码 ' + r.status };
+  if (r.status !== 0) return { kind: 'error', via: 'openalex', reason: 'curl 退出码 ' + r.status };
   const out = String(r.stdout || '');
   const code = (out.match(/\n(\d{3})$/) || [])[1];
   const body = out.replace(/\n\d{3}$/, '');
-  if (code === '404') return { kind: 'not_found' };
-  if (code !== '200') return { kind: 'error', reason: 'HTTP ' + code };
-  try { const j = JSON.parse(body); return { kind: 'ok', title: j.title, year: j.publication_year, is_retracted: !!j.is_retracted, citations: j.cited_by_count }; }
-  catch (e) { return { kind: 'error', reason: '返回体不是 JSON（HTTP ' + code + '）' }; }
+  if (code === '404') return { kind: 'not_found', via: 'openalex' };
+  if (code !== '200') return { kind: 'error', via: 'openalex', reason: 'HTTP ' + code };
+  try { const j = JSON.parse(body); return { kind: 'ok', via: 'openalex', title: j.title, year: j.publication_year, is_retracted: !!j.is_retracted, citations: j.cited_by_count }; }
+  catch (e) { return { kind: 'error', via: 'openalex', reason: '返回体不是 JSON（HTTP ' + code + '）' }; }
 }
 
 function selftest() {
@@ -294,6 +361,32 @@ function selftest() {
     return r.findings.some((x) => x.check === 'CANONICAL_OK') ? true : JSON.stringify(r.findings);
   });
 
+  /* ★ v3.17.0 多源回落（对拍换来的纪律：单一来源失败不拖垮整批；且要分清 404 与失败） */
+  const mk = (kind, via, extra) => () => Object.assign({ kind, via }, extra || {});
+
+  ck('v3.17.0·回落·★必失败面：**主源失败但备源成功** ⇒ 仍判 ok 且标出来源（不中止整批）', () => {
+    const r = fetchWithFallback('10.1/x', { chain: [mk('error', 'openalex'), mk('ok', 'semanticscholar', { title: 'T', year: 2021 })] });
+    return (r.kind === 'ok' && r.via === 'semanticscholar' && r.tried.join(',') === 'openalex,semanticscholar') ? true : JSON.stringify(r);
+  });
+
+  ck('v3.17.0·回落·★必失败面：**某源 not_found 但另一源 ok** ⇒ 判 ok（一个源说不存在 ≠ 全都说不存在）', () => {
+    const r = fetchWithFallback('10.1/y', { chain: [mk('not_found', 'openalex'), mk('ok', 'datacite', { title: 'T', year: 2020 })] });
+    return (r.kind === 'ok' && r.via === 'datacite') ? true : JSON.stringify(r);
+  });
+
+  ck('v3.17.0·回落·★必失败面：**全部来源 404** ⇒ not_found（疑似伪造），而不是 error', () => {
+    const r = fetchWithFallback('10.1/z', { chain: [mk('not_found', 'openalex'), mk('not_found', 'semanticscholar'), mk('not_found', 'datacite')] });
+    return (r.kind === 'not_found') ? true : JSON.stringify(r);
+  });
+
+  ck('v3.17.0·回落·★必失败面：**全部失败** ⇒ error（未核对），绝不能当通过', () => {
+    const r = fetchWithFallback('10.1/w', { chain: [mk('error', 'openalex'), mk('error', 'semanticscholar')] });
+    if (r.kind !== 'error') return '应为 error：' + JSON.stringify(r);
+    const e = parseBib(BIB('m', '10.1234/zz', 'Some title', 2021));
+    const v = verify(e, { fetchRecord: () => r });
+    return (v.entries[0].status === 'CHECK_SKIPPED') ? true : '未被记为未核对：' + JSON.stringify(v.entries[0]);
+  });
+
   const bad = cases.filter((c) => !c.ok);
   for (const c of cases) console.log('  ' + (c.ok ? '✔' : '✘') + ' ' + c.n + (c.ok ? '' : '  ← ' + c.d));
   console.log('\nrefs-verify 自检：' + (cases.length - bad.length) + '/' + cases.length + ' 通过');
@@ -309,14 +402,20 @@ function main(argv) {
   if (!entries.length) { console.error('解析出 0 条条目 ⇒ 未核对（不是通过）'); return 2; }
   const noNet = argv.includes('--no-net');
   const canonical = argv.includes('--canonical');
-  const r = verify(entries, { noNet, canonical, fetchRecord: noNet ? null : fetchOpenAlex, fetchTitleMatches: noNet ? null : fetchTitleMatches, nowYear: new Date().getFullYear() });
+  /* 可跳过某个来源（实践中确有需要：某源慢/被限流）；也让"回落真的会发生"可以被**实测**验证 */
+  const skip = [];
+  for (let i = 0; i < argv.length; i++) if (argv[i] === '--skip-source' && argv[i + 1]) skip.push(argv[++i]);
+  const SOURCES = [['openalex', fetchOpenAlex], ['semanticscholar', fetchSemanticScholar], ['datacite', fetchDataCite]];
+  const chain = SOURCES.filter(([n]) => skip.indexOf(n) < 0).map(([, f]) => f);
+  if (!chain.length) { console.error('前提层失败：--skip-source 跳过了全部来源 ⇒ 无法核验（未核对 ≠ 通过）'); return 2; }
+  const r = verify(entries, { noNet, canonical, fetchRecord: noNet ? null : (doi) => fetchWithFallback(doi, { chain }), fetchTitleMatches: noNet ? null : fetchTitleMatches, nowYear: new Date().getFullYear() });
   if (argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return r.status === 'FAIL' ? 2 : 0; }
-  console.log('引用核验（' + entries.length + ' 条' + (noNet ? ' · 离线' : ' · 在线 OpenAlex') + '）：' + r.status);
-  for (const e of r.entries) console.log('  ' + e.key.padEnd(20) + e.status + (e.reason ? '（' + e.reason + '）' : '') + (e.is_retracted ? ' · 已撤稿' : ''));
+  console.log('引用核验（' + entries.length + ' 条' + (noNet ? ' · 离线' : ' · 在线多源 ' + chain.map((f) => f.name.replace(/^fetch/, '')).join(' → ')) + '）：' + r.status);
+  for (const e of r.entries) console.log('  ' + e.key.padEnd(20) + e.status + (e.via ? '（via ' + e.via + '）' : '') + (e.reason ? '（' + e.reason + '）' : '') + (e.is_retracted ? ' · 已撤稿' : ''));
   for (const f of r.findings) console.log('  [' + f.level + '/' + f.check + '] ' + (f.key ? f.key + '：' : '') + f.msg);
-  if (r.summary) console.log('  合计：解析 ' + r.summary.resolved + ' · 不存在 ' + r.summary.not_found + ' · 未核对 ' + r.summary.skipped + ' · ERROR ' + r.summary.errors + ' · WARN ' + r.summary.warns);
+  if (r.summary) console.log('  合计：解析 ' + r.summary.resolved + ' · 不存在 ' + r.summary.not_found + ' · 未核对 ' + r.summary.skipped + ' · ERROR ' + r.summary.errors + ' · WARN ' + r.summary.warns + (r.summary.sources && Object.keys(r.summary.sources).length ? ' · 来源 ' + JSON.stringify(r.summary.sources) : ''));
   return r.status === 'FAIL' ? 2 : 0;
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { parseBib, offlineChecks, compareMetadata, verify, fetchOpenAlex, similarity, normTitle, main, selftest };
+module.exports = { parseBib, offlineChecks, compareMetadata, verify, fetchOpenAlex, fetchSemanticScholar, fetchDataCite, fetchWithFallback, similarity, normTitle, main, selftest };
