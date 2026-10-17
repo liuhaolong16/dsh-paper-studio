@@ -34,7 +34,7 @@ description: |
 - `bin/tense-check.cjs（时态规范机检：方法/结果节现在时描述动作 ⇒ WARN；结论节过去时下一般断言 ⇒ INFO）`
 - `bin/paragraph-logic.cjs（段落级逻辑启发式弱机检：段长带 / 断言有无支撑 / 相邻段共词；不用 PASS，状态 OK 不等于逻辑没问题）`
 - `bin/polish-metrics.cjs（润色质量代理指标：句长/变异/被动/名词化/AI味/TTR；代理≠质量，需盲评）`
-- `bin/polish.cjs（润色：**rewrite 规则化改写引擎**（去名词化/冗余/AI味，fail-closed 过 guard）+ guard 保真 + 改动账本 + 通道检查）`
+- `bin/polish.cjs（rewrite 规则化改写 + guard 保真 + ledger 账本 + check 通道 + **presubmit 出口三关**：丢信息/保真/指标，FAIL 即不放行；写作约束：保留原文对冲词与限定语，宁可啰嗦不许删）`
 - `bin/blind-pack.cjs（盲评装置：去标识打包 + 四维 rubric；代号按内容哈希，mapping 判完才回表）`
 - `bin/polish-losscheck.cjs（跨语言丢信息检测：数字/引用/对冲词守恒/缩写；只查在不在，WARN≠通过）`
 

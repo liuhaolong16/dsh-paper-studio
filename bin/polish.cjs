@@ -63,7 +63,8 @@ function unescapedSpecials(text) {
 const countOf = (text, re) => (String(text).match(re) || []).length;
 
 /** LaTeX 保真守卫：返回 {violations, warnings}。 */
-function guard(before, after) {
+function guard(before, after, opts) {
+  const crossLang = !!(opts && opts.crossLang);
   const b = protectedSpans(before); const a = protectedSpans(after);
   const missing = multisetDiff(b, a);          // 原稿有、润色后没了 ⇒ 违规
   const added = multisetDiff(a, b);            // 润色后新出现 ⇒ 提示（可能是合理的补充，但必须看）
@@ -81,7 +82,7 @@ function guard(before, after) {
   const beforeHits = unescapedSpecials(before); const afterHits = unescapedSpecials(after);
   const byCh = (arr) => arr.reduce((m, h) => (m[h.ch] = (m[h.ch] || 0) + 1, m), {});
   const bCh = byCh(beforeHits); const aCh = byCh(afterHits);
-  for (const ch of Object.keys(aCh)) {
+  for (const ch of (crossLang ? [] : Object.keys(aCh))) {
     const d = (aCh[ch] || 0) - (bCh[ch] || 0);
     if (d > 0) violations.push({ rule: 'unescaped-special-introduced', detail: `新增 ${d} 处未转义的「${ch}」（应写作 \\${ch}）`, samples: afterHits.filter((h) => h.ch === ch).slice(0, 3).map((h) => h.ctx) });
   }
@@ -396,7 +397,30 @@ function main(argv) {
       for (const p of r.problems) console.log(`  ✘ [${p.rule}] ${p.detail}`);
       return r.problems.length ? 1 : 0;
     }
-    if (cmd === 'rewrite') {
+    if (cmd === 'presubmit') {
+      /* ★ 出口三关合一：丢信息（对原文）+ LaTeX 保真 + 语言指标。
+         任何一关 FAIL ⇒ 退出码 1（**交付前必须过**；WARN 不等于通过）。 */
+      const src = opt('--src'), got = opt('--out');
+      if (!src || !got || !fs.existsSync(src) || !fs.existsSync(got)) { console.error('前提层失败：presubmit 需要 --src <原文> --out <产出>'); return 2; }
+      const srcT = fs.readFileSync(src, 'utf8'), outT = fs.readFileSync(got, 'utf8');
+      const lc = require('./polish-losscheck.cjs');
+      const loss = lc.losscheck(srcT, outT);
+      const isZh = (s) => /[\u4e00-\u9fff]/.test(s);
+      /* ★ 判据：源是中文就是翻译对比（产出里常混中文改动账本，不能用「产出无 CJK」来判）
+         ⇒ 跨语言时只查命令与数学是否存活，不查新增特殊字符（# 是 markdown 标题，不是 LaTeX 违规） */
+      const g = guard(srcT, outT, { crossLang: isZh(srcT) });
+      let met = null; try { met = require('./polish-metrics.cjs').analyse(outT); } catch (e) { /* 可选 */ }
+      console.log('出口三关（' + path.basename(got) + '）');
+      console.log('  1) 丢信息：' + loss.status);
+      for (const p of loss.problems) console.log('     ✘ [' + p.rule + '] ' + p.detail);
+      for (const n of loss.notes) console.log('     · [' + n.rule + '] ' + n.detail);
+      console.log('  2) LaTeX 保真：' + (g.violations.length ? '✘ ' + g.violations.length + ' 项' : '✔ 通过'));
+      for (const v of g.violations) console.log('     ✘ [' + v.rule + '] ' + v.detail);
+      if (met) console.log('  3) 语言指标：' + met.status + (met.flags && met.flags.length ? ' · ' + met.flags.map((x) => x.rule).join(',') : ''));
+      const fail = loss.status === 'FAIL' || g.violations.length > 0;
+      console.log(fail ? '  ⇒ **不放行**：先修上面 ✘ 项（WARN 也要人工看一眼，WARN ≠ 通过）' : '  ⇒ 放行（数字/引用/缩写齐全、LaTeX 未被动、指标无硬伤）；**这不证明写得好，只证明没丢东西**');
+      return fail ? 1 : 0;
+    }    if (cmd === 'rewrite') {
       const f = opt('--file');
       if (!f || !fs.existsSync(f)) { console.error('前提层失败：rewrite 需要 --file <稿>'); return 2; }
       const fid = argv.includes('--fidelity');
@@ -413,7 +437,7 @@ function main(argv) {
       console.log('  边界：只做局部机械改写（去名词化/冗余/AI 味）；**拆长句与被动改主动只报告不动手**（需句法分析，动错比不动糟）。');
       return 0;
     }
-    console.error('用法：polish.cjs guard|ledger|check|rewrite ...（或 --selftest）'); return 2;
+    console.error('用法：polish.cjs guard|ledger|check|rewrite|presubmit ...（或 --selftest）'); return 2;
   } catch (e) { console.error('前提层失败：' + String((e && e.message) || e)); return 2; }
 }
 
