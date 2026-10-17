@@ -38,6 +38,7 @@ description: |
 - `bin/blind-pack.cjs（盲评装置：去标识 + 四维 rubric + **--only-body 只发正文**（元信息挡在评分面外）；代号按内容哈希，mapping 判完才回表）`
 - `bin/polish-losscheck.cjs（跨语言丢信息检测：数字/引用/**超参数 key=value 成对**/对冲词/缩写；只查在不在，WARN≠通过）`
 - `bin/plagself.cjs（**查重预检**：新稿 vs 自己旧稿集合，n-gram 字面重合 + 按来源汇总；不是任何查重系统的判定）`
+- `bin/misflag.cjs（**误判风险画像**：套话/句长波动/具体性密度 + 具体化缺口清单；**不是 AI 概率，不做降 AI 率改写**）`
 
 ## 边界（这些事本模块不做）
 
