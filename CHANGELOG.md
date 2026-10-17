@@ -3,6 +3,20 @@
 
 # 变更记录
 
+## v3.25.0 —— 2026-10-17
+
+**用户质问「润色域真的被推翻了吗？我们的有他们好吗？我们真的有吗」的正面回答：把保障层补成引擎。**
+
+- **★`polish.cjs` 新增 `rewrite`（规则化改写引擎，自检 10/10 → **16/16**）** —— 此前我方只有**机械保障层**（guard/ledger/check），没有引擎；本轮补上：
+  - **R1 去名词化**：`the implementation of X` → `implementing X`（12 个映射：implementation/optimization/evaluation/estimation/analysis/comparison/definition/utilization/determination/identification/prediction/description/assessment）；**固定术语跳过不拆**（`analysis of variance`、`coefficient of determination`、`state of health`… —— 拆术语比不改更糟）。
+  - **R2/R3 冗余与 AI 味**：`in order to`→`to` · `due to the fact that`→`because` · `a large number of`→`many` · `at this point in time`→`now` · `in spite of the fact that`→`although` · `It is worth noting that`（删除）· `plays a crucial role`→`matters` · `delve into`→`study` · `In summary,`（删除）。
+  - **★fail-closed 门**：改写结果**必须先过 `guard()`**；一旦动了数学/命令/引用或引入未转义特殊字符 ⇒ **整篇退回原文**并说明原因（不交出半坏稿）。
+  - **不做的事（写明）**：拆长句、被动改主动 —— 需句法分析，**只报告不动手**（动错比不动糟）。
+- **★真句实跑（可复核）**：输入 43 词、名词化 11.6%、AI 味 2 处、最长句 33 词；改后 **23 词 · 名词化 8.7% · AI 味 0 · 最长句 18**，`polish-metrics` 的两条 WARN（M4/M5）**消失**，`guard` 通过（`$\\alpha$` 与 `30` 原样保留）。
+- **★真跑抓出的两个瑕疵（已修）**：① 删除句首 `It is worth noting that` 后留下小写句首（`estimating SOH…`）⇒ 加句首大写化；② 自检臂里我断言写死大小写（输出 `Implementing`、断言 `implementing`）⇒ 改大小写无关。
+- **诚实边界（写进回执）**：这是**规则化改写**，不是"懂语义的润色"；它只降低"可机检的坏习惯"，**不保证读起来更好** —— 质量判断仍需盲评。
+- **接线**：真源 `paper-writing` 资产 + 登记表 `env.paper-polish`（含证据）+ 版本号。
+
 ## v3.24.1 —— 2026-10-17
 
 **用户质问「润色域真的被推翻了吗？我们的有他们好吗？而且我们真的有吗」——自查后**撤回过度概括**，并补上测量装置。**

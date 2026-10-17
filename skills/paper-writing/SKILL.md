@@ -34,6 +34,7 @@ description: |
 - `bin/tense-check.cjs（时态规范机检：方法/结果节现在时描述动作 ⇒ WARN；结论节过去时下一般断言 ⇒ INFO）`
 - `bin/paragraph-logic.cjs（段落级逻辑启发式弱机检：段长带 / 断言有无支撑 / 相邻段共词；不用 PASS，状态 OK 不等于逻辑没问题）`
 - `bin/polish-metrics.cjs（润色质量代理指标：句长/变异/被动/名词化/AI味/TTR；代理≠质量，需盲评）`
+- `bin/polish.cjs（润色：**rewrite 规则化改写引擎**（去名词化/冗余/AI味，fail-closed 过 guard）+ guard 保真 + 改动账本 + 通道检查）`
 
 ## 边界（这些事本模块不做）
 

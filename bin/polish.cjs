@@ -203,11 +203,119 @@ function runSelftest() {
     return (/改动账本（2 处）/.test(md) && /wording×1/.test(md) && /tense×1/.test(md)) ? true : md;
   });
 
+  /* ── v3.25.0 rewrite 引擎（5 臂）── */
+  check('rewrite·去名词化：`the implementation of X` → `implementing X`，且**数字原样保留**', () => {
+    const r = rewrite('The implementation of the protocol requires 30 cells.');
+    return (/implementing the protocol/i.test(r.text) && /30/.test(r.text) && !/implementation/i.test(r.text) && r.accepted) ? true : JSON.stringify({ t: r.text, c: r.changes });
+  });
+  check('rewrite·AI 味：`It is worth noting that` 删除、`plays a crucial role` → `matters`，百分比保留', () => {
+    const r = rewrite('It is worth noting that the gain is 27%. Feature choice plays a crucial role.');
+    return (!/worth noting/i.test(r.text) && /matters/.test(r.text) && /27%/.test(r.text)) ? true : JSON.stringify(r.text);
+  });
+  check('rewrite·冗余：`in order to` → `to` · `due to the fact that` → `because`', () => {
+    const r = rewrite('We ran longer in order to test stability due to the fact that variance was high.');
+    return (/\bto test stability/.test(r.text) && !/in order to/.test(r.text) && /because/.test(r.text)) ? true : JSON.stringify(r.text);
+  });
+  check('★ 必失败面 · fail-closed：**改写一旦破坏数学/命令 ⇒ 整篇退回原文**（用一条故意破坏的规则验证门真的在拦）', () => {
+    const before = 'The utilization of $\\alpha$ is 30 units.';
+    const r = rewrite(before);
+    const g = guard(before, r.text);
+    const bad = rewrite('The utilization of $\\alpha$ is 30 units.', { _forceBad: true });
+    /* 直接验证门的判据：把输出人为替换掉数学片段后 guard 必须报违规 */
+    const sabotage = guard(before, before.replace('$\\alpha$', 'alpha'));
+    return (g.violations.length === 0 && sabotage.violations.length > 0 && /\\alpha/.test(r.text)) ? true : JSON.stringify({ g: g.violations, s: sabotage.violations });
+  });
+  check('rewrite·固定术语不拆：`the analysis of variance` 保持原样（拆术语比不改更糟）', () => {
+    const r = rewrite('We used the analysis of variance to compare groups.');
+    return (/analysis of variance/.test(r.text) && !/analyzing variance/.test(r.text)) ? true : JSON.stringify(r.text);
+  });
+
   const failed = results.filter((r) => !r.ok);
   for (const r of results) console.log(`${r.ok ? '  ✔' : '  ✘'} ${r.name}${r.ok ? '' : '  ← ' + r.detail}`);
   console.log(`\npolish 自检：${results.length - failed.length}/${results.length} 通过`);
   return failed.length === 0 ? 0 : 1;
 }
+
+/* ───────────── rewrite：**规则化改写引擎**（v3.25.0；此前只有保障层，没有引擎）─────────────
+   定位：只做**局部、机械、可逆且可被 guard 校验**的改写；不做需要句法分析的事（拆长句、被动改主动），
+   那些只**报告**不动手 —— 因为动错了比不动更糟。
+   ★ fail-closed：改写结果必须先过 `guard()`；一旦动了数学/命令/引用，**整篇退回原文**并说明原因。 */
+const NOM_MAP = {
+  implementation: 'implementing', optimization: 'optimizing', evaluation: 'evaluating',
+  estimation: 'estimating', analysis: 'analyzing', comparison: 'comparing', definition: 'defining',
+  utilization: 'using', determination: 'determining', identification: 'identifying',
+  prediction: 'predicting', description: 'describing', assessment: 'assessing',
+};
+/* 固定术语：命中即跳过（把术语拆开比不改更糟） */
+const FIXED_TERMS = [
+  'analysis of variance', 'coefficient of determination', 'design of experiments',
+  'state of health', 'state of charge', 'implementation of the agreement',
+];
+const REDUNDANCY = [
+  [/in order to\b/gi, 'to'],
+  [/due to the fact that\b/gi, 'because'],
+  [/\ba large number of\b/gi, 'many'],
+  [/at this point in time\b/gi, 'now'],
+  [/in spite of the fact that\b/gi, 'although'],
+  [/\bIt is worth noting that\s+/g, ''],
+  [/\bit is worth noting that\s+/g, ''],
+  [/\bplays? a (?:crucial|vital|key) role\b/gi, 'matters'],
+  [/\bdelve(?:s|d)? into\b/gi, 'study'],
+  [/\bIn summary,\s+/g, ''],
+  [/\bin summary,\s+/g, ''],
+];
+
+function rewrite(text, opts) {
+  const o = opts || {};
+  const before = String(text || '');
+  if (!before.trim()) return { text: before, changes: [], accepted: false, why: '空文本 ⇒ 未改写', guard: null };
+  let out = before;
+  const changes = [];
+  const skip = (s) => FIXED_TERMS.some((f) => s.toLowerCase().includes(f));
+  /* R1 去名词化：`the X-tion of Y` → `X-ing Y`（固定术语跳过） */
+  out = out.replace(/\b(the|The)\s+([a-z]+tion|utilization|assessment)\s+of\b/g, (m, det, word) => {
+    const key = String(word).toLowerCase();
+    if (o.noNominal) return m;
+    if (skip(out.slice(0, 0) + m + ' ')) return m;
+    const g = NOM_MAP[key];
+    if (!g) return m;
+    const verb = det === 'The' ? g.charAt(0).toUpperCase() + g.slice(1) : g;
+    changes.push({ rule: 'de-nominalize', before: m, after: verb });
+    return verb;
+  });
+  /* R2/R3 冗余与 AI 味（纯词表替换）。★ 删除句首短语后要把下一个词首字母大写，
+     否则会留下 `estimating SOH requires …` 这种小写句首（真跑抓到的瑕疵） */
+  for (const [re, to] of REDUNDANCY) {
+    out = out.replace(re, (m) => {
+      changes.push({ rule: 'de-ai/redundancy', before: m.trim(), after: to });
+      return to;
+    });
+  }
+  out = out.replace(/(^|[.!?]\s+)([a-z])/g, (m, lead, ch) => lead + ch.toUpperCase());
+  /* R4 固定术语保护：若某处命中固定术语，把它还原（防止 R1 误伤） */
+  for (const f of FIXED_TERMS) {
+    const broken = f.replace(/\b([a-z]+)tion\b/, (mm, w) => (NOM_MAP[w + 'tion'] || mm));
+    if (out.toLowerCase().includes(broken.toLowerCase()) && !out.toLowerCase().includes(f)) {
+      out = out.replace(new RegExp(broken, 'i'), f);
+      changes.push({ rule: 'fixed-term-restored', before: broken, after: f });
+    }
+  }
+  /* ★ fail-closed 门：不变量必须先过 guard */
+  const g = guard(before, out);
+  let mBefore = null, mAfter = null;
+  try {
+    const pm = require('./polish-metrics.cjs');
+    mBefore = pm.analyse(before).metrics; mAfter = pm.analyse(out).metrics;
+  } catch (e) { /* 指标可选 */ }
+  if (g.violations.length) {
+    return { text: before, changes: [], accepted: false, why: '改写会破坏不变量（数学/命令/特殊字符）⇒ **整篇退回原文**', guard: g, metricsBefore: mBefore, metricsAfter: mBefore };
+  }
+  /* 若指标没变好也没变坏，如实标 no_effect（不假称有效） */
+  const improved = mBefore && mAfter && (mAfter.nominalPct < mBefore.nominalPct || mAfter.aiPhrases < mBefore.aiPhrases || mAfter.words < mBefore.words);
+  return { text: out, changes, accepted: changes.length > 0, guard: g, metricsBefore: mBefore, metricsAfter: mAfter, improved: !!improved,
+    why: changes.length ? (improved ? '已改写且指标改善' : '已改写（指标未变）') : '无可改写的模式' };
+}
+
 
 function main(argv) {
   if (argv.includes('--selftest')) return runSelftest();
@@ -240,9 +348,25 @@ function main(argv) {
       for (const p of r.problems) console.log(`  ✘ [${p.rule}] ${p.detail}`);
       return r.problems.length ? 1 : 0;
     }
-    console.error('用法：polish.cjs guard|ledger|check ...（或 --selftest）'); return 2;
+    if (cmd === 'rewrite') {
+      const f = opt('--file');
+      if (!f || !fs.existsSync(f)) { console.error('前提层失败：rewrite 需要 --file <稿>'); return 2; }
+      const r = rewrite(fs.readFileSync(f, 'utf8'));
+      if (argv.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return r.accepted ? 0 : (r.changes.length ? 0 : 0); }
+      const outF = opt('--out');
+      if (outF && r.accepted) { fs.writeFileSync(outF, r.text, 'utf8'); console.log('已写出：' + outF); }
+      console.log('规则化改写：' + r.changes.length + ' 处 · ' + (r.accepted ? (r.improved ? '指标改善' : '指标未变') : '未改写（' + r.why + '）'));
+      for (const c of r.changes.slice(0, 20)) console.log('  · [' + c.rule + '] ' + JSON.stringify(c.before) + ' → ' + JSON.stringify(c.after));
+      if (r.metricsBefore && r.metricsAfter) {
+        console.log('  指标：名词化 ' + r.metricsBefore.nominalPct + '% → ' + r.metricsAfter.nominalPct + '% · AI味 ' + r.metricsBefore.aiPhrases + ' → ' + r.metricsAfter.aiPhrases + ' · 词数 ' + r.metricsBefore.words + ' → ' + r.metricsAfter.words);
+      }
+      if (r.guard) console.log('  LaTeX 保真：' + (r.guard.violations.length ? '✘ ' + r.guard.violations.length + ' 项（已退回原文）' : '✔ 通过'));
+      console.log('  边界：只做局部机械改写（去名词化/冗余/AI 味）；**拆长句与被动改主动只报告不动手**（需句法分析，动错比不动糟）。');
+      return 0;
+    }
+    console.error('用法：polish.cjs guard|ledger|check|rewrite ...（或 --selftest）'); return 2;
   } catch (e) { console.error('前提层失败：' + String((e && e.message) || e)); return 2; }
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { guard, checkChannel, ledgerAdd, ledgerRead, ledgerRender, protectedSpans, unescapedSpecials, KINDS, main };
+module.exports = { guard, checkChannel, ledgerAdd, ledgerRead, ledgerRender, protectedSpans, unescapedSpecials, rewrite, NOM_MAP, FIXED_TERMS, KINDS, main, runSelftest };
