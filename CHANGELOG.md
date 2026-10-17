@@ -3,6 +3,24 @@
 
 # 变更记录
 
+## v3.19.0 —— 2026-10-17
+
+**backlog 收敛第 9 项：`camera-ready`（终稿交付前总检）—— 把"最后一公里"串成一道门。**
+
+- **★新增 `bin/camera-ready.cjs`（自检 9/9）** —— 与"投稿前"相反：**camera-ready 是录用之后**，作者信息要**恢复**、图表按出版规格定稿、PDF 必须**字体全嵌入**：
+  - `author-block`：前 25 行内有邮箱 + 单位/机构 ⇒ 已恢复；**否则 ERROR**（并提示"若这还是双盲稿，不要跑 camera-ready"）；
+  - `declarations`：CRediT / funding / conflict / data availability / ethics，缺一条报一条 **WARN**；
+  - `figures`：`![..]` 图数与 `Figure N` 题注数不一致 ⇒ **ERROR**；alt 为空 / 题注无句号 ⇒ WARN；
+  - `citations`：正文最大 `[n]` 不得超过 `.bib` 条目数（超 ⇒ **ERROR**）；**`.bib` 解析出 0 条也显式报「未核对」**（不许静默跳过）；
+  - `pdf-fonts`：PDF 有 `/BaseFont` 却**无任何 `/FontFile*`** ⇒ **ERROR 字体未嵌入**（出版方常见拒收原因）；
+  - `pdf-pagesize`：非 A4/Letter ⇒ INFO；`pdf-meta`：**非双盲口径**读元数据，缺 `/Author`/`/Title` ⇒ WARN；
+  - `filenames`：含空格或 `final|FINAL|v2|copy|副本|最新` ⇒ WARN（出版方系统常拒收）；
+  - `figures-dpi`：**调用**已测试过的 `figures-kit --audit`（不重复实现），跑不通 ⇒ `CHECK_SKIPPED`（**未核对 ≠ 通过**）。
+- **★真包实跑（论文 A 的 submission 目录，真稿 36.8KB + 5 个真 PDF）**：**PASS · 0 ERROR · 6 WARN · 12 INFO** —— WARN 只有「ethics 声明未检出」与 5 个图 PDF 的 `/Author` 为空（图属性为空是正常的）；12 条 INFO 显示**字体已嵌入**、页面尺寸属图版心、`figures-kit --audit` 通过。
+- **★真包抓出的自身缺陷（假阳性）**：论文 A 的题注真实写法是 `> **Figure 1.** …`（**引用块行**），而我的正则从行首匹配 `Figure` ⇒ 报"图 4 / 题注 0"。修：**允许前导 `>` 与 `**`**。**再次印证：判据必须在真实格式上验收，不能只在自造夹具上过。**
+- **另一处夹具错**：引用自洽臂的 `.bib` 夹具写成单行，而 `refs-verify` 的 `parseBib` 要求条目以**换行 + `}`** 收尾 ⇒ 解析出 0 条、检查被静默跳过 ⇒ 既修夹具，也把"解析出 0 条"改成显式 WARN。
+- **接线**：真源 `selfchecks` + `paper-process` 资产 + 登记表 `env.paper-camera-ready`。
+
 ## v3.18.0 —— 2026-10-17
 
 **backlog 收敛第 8 项：`parse-cfp`（征稿启事解析）—— 用户缺口表：要么没做，要么没机检。**
