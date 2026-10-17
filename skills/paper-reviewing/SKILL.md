@@ -28,6 +28,7 @@ description: |
 - `references/pipeline.json（handoff.contracts）`
 - `bin/triage.cjs（审稿意见分诊：判定空间 + severity×effort 评分 + 分带 + 矩阵；建议值需人工确认）`
 - `bin/pdf-meta.cjs（编译产物 PDF 元数据实读：Info 字典 + XMP + 分级身份检查；三态含「读不到 ⇒ 未核对」）`
+- `bin/rehearse.cjs（投稿前预演：三画像模拟审稿人 + 问答预演；每条带节名与行号；**模拟≠真实意见，未命中≠没问题**）`
 
 ## 边界（这些事本模块不做）
 

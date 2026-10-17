@@ -3,6 +3,23 @@
 
 # 变更记录
 
+## v3.20.0 —— 2026-10-17
+
+**backlog 收敛第 10 项：`simulate-reviewers` + `rehearse-qa`（合并为一个"投稿前预演"工具）。**
+
+- **★新增 `bin/rehearse.cjs`（自检 6/6）**，一个内核两种用：
+  - **三画像模拟审稿人**：方法严谨型（对照/样本量/统计/消融）· 意义/新颖性型（贡献可证性/边界/过度声称）· 复现/报告规范型（数据代码/种子/图表解读/声明）；
+  - **问答预演**：每条命中直接生成「会被问什么 + 答题骨架 + 证据锚点（节名 · 行号）」，可直接当答辩提纲。
+- **★规则全部是机检信号**：缺 n / 缺基线 / 缺消融 / 缺局限 / 过度声称 / 缺种子 / 缺数据可得 / 缺伦理 / 图表无正文解读 / **有 p 值但全文无 n**。
+- **★诚实边界（写进回执）**：**这是模拟，不是真实审稿意见**；规则没命中 **≠ 稿件没问题**；`（全文未检出）` 只说明没找到该信号，**不等于作者真的没做**。
+- **★★真稿实跑抓出的假阳性（三轮才修净）——"过度声称"规则的历史**：
+  1. 论文 A 写的是 **`We do not claim … first-of-its-kind status, or novelty …`（明确否认过度声称）** ⇒ 否认句里的强词被当成过度声称 ⇒ 加**否认守卫**；
+  2. `Our first filtering criterion` / `the first (absolute-threshold) filtering criterion` / `the first thing a follow-up should attack` / `each cell's own first-cycle capacity` —— **`first` 作序数/复合词** 全被误报；
+  3. **最终不再堆例外，改为收窄信号**：只认高辨识度短语（`the first <method|approach|framework|study|model|work|system|algorithm|attempt to>` · `first-of-its-kind` · `state-of-the-art` · `novel/novelty` · `significantly improve/outperform`（同句无 p/±/CI/检验才算））。
+  - **修后读数**：论文 A **2 条**（方法 0 · 意义 0 · 复现 2：缺伦理 + 图表未解读）；论文 B **4 条**；合成的真过度声称文本 **仍报 8 条（意义 2）** ⇒ **既不误报也不漏报**。
+- **交叉验证**：`rehearse` 报的"缺伦理"与 `camera-ready` 报的 `declaration:ethics` WARN **在同一天、同一稿上互相印证**（两条独立判据指向同一处）。
+- **接线**：真源 `selfchecks` + `paper-reviewing` 资产 + 登记表 `env.paper-rehearse`。
+
 ## v3.19.0 —— 2026-10-17
 
 **backlog 收敛第 9 项：`camera-ready`（终稿交付前总检）—— 把"最后一公里"串成一道门。**
