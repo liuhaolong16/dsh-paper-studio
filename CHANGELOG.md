@@ -2439,3 +2439,10 @@ node bin\generate.cjs --author-loop --draft <稿.md|目录> --material <素材.m
 结论落在 **`_ef\paperA-loop\投稿前清单-A.md`**：7 处数字要补素材（数据质量表/每芯最大容量未进素材，23 是 26−3 派生）+ 4 处缩写首次出现要展开；其余已绿。**这两组都不需要重写正文**。
 
 自检 **33/33**（新增：承重分类 · 按行聚合）· 全量 254/254 · audit 6/6。★ 纪律：**判据不可信等于没有** —— 假阳性把真缺口淹掉，比漏报更坏。
+## 3.58.1 — 方法节识别：`Data quality` / `data collection` / `dataset` 也算过程节
+
+`tense-check` 只认 `method / experiment / results / evaluation / data and / study design` 这类标题，于是 `## 2.5 Methods — data quality and the reference-discharge criterion` 被判 **SKIP（未检查）**，而 `--author-loop` 规定 SKIP 不得算通过 ⇒ 真实稿件里"数据质量"这类**方法子节**会被卡住。
+
+修法：过程节正则补 `data quality | data collection | dataset | sampling | acquisition | measurement`（共 6 个词），`tense-check` 自检仍 6/6。修后同一节由 SKIP 变为 **PASS**，`--author-loop` 由此给出 `SUBMISSION_READY`。
+
+**真机证据（同一份真实素材）**：宿主按论文 A 的真实素材（`filtered_v2.csv` 导出 + 13 份结果文档）新写一节 `2.5 Data quality and the reference-discharge criterion` ⇒ `✔ SUBMISSION_READY`，9 项全绿（trace-numbers / trace-citations / placeholders / lang / abbrev / 长句 / stylecheck / paragraph-logic / tense-check=PASS），exit 0。这是"素材→宿主写作→门检→验收"闭环**在真实素材上产出投稿级正文**的第一份完整证据。

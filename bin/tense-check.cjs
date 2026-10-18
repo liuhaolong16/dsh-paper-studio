@@ -38,7 +38,7 @@ const CLAIM_IRREG = { work: 'worked' };
 
 function sectionKind(heading) {
   const h = String(heading || '').toLowerCase();
-  if (/(\bmethod|methodolog|materials and methods|\bexperiment|\bresults?\b|evaluation|\bdata and|\bstudy design)/.test(h)) return 'procedural';
+  if (/(\bmethod|methodolog|materials and methods|\bexperiment|\bresults?\b|evaluation|\bdata and|\bdata quality|\bdata collection|\bdataset|\bsampling|\bacquisition|\bmeasurement|\bstudy design)/.test(h)) return 'procedural';
   if (/(conclusion|discussion|limitation|future work)/.test(h)) return 'claim';
   return 'other';
 }
