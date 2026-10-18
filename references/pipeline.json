@@ -1396,7 +1396,8 @@
     "presubmit-all.cjs": "node bin/presubmit-all.cjs --selftest",
     "abstract-strength.cjs": "node bin/abstract-strength.cjs --selftest",
     "corpus-regression.cjs": "node bin/corpus-regression.cjs --selftest",
-    "latex.cjs": "node bin/latex.cjs --selftest"
+    "latex.cjs": "node bin/latex.cjs --selftest",
+    "tex-engine.cjs": "node bin/tex-engine.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",

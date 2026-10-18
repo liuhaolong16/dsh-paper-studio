@@ -2242,3 +2242,34 @@
 ② 自检输出写成 14/14 缺"通过"后缀，audit 的 tools-probe 判为"跑不出 N/M"（契约要求 N/M 通过）。
 
 登记：pipeline.json selfchecks += 1（共 49）；能力登记表 += env.paper-latex（共 99）；udit **6/6 全绿**。
+
+## 3.52.0 — LaTeX 引擎自带安装（tectonic）+ 编译实证
+
+**为什么不让用户自己去装 TeX Live**：3.51.0 的 --compile 在裸机上永远返回 SKIP，等于"插件说有编译能力、但没人用得上"。
+本次把引擎装进插件自己的能力里：in/tex-engine.cjs 下载 **tectonic 单文件**（自带包管理器，按需拉宏包，
+不需要 3 GB 的 TeX Live），落到 ~/.dsh/cache/paper-studio/tex/，latex.cjs **优先**用它（PAPER_STUDIO_TEX
+环境变量可覆盖，其次才是系统 PATH 上的四个引擎）。
+
+新增 in/tex-engine.cjs（自检 **8/8**，离线，不发网络请求）：
+- --install [--force]：按平台选资产（win32-x64 → msvc zip；darwin arm64/x64；linux musl x64/arm64），
+  下载 → 解压 → **必须跑 --version 校验**；失败给具体原因（HTTP 码/解压错/校验不符），半成品不留
+- --status：报「用哪个引擎 + 版本 + 路径」；未安装 **exit 3**（不是 0）
+- 未知平台返回 
+ull 并拒绝安装，**不猜一个可能下错的包**
+
+latex.cjs 两处配合改造：
+- --emit 现在**自动复制图件**：按 md 所在目录解析 \includegraphics 路径并保留目录结构复制到输出目录
+  （否则 --check 会过、--compile 必倒于 File ... not found）
+- --compile 按引擎分流参数：tectonic 用 --keep-logs，pdflatex 系用 -interaction=nonstopmode -halt-on-error
+
+**编译实证（本机，tectonic 0.17.0）**：
+- 首次编译论文 A 失败：File 'figures/fig1_soh_curves' not found（244.5 s，已把宏包拉完）→ 补图件复制后
+- 复编译 **OK · paperA.pdf = 221,212 字节 · 11.7 s**（宏包已缓存）
+- --check 同时为 **OK**（引用 15 键 · 图 4 · 图件 4）
+
+**打包**：iles 含 in ⇒ 
+pm pack --dry-run 实测 **164 个文件 / 2.91 MB**，in/latex.cjs 与
+in/tex-engine.cjs 都在包内；
+pm run tex:install 一条命令即装引擎。
+
+登记：pipeline.json selfchecks **50** · 能力登记表 **100**（env.paper-tex-engine）· udit **6/6 全绿**。

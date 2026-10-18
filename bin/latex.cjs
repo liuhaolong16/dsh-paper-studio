@@ -322,9 +322,18 @@ function check(tex, opts = {}) {
 /* ───────────────────────── compile ───────────────────────── */
 
 function findEngine() {
-  for (const e of ['pdflatex', 'xelatex', 'lualatex', 'tectonic']) {
-    const r = spawnSync(e, ['--version'], { encoding: 'utf8', timeout: 20000 });
-    if (r.status === 0) return e;
+  // ★ 查找顺序是**有意设计**的：先插件自带缓存（一次 `tex-engine --install` 即可用，
+  //   不必污染系统 PATH），再环境变量覆盖，最后才是系统里已装的四个引擎。
+  const os = require('os');
+  const candidates = [];
+  if (process.env.PAPER_STUDIO_TEX) candidates.push({ name: 'PAPER_STUDIO_TEX', path: process.env.PAPER_STUDIO_TEX });
+  const cacheExe = path.join(os.homedir(), '.dsh', 'cache', 'paper-studio', 'tex',
+    process.platform === 'win32' ? 'tectonic.exe' : 'tectonic');
+  if (fs.existsSync(cacheExe)) candidates.push({ name: 'tectonic(cache)', path: cacheExe });
+  for (const e of ['tectonic', 'pdflatex', 'xelatex', 'lualatex']) candidates.push({ name: e, path: e });
+  for (const c of candidates) {
+    const r = spawnSync(c.path, ['--version'], { encoding: 'utf8', timeout: 30000 });
+    if (r.status === 0) return c;
   }
   return null;
 }
@@ -335,20 +344,23 @@ function compile(texPath) {
     return {
       status: 'SKIP',
       exit: 3,
-      note: '本机没有 LaTeX 引擎（pdflatex/xelatex/lualatex/tectonic 全部未安装）⇒ **未编译，不等于编译通过**。' +
-        '装一个即可：`winget install --id MiKTeX.MiKTeX` 或下载 tectonic 单文件（约 30MB）。',
+      note: '本机没有 LaTeX 引擎（tectonic/pdflatex/xelatex/lualatex 全部不可用）⇒ **未编译，不等于编译通过**。' +
+        '一条命令装自带引擎：`node bin/tex-engine.cjs --install`（下载 tectonic 单文件到 ~/.dsh/cache/paper-studio/tex，不污染系统 PATH）。',
     };
   }
   const dir = path.dirname(path.resolve(texPath));
   const file = path.basename(texPath);
-  const r = spawnSync(engine, ['-interaction=nonstopmode', '-halt-on-error', file], { cwd: dir, encoding: 'utf8', timeout: 300000 });
+  // tectonic 与 pdflatex 的参数不同：给 tectonic 传 `-interaction` 会被当未知参数拒绝
+  const isTectonic = /tectonic/i.test(engine.name);
+  const args = isTectonic ? ['--keep-logs', file] : ['-interaction=nonstopmode', '-halt-on-error', file];
+  const r = spawnSync(engine.path, args, { cwd: dir, encoding: 'utf8', timeout: 600000 });
   const log = (r.stdout || '') + (r.stderr || '');
   const pdf = path.join(dir, file.replace(/\.tex$/i, '.pdf'));
   if (r.status === 0 && fs.existsSync(pdf)) {
-    return { status: 'OK', engine, pdf, bytes: fs.statSync(pdf).size };
+    return { status: 'OK', engine: engine.name, pdf, bytes: fs.statSync(pdf).size };
   }
-  const errLine = (log.match(/^!.*$/m) || [log.split(/\r?\n/).find((l) => l.trim()) || ''])[0];
-  return { status: 'FAIL', engine, exit: 1, firstError: errLine, pdfExists: fs.existsSync(pdf) };
+  const errLine = (log.match(/^error:.*$/m) || log.match(/^!.*$/m) || [log.split(/\r?\n/).find((l) => l.trim()) || ''])[0];
+  return { status: 'FAIL', engine: engine.name, exit: 1, firstError: errLine, pdfExists: fs.existsSync(pdf) };
 }
 
 /* ───────────────────────── selftest ───────────────────────── */
@@ -476,10 +488,18 @@ function selftest() {
     return (r.status === 'SKIP' && /不存在/.test(r.note || '')) ? true : JSON.stringify(r).slice(0, 160);
   });
 
-  ck('★边界：无引擎时 compile ⇒ SKIP 且 exit=3（不伪装成功）', () => {
+  // ★ 这条只测**探测与三态路由**，不在这里跑真编译：
+  //   tectonic 首次运行要从网络拉宏包，可能远超 audit 给自检的 120s，
+  //   塞进自检会让整项变成"有时绿有时红"的抖动判据。真编译由人工快步验证并记入 CHANGELOG。
+  ck('★三态：无引擎必须 SKIP+exit3（有引擎则探测必须可执行）', () => {
+    const eng = findEngine();
+    if (eng) {
+      const v = spawnSync(eng.path, ['--version'], { encoding: 'utf8', timeout: 30000 });
+      if (v.status !== 0) return '探测到引擎但 --version 失败';
+      return /tectonic|pdftex|xetex|luatex/i.test((v.stdout || '') + (v.stderr || '')) ? true : '未知引擎输出';
+    }
     const r = compile(texPath);
-    if (r.status === 'OK') return '本机居然有引擎，该用例不适用（请在有引擎环境复跑）';
-    if (r.status !== 'SKIP') return 'status=' + r.status;
+    if (r.status !== 'SKIP') return '无引擎却返回 status=' + r.status;
     return r.exit === 3 ? true : 'exit=' + r.exit;
   });
 
@@ -510,8 +530,24 @@ function main(argv) {
     const tex = emit(read(emitPath), template);
     fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
     fs.writeFileSync(out, tex, 'utf8');
-    console.log('已生成 ' + out + '（模板 ' + template + ' · ' + tex.length + ' 字符）');
-    console.log('下一步：node bin/latex.cjs --check ' + out + ' --bib <refs.bib> --root <图件根>');
+    // ★ 图件必须跟着 .tex 走：否则 `--check` 通过、`--compile` 一定倒在
+    //   "File `figures/xxx' not found"。按 md 所在目录解析相对路径，保留目录结构复制到 out 同级。
+    const srcDir = path.dirname(path.resolve(emitPath));
+    const outDir = path.dirname(path.resolve(out));
+    let copied = 0;
+    const missing = [];
+    for (const g of [...tex.matchAll(/\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}/g)].map((x) => x[1].trim())) {
+      const exts = ['.pdf', '.png', '.jpg', '.jpeg', '.eps', ''];
+      const hit = exts.map((e) => path.resolve(srcDir, g + e)).find((p) => fs.existsSync(p) && fs.statSync(p).isFile());
+      if (!hit) { missing.push(g); continue; }
+      const dest = path.join(outDir, path.relative(srcDir, hit));
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(hit, dest);
+      copied += 1;
+    }
+    console.log('已生成 ' + out + '（模板 ' + template + ' · ' + tex.length + ' 字符 · 复制图件 ' + copied + ' 个）');
+    if (missing.length) console.log('  ⚠ 相对 md 找不到的图件 ' + missing.length + ' 个：' + missing.join(', '));
+    console.log('下一步：node bin/latex.cjs --check ' + out + ' --bib <refs.bib> --root <输出目录>');
     return 0;
   }
 
