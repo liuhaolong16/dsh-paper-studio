@@ -2273,3 +2273,25 @@ pm pack --dry-run 实测 **164 个文件 / 2.91 MB**，in/latex.cjs 与
 pm run tex:install 一条命令即装引擎。
 
 登记：pipeline.json selfchecks **50** · 能力登记表 **100**（env.paper-tex-engine）· udit **6/6 全绿**。
+
+## 3.53.0 — 分节写作简报 + 正文生成（模型可插拔）
+
+studio draft 只产**规划文档**（骨架/证据表/跑法），不产正文；正文也不可能由插件凭空写出——它要模型。
+本次把两端接起来，新增 in/generate.cjs（自检 **10/10**，含 6 条必失败臂，用**本地 mock 端点**验证端到端，不联网、不要 key）：
+
+- --brief --spec <spec.json> --out <dir>：每节一条简报 —— 目标 / 必现要素 / **禁用词（直接从 stylecheck 真源取，不另抄词表）** / 证据槽 / 字数带 / 写作规则
+- --run --briefs <dir> --out <dir> [--retries N]：逐节调 **OpenAI 兼容** /chat/completions → 拼稿 → 立刻跑 paragraph-logic
+- --retries N：把门的**具体问题行**回喂模型重写（不是"再试一次"这种空话）
+- --demo-spec：给一份可直接改的示例 spec
+
+**三态纪律（这是它能被信任的原因）**：
+| 情形 | 行为 |
+|---|---|
+| 未配 PAPER_STUDIO_LLM_BASE/KEY/MODEL | **exit 2** 并点名缺哪个 —— **绝不用模板拼冒充正文** |
+| 模型返回 500 / 非 JSON / 空正文 | **exit 1** 并带原因 |
+| 简报缺 goal | **拒绝生成**（没有目标的正文必然是空话） |
+| 生成完成但自检有残留问题 | **exit 1** 并列具体条目；生成成功 ≠ 交付成功 |
+
+生成物一律带 <!-- generated:model=... --> 标注，便于事后审计哪些文字是模型写的。
+
+登记：pipeline.json selfchecks **51** · 能力登记表 **101**（env.paper-generate，T2）· udit **6/6 全绿**。

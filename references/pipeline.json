@@ -1397,7 +1397,8 @@
     "abstract-strength.cjs": "node bin/abstract-strength.cjs --selftest",
     "corpus-regression.cjs": "node bin/corpus-regression.cjs --selftest",
     "latex.cjs": "node bin/latex.cjs --selftest",
-    "tex-engine.cjs": "node bin/tex-engine.cjs --selftest"
+    "tex-engine.cjs": "node bin/tex-engine.cjs --selftest",
+    "generate.cjs": "node bin/generate.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",
