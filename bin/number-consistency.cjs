@@ -49,7 +49,9 @@ function looksLikeAnalysisNote(text) {
 }
 
 const PAIR_RE = /([A-Za-z][A-Za-z0-9\-_.²³]{0,19}(?:\s*[a-z]{2}\s*[-–—→]\s*[a-z]{2})?|[\u4e00-\u9fa5]{2,8})\s*(?:[|｜]\s*)?[:：=]?\s*(?:[|｜]\s*)?(\d+(?:\.\d+)?)\s*(%|％|‰|×|倍|ms|s\b|min\b|h\b|GB\b|MB\b)?/g;
-const NOISE = /^(?:fig|figure|table|tab|section|sec|chapter|p|pp|eq|equation|版本|第|图|表|节|章|页|式|年份|年|月|日)$/i;
+const NOISE = /^(?:fig|figure|table|tab|section|sec|chapter|p|pp|page|pages|line|eq|equation|rq|rqs|q|doi|url|isbn|issn|arxiv|step|phase|stage|trial|run|fold|exp|版本|第|图|表|节|章|页|行|式|年份|年|月|日|页码)$/i;
+/** 动词/分词不是指标名（`achieving 15%`、`reducing 40%` 这类在单位加成下会被误判为指标）。 */
+const VERB_STOP = /^(?:achieving|achieved|achieves|reaching|reached|obtaining|obtained|yielding|yielded|delivering|delivered|reducing|reduced|improving|improved|using|used|showing|shows|reported|reporting|gives|gave|adds|added|saves|saved)$/i;
 const STOPWORD = /^(?:a|an|the|of|in|on|at|by|for|to|from|with|without|and|or|but|as|is|are|was|were|be|been|being|this|that|these|those|its|their|our|we|it|they|than|then|also|each|both|more|less|per|over|under|into|such|all|any|some|only|very|can|may|might|must|should|would|could|will|shall|has|have|had|do|does|did|not|no|yes|vs|versus|etc|e\.g|i\.e)$/i;
 const METRIC_LEX = /(auc|aupr|auprc|roc|acc|accuracy|f1|f2|precision|recall|specificity|sensitivity|rmse|nrmse|mae|nmae|mse|mape|smape|mase|bleu|rouge|meteor|perplexity|ppl|loss|error|score|rate|ratio|percent|percentage|kappa|icc|cohen|iou|dice|hits|wape|r²|r\^2|r2\b|soh|capacity|efficiency|latency|throughput|fps|gflops|footprint|memory|准确|精度|误差|召回|精确|损失|得分|分数|准确率|命中|覆盖|容量|效率|时长|延迟|吞吐|相关系数|方差|标准差|均值|中位数|决定系数)/i;
 const CYCLE_RE = /(\bcycles?\b|轮)/i;
@@ -62,11 +64,26 @@ function isMetricLabel(label, unit) {
   if (label.length > 40) return false;              // 长句不是指标名（表头误配的典型形态）
   if (NOISE.test(label)) return false;
   if (STOPWORD.test(label)) return false;
+  if (VERB_STOP.test(label)) return false;
   // 标识符（电芯号 b002、cell3、Fig12…）不是指标名 —— 真实误报来源
   if (/^[A-Za-z]{0,5}\d{1,6}$/.test(label)) return false;
   if (METRIC_LEX.test(label)) return true;
   if (unit) return true;
   if (/^[A-Z][A-Z0-9\-]{1,9}$/.test(label)) return true;
+  return false;
+}
+
+/**
+ * 抽取结果的后置过滤（**PDF 文本上实测出来的误报族**，2026-10-18 回扫 12 份原文时暴露）：
+ *  · 年份：ILSVRC 2015 / VOC 2012 —— 年份不是指标读数，不能参与「多值一致」比较；
+ *  · 编号被拆开：`VGG-19` → 标签「VGG-1」＋值 9（标签以数字结尾且与值**紧邻无分隔**）；
+ *  · 标签以连接符结尾（`VOC-` 之类）。
+ * 这些若不放行，THREE_SETS 会在 11/11 份原文上全部误报。
+ */
+function isJunkPair(label, raw, sepText) {
+  if (/^(19|20)\d{2}$/.test(String(raw)) && !METRIC_LEX.test(label)) return true;
+  if (/\d$/.test(label) && !/[|｜\s:：=]/.test(sepText || '')) return true;
+  if (/[-_.]$/.test(label)) return true;
   return false;
 }
 
@@ -116,6 +133,7 @@ function extract(text) {
         if (!/[A-Za-z\u4e00-\u9fa5]/.test(label)) return;
         if (!isMetricLabel(label, unit)) return;
         const raw = nums[0];
+        if (isJunkPair(label, raw, ' ')) return;
         const value = parseFloat(raw);
         if (!isFinite(value)) return;
         for (let k = 0; k < nums.length; k++) numbersSeen++;
@@ -130,7 +148,14 @@ function extract(text) {
     }
 
     state.tableHeader = null;
+    // 参考文献行整行跳过：`IEEE Trans. 35(16):17` / `vol. 3, pp. 12-20` 里的数字是卷期页，不是结果读数
+    if (/\[[0-9]+\]/.test(line) && (/\b(vol|no|pp)\.?\s*\d/i.test(line) || /\d+\s*\(\d+\)\s*[,:]\s*\d+/.test(line))) { numbersSeen += (line.match(/\d+(?:\.\d+)?/g) || []).length; return; }
+    // 参考文献指纹：含出版载体词 + 四位年份 ⇒ 整行不是结果陈述（实测误报：`In 2015 IEEE 35th Intl Conf…`）
+    if (/\b(pages?|pp?\.|vol\.|proceedings|conference|journal|transactions|symposium|workshop|congress)\b/i.test(line) && /\b(19|20)\d{2}\b/.test(line)) { numbersSeen += (line.match(/\d+(?:\.\d+)?/g) || []).length; return; }
     const zone = zoneOf(line, state);
+    // 操作点限定：CAP@20% 与 CAP@40%、CAP 20% 与 CAP 40% 都是两个操作点，不该当成「同一指标两个值」
+    const atM = line.match(/@\s*(\d+(?:\.\d+)?)/) || line.match(/\b(cap|precision|recall|top)\s*(\d{1,3})\s*%/i);
+    const qual = atM ? '@' + (atM[2] || atM[1]) : '';
     const found = line.match(/\d+(?:\.\d+)?/g) || [];
     numbersSeen += found.length;
     PAIR_RE.lastIndex = 0;
@@ -140,11 +165,17 @@ function extract(text) {
       const unit = m[3] || '';
       if (!isMetricLabel(label, unit)) continue;
       const raw = m[2];
+      const sepIdx = m[0].indexOf(raw, label.length);
+      const sepText = sepIdx >= 0 ? m[0].slice(label.length, sepIdx) : '';
+      if (isJunkPair(label, raw, sepText)) continue;
+      // 序数后缀：`IEEE 35th` / `16th Intl Conf` 里的数字是届次，不是读数
+      const after = line.slice(m.index + m[0].length);
+      if (/^(st|nd|rd|th)\b/i.test(after)) continue;
       const value = parseFloat(raw);
       if (!isFinite(value)) continue;
       judged++;
       pairs.push({
-        label, key: label.toLowerCase(), raw, value, unit, zone, line: i + 1,
+        label, key: label.toLowerCase() + qual, raw, value, unit, zone, line: i + 1,
         text: line.trim().slice(0, 150),
         cycles: CYCLE_RE.test(line), epochs: EPOCH_RE.test(line)
       });
@@ -256,12 +287,18 @@ function run(file) {
     const declared = raws.length >= 2 && lines.some((ln) => raws.every((r) => new RegExp(`(?:^|[^\\d.])${r.replace('.', '\\.')}(?:[^\\d]|$)`).test(ln)));
     if (!declared) {
       if (distinct.length >= 3) {
-        // 形态③：三套值并存（比两值更重 —— 往往是把两套输出拼进了同一张表，读者拿哪套都不对）
-        const tblZones = [...new Set(arr.filter((x) => x.zone === 'table').map((x) => x.line))];
+        // 形态③：三套值并存。**关键区分「同一处版本混用」与「不同实验各自读数」**：
+        //   同一处（跨度 ≤80 行，或落表）⇒ FAIL；散落全文 ⇒ WARN 交人读（14 个 R² 是正常的不同实验，不是错）。
+        const linesOf = arr.map((x) => x.line);
+        const span = Math.max(...linesOf) - Math.min(...linesOf);
+        const inTable = arr.filter((x) => x.zone === 'table').length >= 2;
+        const tight = span <= 80 || inTable;
         issues.push({
-          level: 'FAIL', code: 'THREE_SETS',
-          why: `指标「${key}」出现 ${distinct.length} 个不同值（${raws.join(' / ')}），且全文没有任何一句交代该用哪套 —— 三套值并存` +
-               (tblZones.length ? `（其中 ${tblZones.length} 处落在表格里，可能是两套输出被拼进同一张表）` : ''),
+          level: tight ? 'FAIL' : 'WARN',
+          code: tight ? 'THREE_SETS' : 'MULTI_CONTEXT',
+          why: tight
+            ? `指标「${key}」在**同一处**（跨度 ${span} 行${inTable ? '，且多处落在表格' : ''}）出现 ${distinct.length} 个不同值（${raws.join(' / ')}）且无人交代 —— 三套值并存，可能是两套输出被拼进同一张表`
+            : `指标「${key}」出现 ${distinct.length} 个不同值（跨度 ${span} 行）—— 可能只是不同实验各自的读数，**不判错，需人读确认是否同指**`,
           where: arr.map((x) => `${x.zone}:L${x.line}`).join(' · ')
         });
       } else {
@@ -310,7 +347,7 @@ function run(file) {
   return {
     status, file, numbersSeen, judged, skipRate, compared: compared.length, coverage, issues,
     note: (compared.length || issues.length)
-      ? '本工具不判数值对不对，只判「同指标多值有没有交代、单位是否一致、表内列和是否自洽」；指标名靠词表＋启发式；三套值的成因（拼接/版本混用）需人读确认'
+      ? '本工具不判数值对不对，只判「同指标多值有没有交代、单位是否一致、表内列和是否自洽」；指标名靠词表＋启发式；三套值的成因需人读（同一处才判 FAIL，散落全文只报 WARN）；**表内列和只在 Markdown 表格上有效，PDF 抽取文本没有管道符，④ 在那种材料上是盲的**'
       : '无重复指标值（每个指标名只出现一次）⇒ 无可比对象，不得当通过'
   };
 }

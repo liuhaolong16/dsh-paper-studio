@@ -131,7 +131,7 @@ function main(argv) {
   const ab = run('absence.cjs', ['--draft', draft]);
   items.push({ name: '缺席断言三档（未做/未报/未见）', tip: TIP.absence, status: statusFrom(ab, 'absence'), detail: (ab.split('\n').find((l) => /⇒|未含缺席断言|分析笔记/.test(l)) || '').trim().slice(0, 160) });
   const nc = run('number-consistency.cjs', ['--draft', draft]);
-  items.push({ name: '承重数字四处一致（含单位）', tip: TIP.numcon, status: statusFrom(nc, 'numcon'), detail: (nc.split('\n').find((l) => /⇒|无重复指标/.test(l)) || '').trim().slice(0, 160) });
+  items.push({ name: '承重数字一致·单位·表内列和', tip: TIP.numcon, status: statusFrom(nc, 'numcon'), detail: (nc.split('\n').find((l) => /⇒|无重复指标/.test(l)) || '').trim().slice(0, 160) });
   const df = run('definition-first.cjs', ['--draft', draft]);
   items.push({ name: '起首边界＋定义先行（启发式·需人读）', tip: TIP.deffirst, status: statusFrom(df, 'deffirst'), detail: (df.split('\n').filter((l) => /^[✔△·] /.test(l)).map((l) => l.trim()).join(' · ') || '').slice(0, 160) });
   /* ── v3.45.0 再补两项：此前它们只能单独跑 ── */
