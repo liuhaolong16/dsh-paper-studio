@@ -559,11 +559,14 @@ async function runAuthorLoop(drafts, argv, opts) {
   for (const f of files) {
     const draftRaw = fs.readFileSync(f, 'utf8');
     const draft = stripBibliography(draftRaw);   // 文献表不参与正文溯源/缩写检查
+    // ★ 跨语言：中文稿按 zh 判（否则中文片段会被 lang-fragment 当成"英文稿混入中文"误报——真稿实测 105 条里大半是这一类）
+    const cjk = (draft.match(/[\u4e00-\u9fff]/g) || []).length;
+    const draftLang = (cjk / Math.max(1, draft.length)) > 0.05 ? 'zh' : 'en';
     const checks = [];
     checks.push(traceNumbers(draft, materialText));
     checks.push(traceCitations(draft, materialText, bibText));
     checks.push(placeholders(draft));
-    for (const c of builtinChecks(draft, 'en')) checks.push(c);
+    for (const c of builtinChecks(draft, draftLang)) checks.push(c);
     for (const c of runMachineChecks(f, opts)) {
       if (['stylecheck', 'paragraph-logic', 'tense-check'].indexOf(c.id) >= 0) checks.push(c);
     }
@@ -738,7 +741,13 @@ function runMachineChecks(draft, opts = {}) {
     if (!fs.existsSync(script)) { results.push({ id: t.id, status: 'MISSING', out: '脚本不存在：' + path.basename(script) }); continue; }
     const r = (opts.spawnFn || spawnSync)(process.execPath, [script].concat(t.args(draft)), { encoding: 'utf8', timeout: 120000 });
     const out = String(r.stdout || '') + String(r.stderr || '');
-    const m = /(?:状态|判定)[：:]\s*([A-Z_]+)/.exec(out) || /(PASS|REVIEW|ISSUES|WARN|FAIL|SKIP|OK)\b/.exec(out);
+    // ★ stylecheck 的判定不能靠"文本里第一个 OK/PASS"这种运气：它自己的口径是 HARD 数决定状态
+    let m = null;
+    if (t.id === 'stylecheck') {
+      const hm = /HARD\s+(\d+)/.exec(out);
+      if (hm) m = [null, Number(hm[1]) > 0 ? 'ISSUES' : 'OK'];
+    }
+    if (!m) m = /(?:状态|判定)[：:]\s*([A-Z_]+)/.exec(out) || /(PASS|REVIEW|ISSUES|WARN|FAIL|SKIP|OK)\b/.exec(out);
     results.push({ id: t.id, status: m ? m[1] : (r.status === 0 ? 'OK' : 'EXIT_' + r.status), out });
   }
   return results;
