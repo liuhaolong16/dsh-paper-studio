@@ -2446,3 +2446,13 @@ node bin\generate.cjs --author-loop --draft <稿.md|目录> --material <素材.m
 修法：过程节正则补 `data quality | data collection | dataset | sampling | acquisition | measurement`（共 6 个词），`tense-check` 自检仍 6/6。修后同一节由 SKIP 变为 **PASS**，`--author-loop` 由此给出 `SUBMISSION_READY`。
 
 **真机证据（同一份真实素材）**：宿主按论文 A 的真实素材（`filtered_v2.csv` 导出 + 13 份结果文档）新写一节 `2.5 Data quality and the reference-discharge criterion` ⇒ `✔ SUBMISSION_READY`，9 项全绿（trace-numbers / trace-citations / placeholders / lang / abbrev / 长句 / stylecheck / paragraph-logic / tense-check=PASS），exit 0。这是"素材→宿主写作→门检→验收"闭环**在真实素材上产出投稿级正文**的第一份完整证据。
+## 3.58.2 — 技能能被目录收录（frontmatter 修复）+ 长句判据不再把表格当句子
+
+两处都是「自查发现不了、但对外一定出问题」的缺陷：
+
+1. **SKILL.md 的 YAML frontmatter 被一条误插的命令行打断**：`metadata.changelog` 之后、闭合 `---` 之前夹了一行 `- \`draft --out …\``，且 changelog 双引号字符串里套了 ASCII 双引号（`从"投稿前才提示"改成…`）⇒ frontmatter 解析失败 ⇒ **技能虽在磁盘上、却不出现在宿主技能目录里**（表现为「这个技能明明装了却调不到」）。修法：把那条命令行移到正文、内层引号换成「」；修后该技能立刻出现在目录中。
+2. **`sentence-over-45` 把表格行当句子**：真实投稿稿里 `| Temperature set found | Cells | … |` 这种表格行、标题、列表项、代码围栏都被标点切成「长句」⇒ 真实的 4 处超长散文被 8 处假阳性淹没。修法：只对**散文行**做切句（跳过 `|` `#` `>` 开头、列表项、代码围栏）。修后同一份稿子的长句清单从 12 条落到 **9 条真散文句**（最长 92 词）。
+
+真机效果（论文 A 英文投稿稿）：abbrev 从 4 处（NASA/SHAP/LFP/SEI）→ 展开后 1 处（NMC）→ 全绿；数字溯源经素材补「定义性阈值段」后 3 处全清。**原稿 7 条待修全部清零**，剩下的 9 条长句 + 4 处段落硬提示属于新的、更细的正文级待办。
+
+自检 **33/33** · 全量 254/254 · audit 6/6。

@@ -714,7 +714,11 @@ function builtinChecks(text, lang) {
   out.push({ id: 'abbrev-undefined', status: abbrevBad.length ? 'WARN' : 'OK', out: abbrevBad.length ? abbrevBad.join('\n') : '未发现未定义缩写' });
   // ③ 超长句（>45 词）
   const longSent = [];
-  String(text || '').split(/(?<=[.!?。！？])\s+/).forEach((s) => {
+  // 只判散文：表格行（|）、标题（#）、列表（- * 1.）、引用（>）、代码围栏都不是句子
+  const proseOnly = String(text || '').split('\n')
+    .filter((l) => !/^\s*[|#>]/.test(l) && !/^\s*([-*+]\s|\d+[.)]\s)/.test(l) && !/^\s*```/.test(l))
+    .join('\n');
+  proseOnly.split(/(?<=[.!?。！？])\s+/).forEach((s) => {
     const w = (s.match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
     if (w > 45) longSent.push(w + ' 词 — ' + s.trim().slice(0, 90) + '…');
   });
