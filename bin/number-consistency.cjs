@@ -19,6 +19,12 @@
  *   3. **单位混用**：同指标下有的带 %／有的不带，或单位不同 ⇒ **FAIL**（0.86 与 86% 不是一回事）。
  *   4. **同段 cycles/epochs 混称**：同一行同时出现 轮/cycles 与 轮次/epochs 且挂数字 ⇒ **WARN**。
  *   5. 抽不出指标名的数字计入「未判」并**报未判率**；未判率 >50% 且本来 PASS ⇒ 降 **WARN**（覆盖不足不得当通过）。
+ *   6. **三套值并存（v1.2.0 · 图谱 R3 形态③）**：同一指标出现 **≥3 个不同值**且无人交代 ⇒ `THREE_SETS`
+ *      （比"两值"更重：三套值往往来自两套输出被拼进同一张表，读者拿哪套都不对）。跨表出现时在文案里点明表数。
+ *   7. **表内列和自洽（v1.2.0 · 图谱 R3 形态④）**：表头含 Total/合计 且同表有分项列（Trainable/Non-trainable…）时
+ *      · 分项之和 ≠ Total（容差 0.5%）⇒ `COLS_SUM`
+ *      · 某分项 > Total ⇒ `COLS_SWAPPED`（两列写反，真实形态：C3·P2 表 3.2 Model 3）
+ *      这是**唯一不需要跨处比对**的形态：一张表内部就能证伪。
  *
  * 诚实边界（必须打印）：
  *   · 指标名靠词表＋启发式，**会漏也会错配**；本工具**不判数值对不对**；
@@ -33,7 +39,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const VERSION = 'v1.1.0';
+const VERSION = 'v1.2.0';
 
 /** 文档类型守卫：分析笔记不是稿件（详见 absence.cjs 同名函数注释）。 */
 function looksLikeAnalysisNote(text) {
@@ -148,6 +154,77 @@ function extract(text) {
   return { pairs, numbersSeen, judged };
 }
 
+/** 抽出表格块（表头 + 数据行），供「表内列和自洽」使用。 */
+function parseTables(lines) {
+  const tables = [];
+  let cur = null;
+  lines.forEach((line, i) => {
+    if (!/^\s*[|｜]/.test(line)) { if (cur && cur.rows.length) tables.push(cur); cur = null; return; }
+    const cells = line.split(/[|｜]/).map((c) => c.trim());
+    while (cells.length && cells[0] === '') cells.shift();
+    while (cells.length && cells[cells.length - 1] === '') cells.pop();
+    if (!cells.length) return;
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c))) return;   // 分隔行
+    if (!cur) { cur = { header: cells, rows: [], startLine: i + 1 }; return; }
+    cur.rows.push({ cells, line: i + 1 });
+  });
+  if (cur && cur.rows.length) tables.push(cur);
+  return tables;
+}
+
+const TOTAL_RE = /^(?:total|sum|总计|合计|总数|参数总量)$/i;
+const PART_RE = /(?:trainable|non-?trainable|可训练|不可训练|分项|其中)/i;
+
+/**
+ * 表内列和自洽（图谱 R3 形态④）：一张表内部就能证伪，不需要跨处比对。
+ * 真实形态：C3·P2 表 3.2 的 Model 3 —— Total 43,411,882 小于同行 Trainable 43,415,850 ⇒ 两列写反。
+ */
+function checkTableSums(tables) {
+  const issues = [];
+  for (const t of tables) {
+    const header = t.header.map((x) => String(x).replace(/[*`]/g, '').trim());
+    const totalCols = header.map((x, i) => (TOTAL_RE.test(x) ? i : -1)).filter((i) => i >= 0);
+    if (!totalCols.length) continue;
+    const partCols = header.map((x, i) => (PART_RE.test(x) ? i : -1)).filter((i) => i >= 0);
+    if (!partCols.length) continue;
+    const numOf = (s) => {
+      const v = String(s == null ? '' : s).replace(/[,\s]/g, '');
+      return /^-?\d+(?:\.\d+)?$/.test(v) ? parseFloat(v) : NaN;
+    };
+    for (const tc of totalCols) {
+      for (const r of t.rows) {
+        const total = numOf(r.cells[tc]);
+        if (!isFinite(total) || total === 0) continue;
+        const vals = partCols.filter((c) => c !== tc).map((c) => numOf(r.cells[c])).filter((v) => isFinite(v));
+        if (!vals.length) continue;
+        const rowText = r.cells.slice(0, 5).join(' | ');
+        // 分项不可能大于 Total —— 只要大一点点（哪怕 1），就是两列写反，不该给容差
+        const allInt = vals.every((v) => Number.isInteger(v)) && Number.isInteger(total);
+        const swapTol = allInt ? 0 : 0.5;
+        if (vals.some((v) => v > total + swapTol)) {
+          issues.push({
+            level: 'FAIL', code: 'COLS_SWAPPED',
+            why: `表内某行「Total」= ${total}，却小于同行分项（${vals.join(' / ')}）—— 两列很可能写反了`,
+            where: `table@L${r.line}: ${rowText}`
+          });
+          continue;
+        }
+        const sum = vals.reduce((a, b) => a + b, 0);
+        // 整数列（参数量、条数）求和必须严丝合缝；带小数的列才给 0.5% 容差（四舍五入）
+        const tol = allInt ? 0 : Math.max(total * 0.005, 0.5);
+        if (Math.abs(sum - total) > tol) {
+          issues.push({
+            level: 'FAIL', code: 'COLS_SUM',
+            why: `表内某行分项之和 ${sum} 与 Total ${total} 不等（差 ${(total - sum).toFixed(2)}，容差 ${tol.toFixed(2)}）`,
+            where: `table@L${r.line}: ${rowText}`
+          });
+        }
+      }
+    }
+  }
+  return issues;
+}
+
 function run(file) {
   const text = fs.readFileSync(file, 'utf8');
   const noteMark = looksLikeAnalysisNote(text);
@@ -178,11 +255,22 @@ function run(file) {
     const raws = [...new Set(arr.map((x) => x.raw))];
     const declared = raws.length >= 2 && lines.some((ln) => raws.every((r) => new RegExp(`(?:^|[^\\d.])${r.replace('.', '\\.')}(?:[^\\d]|$)`).test(ln)));
     if (!declared) {
-      issues.push({
-        level: 'FAIL', code: 'UNRECONCILED',
-        why: `指标「${key}」出现 ${distinct.length} 个不同值（${raws.join(' / ')}），全文没有任何一句同时交代这两处`,
-        where: arr.map((x) => `${x.zone}:L${x.line}`).join(' · ')
-      });
+      if (distinct.length >= 3) {
+        // 形态③：三套值并存（比两值更重 —— 往往是把两套输出拼进了同一张表，读者拿哪套都不对）
+        const tblZones = [...new Set(arr.filter((x) => x.zone === 'table').map((x) => x.line))];
+        issues.push({
+          level: 'FAIL', code: 'THREE_SETS',
+          why: `指标「${key}」出现 ${distinct.length} 个不同值（${raws.join(' / ')}），且全文没有任何一句交代该用哪套 —— 三套值并存` +
+               (tblZones.length ? `（其中 ${tblZones.length} 处落在表格里，可能是两套输出被拼进同一张表）` : ''),
+          where: arr.map((x) => `${x.zone}:L${x.line}`).join(' · ')
+        });
+      } else {
+        issues.push({
+          level: 'FAIL', code: 'UNRECONCILED',
+          why: `指标「${key}」出现 ${distinct.length} 个不同值（${raws.join(' / ')}），全文没有任何一句同时交代这两处`,
+          where: arr.map((x) => `${x.zone}:L${x.line}`).join(' · ')
+        });
+      }
     }
     const units = [...new Set(arr.map((x) => x.unit))];
     if (units.length > 1) {
@@ -206,6 +294,9 @@ function run(file) {
     }
   });
 
+  // 形态④：表内列和自洽（不需要跨处比对，一张表内部即可证伪）
+  issues.push(...checkTableSums(parseTables(lines)));
+
   const fail = issues.filter((i) => i.level === 'FAIL').length;
   const warn = issues.filter((i) => i.level === 'WARN').length;
   let status;
@@ -218,8 +309,8 @@ function run(file) {
 
   return {
     status, file, numbersSeen, judged, skipRate, compared: compared.length, coverage, issues,
-    note: compared.length
-      ? '本工具不判数值对不对，只判「同指标两值时有没有交代、单位是否一致」；指标名靠词表＋启发式'
+    note: (compared.length || issues.length)
+      ? '本工具不判数值对不对，只判「同指标多值有没有交代、单位是否一致、表内列和是否自洽」；指标名靠词表＋启发式；三套值的成因（拼接/版本混用）需人读确认'
       : '无重复指标值（每个指标名只出现一次）⇒ 无可比对象，不得当通过'
   };
 }
@@ -267,12 +358,32 @@ function selftest() {
   cases.push(['不同语向不算冲突', mk('p.md', '# Abstract\nBLEU en-de 41.8 and BLEU de-en 41.0.\n\n## 6.1\nBLEU.\n'), 'SKIP']);
   cases.push(['同语向两值仍报', mk('q.md', '# Abstract\nBLEU en-de 41.8 on WMT.\n\n## 6.1\nBLEU en-de 40.2.\n'), 'FAIL']);
 
+  // ── 形态③：三套值并存（≥3 个不同值）──
+  cases.push(['三套值并存', mk('r.md', '# Abstract\nR² 0.874 表现最好。\n\n## 6.1\nR² 0.860 也接近。\n\n| 指标 | 值 |\n|---|---|\n| R² | 0.812 |\n'), 'FAIL:THREE_SETS']);
+  // ── 形态④：表内列和自洽 ──
+  cases.push(['表内 Total 小于分项（两列写反）', mk('s.md', '# Abstract\nTrainable 43415850。\n\n| 模型 | Trainable | Non-trainable | Total |\n|---|---|---|---|\n| Model 3 | 43415850 | 896 | 43411882 |\n'), 'FAIL:COLS_SWAPPED']);
+  cases.push(['表内分项之和≠Total', mk('t.md', '# Abstract\nTrainable 2397226。\n\n| 模型 | Trainable | Non-trainable | Total |\n|---|---|---|---|\n| Model 2 | 2397226 | 1896 | 2397226 |\n'), 'FAIL:COLS_SUM']);
+  cases.push(['负控（表内合计自洽）', mk('u.md', '| 模型 | Trainable | Non-trainable | Total |\n|---|---|---|---|\n| Model 1 | 22784938 | 1920 | 22786858 |\n'), 'SKIP']);
+
   let ok = 0;
   for (const [name, file, want] of cases) {
     const r = run(file);
-    if (r.status === want) { ok++; console.log(`  ✔ ${name}: ${r.status}`); }
-    else { console.log(`  ✘ ${name}: 期望 ${want}，实得 ${r.status}`); }
+    const [wantStatus, wantCode] = String(want).split(':');
+    // 判定必须严格为 true：若用 !!r 之类真值判断，空数组/空字符串会把失败读成通过
+    const okStatus = r.status === wantStatus;
+    const okCode = wantCode ? r.issues.some((i) => i.code === wantCode) : true;
+    if (okStatus === true && okCode === true) { ok++; console.log(`  ✔ ${name}: ${r.status}${wantCode ? '+' + wantCode : ''}`); }
+    else {
+      const got = r.status + (r.issues.length ? ' [' + r.issues.map((i) => i.code).join(',') + ']' : ' [无issue]');
+      console.log(`  ✘ ${name}: 期望 ${want}，实得 ${got}`);
+    }
   }
+  // 必失败臂（②列和）：把 Total 列删掉，同一张表必须不再报
+  const withTotal = mk('v1.md', '| 模型 | Trainable | Non-trainable | Total |\n|---|---|---|---|\n| Model 2 | 2397226 | 1896 | 2397226 |\n');
+  const noTotal = mk('v2.md', '| 模型 | Trainable | Non-trainable | 备注 |\n|---|---|---|---|\n| Model 2 | 2397226 | 1896 | 待核 |\n');
+  const w = run(withTotal), n = run(noTotal);
+  if (w.status === 'FAIL' && n.status === 'SKIP') { ok++; console.log('  ✔ 必失败臂（列和）：删掉 Total 列后同一张表不再报'); }
+  else { console.log(`  ✘ 必失败臂（列和）失灵（with=${w.status} without=${n.status}）`); }
   // 必失败臂：同一对数字，删掉交代句必须翻红
   const withDecl = mk('j1.md', '# Abstract\nBLEU 41.8 达到最好。\n\n## 6.1\n摘要与表 2 记 BLEU 41.8，§6.1 记 BLEU 41.0，差异来自分词。\n');
   const withoutDecl = mk('j2.md', '# Abstract\nBLEU 41.8 达到最好。\n\n## 6.1\nBLEU 41.0 也接近。\n');
@@ -281,7 +392,7 @@ function selftest() {
   if (aStat === 'PASS' && bStat === 'FAIL') { ok++; console.log('  ✔ 必失败臂：删掉交代句后同一组数字由 PASS 翻 FAIL'); }
   else { console.log(`  ✘ 必失败臂失灵（with=${aStat} without=${bStat}）`); }
 
-  const total = cases.length + 1;
+  const total = cases.length + 2;
   console.log(`\nnumber-consistency 自检：${ok}/${total} 通过`);
   process.exit(ok === total ? 0 : 1);
 }
