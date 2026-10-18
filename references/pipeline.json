@@ -1,6 +1,6 @@
 {
   "schema": "paper-studio.pipeline.v1",
-  "updated": "2026-10-16",
+  "updated": "2026-10-18",
   "note": "本文件是 paper-studio 的唯一真源：任务类型 / 链路阶段 / 必过门 / 交接契约 / 资产路径。CLI 与（将来的）面板只读它，禁止任何一处另写一份。门的 args 模板由 gate-runner 消费；占位符 {draft} {docx} {anchors} {manifest} {contract} {declaration} 由调用方提供，缺输入一律判「跳过（缺输入）」，绝不当通过。",
   "contract_limits": {
     "note": "★ v3.2.38：契约 limits 的「声明 vs 执行」台账。gate-runner 的静态锁要求每个 limits 键**要么被门引用，要么登记在此**。`informational`＝不是可执行限额（如取证说明）；`known_gaps`＝**已确认未实现**（登记原因与日期，仍会在锁里列出但不判失败）。 ★ v3.2.42：`figure_format`/`figure_dpi`/`figure_file_max_mb`/`figure_width_px`/`figure_height_px_max`/`figure_caption_max_words`/`si_file_max_mb` 已**实现**（按扁平写法归一到 figure_spec 形状后复用同一套判据）⇒ 移出 known_gaps。",
@@ -1393,7 +1393,8 @@
     "plagself.cjs": "node bin/plagself.cjs --selftest",
     "misflag.cjs": "node bin/misflag.cjs --selftest",
     "disclose.cjs": "node bin/disclose.cjs --selftest",
-    "presubmit-all.cjs": "node bin/presubmit-all.cjs --selftest"
+    "presubmit-all.cjs": "node bin/presubmit-all.cjs --selftest",
+    "abstract-strength.cjs": "node bin/abstract-strength.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",

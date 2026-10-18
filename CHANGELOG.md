@@ -3,6 +3,22 @@
 
 # 变更记录
 
+## v3.49.0 —— 2026-10-18
+
+**新增 `abstract-strength`：摘要强度 ≤ 正文限定门（图谱 R1）—— 四个图谱门里最后一个缺口补上。**
+
+- **判据**：取摘要段 → 找**强度词**（`state-of-the-art/best/first` 绝对类 · `outperform/surpass/significantly better/prove` 效应类 · `always/never/universal` 范围类 · 中文「显著优于/首次/彻底解决」）→ 对每个含强度词的摘要句，取其实词（≥4 字母、非停用）到**摘要之后**的正文里找**同时含 ≥2 个实词与限定语**的句子（`only/under/at N/on this dataset/limited to/except/respectively/to the best of our knowledge/when…`）。
+  - 找到 ⇒ OK；找不到 ⇒ **REVIEW**（列摘要原句 + 提示去正文补范围）；无强度词 ⇒ OK；无摘要段 ⇒ **SKIP**。
+- **★本工具不产出 PASS**：状态只有 `OK` / `REVIEW` / `SKIP`，退出码恒 0 —— REVIEW 是人读清单，不是机器判死（与 `definition-first` 同一纪律）。
+- **自检 7/7**：摘要强+正文有限定 ⇒ OK · 摘要强+正文无限定 ⇒ REVIEW · 摘要无强度词 ⇒ OK · 无摘要段 ⇒ SKIP · 分析笔记 ⇒ SKIP · `**Abstract:**` 行内形式 ⇒ OK · **必失败臂**（删掉正文限定语后由 OK 翻 REVIEW）。
+- **★真实语料把两个 bug 逼出来了**（11 份原文回扫）：
+  1. **正文把摘要本身算进去了** —— 摘要句自己成了自己的"正文限定"（自证）。改为正文严格从**摘要段结束之后**取。
+  2. **支持句判定太松** —— 只重合一个词（如 `across`）就把无关句子当支撑。改为**至少两个实词重合**。
+- **★PDF 文本的两处现实问题（已处理并披露）**：① 摘要标题常常没有 Markdown 标记，只是一行 `Abstract` ⇒ 加纯文本回退（`Abstract`/`摘要` 开头即认）；② 终止标题（`1 Introduction`/`Index Terms`）在 PDF 抽取文本里经常对不上 ⇒ 改为**按 1600 字符软上限截取 + 2600 字符硬上限**，软截取在输出里明确声明"边界可能不准，结果只作提示"，硬超限判 SKIP 而非硬报。
+- **★断行会把句子切碎**：`The best` 单成一句会伪造出强度断言 ⇒ 加**回流拼接**（上一行不以句末标点结尾就把下一行接回去）。
+- **改后真实语料分布（11 份原文）**：**REVIEW 2 · OK 8 · SKIP 1**（不再是一边倒）。抽查 Transformer 的 5 条 REVIEW 句：摘要里确有 `best/superior/significantly` 而正文未见对应限定 —— 与读该篇结论时记下的「摘要 `generalizes well` 强度高于证据」一致。
+- 登记：`references/pipeline.json` selfchecks **47 条**；能力登记表 **97 条**（`env.paper-abstract-strength`）；已接入 `presubmit-all`（**10 项**，OK⇒PASS · REVIEW⇒WARN · SKIP⇒未核对）；`audit` **6/6 全绿** · `sync-skill-modules --check` 7 模块一致。
+
 ## v3.48.1 —— 2026-10-18
 
 **拿 11 份真实论文原文回扫新判据：11/11 全红 ⇒ 逐条查证后改抽取器，最终零误报 FAIL，并抓到一条真问题。**
