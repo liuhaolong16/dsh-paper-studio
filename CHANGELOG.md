@@ -2391,3 +2391,32 @@ studio draft 只产**规划文档**（骨架/证据表/跑法），不产正文�
 **边界（本版实测）**：7B 的建议质量一般（有一条几乎是原文复述、一条写 `(needs author)`），所以它的定位是**提示**，判据永远是门读数。
 
 自检 **25/25** · 全量 254/254 · audit 6/6。本轮同时修掉三处**自检自身**的毛病：臂写在 `rmSync`/`server.close()` 之后（导致后加臂假红）· 同步臂误用 `ck` 调异步函数（报 `[object Promise]`）· 缩写"已定义"的正则不容忍 `XQZ protocol (…)` 这种词间隔（反控误报）。
+
+## 3.57.0 — 投稿级闭环：素材溯源 + 投稿级判定（`--author-loop`）
+
+用户要求「做到能替人写出投稿级正文」。这条链的断点不是"写不出来"，而是**写出来的东西无法证明没编造**。本版补上闭环的判定端。
+
+```powershell
+node bin\generate.cjs --author-loop --draft <稿.md|目录> --material <素材.md> [--bib <refs.bib>] [--out <报告.md>]
+```
+
+**判据（全部为真才 `SUBMISSION_READY`，exit 0；任一不满足 ⇒ `NEEDS_REVISION`，exit 1）**：
+
+| # | 判据 | 实现 |
+|---|---|---|
+| ① | **数字全部可溯源** | 稿件里每个数字（含百分号/千分位，标题节号除外）都必须出现在作者素材里，否则 FAIL 并给 `L行号` |
+| ② | **引用键全部可溯源** | `\cite{key}` / `[@key]` 必须在 `.bib`（没给 bib 就按素材字面）；`[n]` 超过 bib 条目数也 FAIL |
+| ③ | **无「待补」占位** | `待补/TBD/TODO/FIXME/XXX` ⇒ `BLOCKED`（显形，不当通过） |
+| ④ | 内置三项 | 中文片段 / 未定义缩写 / >45 词长句 |
+| ⑤ | 三项机检 | `stylecheck` · `paragraph-logic` · `tense-check` 必须 `OK/PASS`；**未跑成（EXIT_2）也算不通过** |
+
+**真机双向验证（同一份真实工具，不注入桩）**：
+
+- **好稿**（宿主按素材写的 Methods，4 段）：`✔ SUBMISSION_READY`，exit 0，9 项全绿（`trace-numbers` OK · `trace-citations` OK（bib 2 条）· 无占位 · 三项内置 OK · stylecheck OK · paragraph-logic OK · tense-check PASS）。
+- **负控**（同一节里塞进编造内容）：`✘ NEEDS_REVISION`，exit 1，报告逐条点名 —— `L3：87.3% 在素材里找不到` · `L3：5,000 …` · `L5：2024 …`（来自 `\cite{fake2024}`）· `L5：95% …` · `L7：0.0031 …` · `L7：0.0012 …` + `L5：引用键 fake2024 在 .bib 里不存在` + `paragraph-logic=REVIEW`。
+
+**闭环至此成型**：`--host-handoff`（插件出规格）→ 宿主写正文 → `--author-loop`（溯源 + 机检 + 判定）→ 不过就按待修项改 → 直到 READY。本地模型只保留 `--review`（建议）位置。
+
+**过程中修掉两处自身判据缺陷**：① 缩写"已定义"的窗口只有 ±40 字符，`NASA (National Aeronautics and Space Administration)` 被截断 ⇒ **假阳性**（已放宽到 ±120）；② 段落级 S3「相邻段零共词」会因写法不同触发软提示 ⇒ 按提示补了跨段共词（这也是真实写作里该做的事，不是为过门而改）。
+
+自检 **31/31**（新增 6 条：溯源正/反控 · 待补 · 判定函数 · 端到端 · 前提层）· 全量 254/254 · audit 6/6。

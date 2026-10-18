@@ -60,6 +60,7 @@ node bin/studio.cjs model providers|ping|run|check   :: **可选装载模型能�
 node bin/generate.cjs --probe                         :: **本机有哪条模型通道**（只探测、不生成）：① 显式配置 → ② 面板凭据（`keys-store`，与面板/CLI 同一份）→ ③ **免 key 本地引擎**（Ollama `11434` / LM Studio `1234` / llama.cpp `8080` 自动发现，按「上下文 > 参数量」挑模型、视觉模型降权）
 node bin/generate.cjs --brief --spec <json> --out <目录>   :: 分节写作简报（目标 / 必现要素 / 禁用词 / 字数带 / `lang`）
 node bin/generate.cjs --host-handoff --briefs <目录> --out <目录> :: **写作交给宿主**（本地模型不写正文）：每节出一份**写作任务书**（目标/必现要素/字数/语言/禁词/回填路径 + 可直接投给宿主模型的提示词原文），宿主写完回填 `NN-<id>.md` 再跑门。铁律写进任务书：**不得编造素材**，缺数据就写「待补」
+node bin/generate.cjs --author-loop --draft <稿.md|目录> --material <素材.md> [--bib <refs.bib>] :: **投稿级闭环验收**：①每个数字必须能在作者素材里找到 ②每个引用键必须在 .bib（或素材）里 ③不得有「待补」占位 ④内置三项与 stylecheck/paragraph-logic/tense-check 全绿；**全为真才 `SUBMISSION_READY`（exit 0）**，否则 `NEEDS_REVISION` 并逐条给行号（未跑成也不算通过）
 node bin/generate.cjs --review --draft <稿.md> [--with-model] :: **审查/校正**：默认**纯机检（零模型、可复现）**＝内置三项（中文片段/未定义缩写/超长句>45 词）+ `stylecheck`/`paragraph-logic`/`tense-check`；`--with-model` 才让模型**只对已报出的问题**给改写建议（advisory、不改稿、不当判据）。实测：让 7B 自己审查会对真有 4 类缺陷的稿子回 NO-ISSUES ⇒ 发现问题归机检
 node bin/generate.cjs --run --briefs <目录> --out <目录> [--retries 1] :: 逐节生成正文 —— **仅云端强模型**（`PAPER_STUDIO_LLM_*` 或面板凭据）；若只发现本机 Ollama 会**拒绝**并指向 `--host-handoff`；生成物带 `engine=` provenance 并即时跑 `paragraph-logic`
 node bin/generate.cjs --scaffold --briefs <目录> --out <目录> :: **零模型也要骨架**：输出「待填」槽位（断言/支撑/出处 + 必现要素核对单），标 `engine=scaffold`，**绝不当正文交付**；门明确写「未运行」而不是假通过

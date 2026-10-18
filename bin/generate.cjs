@@ -325,6 +325,166 @@ async function resolveEngine(argv, opts = {}) {
   };
 }
 
+
+/**
+ * 素材溯源：**防编造**的地板线检查。
+ * 为什么必须有它：本地模型实测会自造「气候变化与小农户/FAO」「NHANES 2015-2016」——像论文但素材里根本没有。
+ * 判据很笨但可复现：稿件里每个数字、每个引用键，都必须在**作者提供的素材**（或 .bib）里出现过。
+ */
+function normalizeNum(s) { return String(s).replace(/[,，\s]/g, '').replace(/[%％]$/, ''); }
+
+function extractNumbers(text) {
+  const out = [];
+  String(text || '').split('\n').forEach((line, i) => {
+    if (/^\s*#{1,6}\s/.test(line)) return;              // 标题里的节号不算承重数字
+    const re = /\d+(?:[.,]\d+)*\s*[%％]?/g;
+    let m;
+    while ((m = re.exec(line))) {
+      const raw = m[0].trim();
+      const n = normalizeNum(raw);
+      if (!n || n.length === 0) continue;
+      if (n.length === 1 && /\.$/.test(raw)) continue;   // 行首编号
+      out.push({ value: n, raw, line: i + 1, text: line.trim().slice(0, 90) });
+    }
+  });
+  return out;
+}
+
+function traceNumbers(draft, materialText) {
+  const mat = new Set(extractNumbers(materialText).map((x) => x.value));
+  const bad = extractNumbers(draft).filter((x) => !mat.has(x.value));
+  return {
+    id: 'trace-numbers',
+    status: bad.length ? 'FAIL' : 'OK',
+    out: bad.length
+      ? bad.map((b) => 'L' + b.line + '：' + b.raw + ' 在素材里找不到 — ' + b.text).join('\n')
+      : '稿件中的数字全部可溯源（素材 ' + mat.size + ' 个数字）',
+  };
+}
+
+function bibKeys(bibText) {
+  const keys = new Set();
+  const m = String(bibText || '').match(/@\w+\s*\{\s*([^,\s]+)\s*,/g) || [];
+  m.forEach((s) => { const k = /@\w+\s*\{\s*([^,\s]+)\s*,/.exec(s); if (k) keys.add(k[1]); });
+  return keys;
+}
+
+function traceCitations(draft, materialText, bibText) {
+  const keys = bibKeys(bibText);
+  const issues = [];
+  const lines = String(draft || '').split('\n');
+  lines.forEach((line, i) => {
+    const re = /\\(?:cite|citep|citet|ref)\{([^}]+)\}|\[@([A-Za-z0-9_:-]+)\]/g;
+    let m;
+    while ((m = re.exec(line))) {
+      const k = m[1] || m[2];
+      const ok = keys.size ? keys.has(k) : String(materialText || '').indexOf(k) >= 0;
+      if (!ok) issues.push('L' + (i + 1) + '：引用键 ' + k + ' 在' + (keys.size ? '.bib' : '素材') + '里不存在');
+    }
+    // 数字式引用 [n]：只有给了 .bib 才能核（按条目数），否则如实记为未核对
+    const nums = line.match(/\[(\d{1,3})\]/g) || [];
+    if (nums.length && keys.size) {
+      nums.forEach((s) => {
+        const n = Number(s.replace(/[\[\]]/g, ''));
+        if (n > keys.size) issues.push('L' + (i + 1) + '：[' + n + '] 超过 .bib 条目数 ' + keys.size);
+      });
+    }
+  });
+  return {
+    id: 'trace-citations',
+    status: issues.length ? 'FAIL' : 'OK',
+    out: issues.length ? issues.join('\n') : ('引用键全部可溯源（' + (keys.size ? '.bib ' + keys.size + ' 条' : '按素材字面') + '）'),
+  };
+}
+
+function placeholders(draft) {
+  const hits = [];
+  String(draft || '').split('\n').forEach((l, i) => {
+    if (/待补|TBD|TODO|FIXME|XXX/.test(l)) hits.push('L' + (i + 1) + '：' + l.trim().slice(0, 80));
+  });
+  return { id: 'placeholders', status: hits.length ? 'BLOCKED' : 'OK', out: hits.length ? hits.join('\n') : '无待补占位' };
+}
+
+/**
+ * 投稿级验收：把「能投」拆成可判的几条，**全部为真才算 READY**。
+ * 任何一条「没跑成」（工具 EXIT_2 / 脚本缺失）都不算通过 —— 未检查 ≠ 通过。
+ */
+function verdictOf(checks) {
+  const hard = checks.filter((c) => c.id.indexOf('trace-') === 0);
+  const gates = checks.filter((c) => ['stylecheck', 'paragraph-logic', 'tense-check'].indexOf(c.id) >= 0);
+  const builtin = checks.filter((c) => ['lang-fragment', 'abbrev-undefined', 'sentence-over-45', 'placeholders'].indexOf(c.id) >= 0);
+  const reasons = [];
+  hard.forEach((c) => { if (c.status !== 'OK') reasons.push(c.id + '=' + c.status); });
+  builtin.forEach((c) => { if (c.status !== 'OK') reasons.push(c.id + '=' + c.status); });
+  gates.forEach((c) => { if (!/^(OK|PASS)$/.test(c.status)) reasons.push(c.id + '=' + c.status); });
+  if (gates.length !== 3) reasons.push('机检门未跑齐(' + gates.length + '/3)');
+  return { ready: reasons.length === 0, reasons };
+}
+
+async function runAuthorLoop(drafts, argv, opts) {
+  const briefs = argv.indexOf('--briefs') >= 0 ? argv[argv.indexOf('--briefs') + 1] : '';
+  const materialPath = argv.indexOf('--material') >= 0 ? argv[argv.indexOf('--material') + 1] : '';
+  const bibPath = argv.indexOf('--bib') >= 0 ? argv[argv.indexOf('--bib') + 1] : '';
+  if (!drafts.length) { console.error('前提层失败：--author-loop 需要 --draft <稿.md|目录>'); return 2; }
+  if (!materialPath || !fs.existsSync(materialPath)) {
+    console.error('前提层失败：--author-loop 需要 --material <素材文件>（作者提供的事实/数字/引用；没有素材就无法判断是否编造）');
+    return 2;
+  }
+  const materialText = fs.readFileSync(materialPath, 'utf8');
+  const bibText = bibPath && fs.existsSync(bibPath) ? fs.readFileSync(bibPath, 'utf8') : '';
+  const files = [];
+  drafts.forEach((d) => {
+    if (!fs.existsSync(d)) return;
+    if (fs.statSync(d).isDirectory()) {
+      fs.readdirSync(d).filter((f) => /\.md$/.test(f) && !/review|assembled|AUTHOR-LOOP/.test(f)).sort()
+        .forEach((f) => files.push(path.join(d, f)));
+    } else files.push(d);
+  });
+  if (!files.length) { console.error('前提层失败：没找到要验收的 .md'); return 2; }
+  const report = [];
+  let allReady = true;
+  for (const f of files) {
+    const draft = fs.readFileSync(f, 'utf8');
+    const checks = [];
+    checks.push(traceNumbers(draft, materialText));
+    checks.push(traceCitations(draft, materialText, bibText));
+    checks.push(placeholders(draft));
+    for (const c of builtinChecks(draft, 'en')) checks.push(c);
+    for (const c of runMachineChecks(f, opts)) {
+      if (['stylecheck', 'paragraph-logic', 'tense-check'].indexOf(c.id) >= 0) checks.push(c);
+    }
+    const v = verdictOf(checks);
+    if (!v.ready) allReady = false;
+    report.push({ file: f, checks, verdict: v });
+    console.log((v.ready ? '✔ SUBMISSION_READY  ' : '✘ NEEDS_REVISION  ') + path.basename(f)
+      + (v.ready ? '' : '（' + v.reasons.join(' · ') + '）'));
+  }
+  const outPath = argv.indexOf('--out') >= 0 ? argv[argv.indexOf('--out') + 1] : path.join(path.dirname(files[0]), 'AUTHOR-LOOP.md');
+  const L = [];
+  L.push('<!-- author-loop: material=' + path.basename(materialPath) + (bibText ? ' bib=' + path.basename(bibPath) : '') + ' -->');
+  L.push('# 投稿级验收报告');
+  L.push('');
+  L.push('> 判据（全部为真才 READY）：① 数字全部可溯源 ② 引用键全部可溯源 ③ 无「待补」占位 ④ 内置三项（语言/缩写/长句）全 OK ⑤ stylecheck/paragraph-logic/tense-check 全 OK。');
+  L.push('> **未跑成不算通过**（工具 EXIT_2 会显形为不 READY）。');
+  L.push('');
+  L.push('素材：`' + materialPath + '`（' + materialText.length + ' 字符）' + (bibText ? ' · bib：`' + bibPath + '`' : ' · 无 .bib（引用按素材字面核）'));
+  if (briefs) L.push('' , '简报目录：`' + briefs + '`');
+  L.push('');
+  report.forEach((r) => {
+    L.push('## ' + path.basename(r.file) + ' — ' + (r.verdict.ready ? '**SUBMISSION_READY**' : '**NEEDS_REVISION**'));
+    if (!r.verdict.ready) L.push('', '待修：' + r.verdict.reasons.join(' · '));
+    L.push('', '| 检查 | 状态 |', '|---|---|');
+    r.checks.forEach((c) => L.push('| ' + c.id + ' | ' + c.status + ('OK|PASS'.indexOf(c.status) >= 0 ? '' : ' ⚠') + ' |'));
+    r.checks.filter((c) => !/^(OK|PASS)$/.test(c.status)).forEach((c) => {
+      L.push('', '<details><summary>' + c.id + ' · ' + c.status + '</summary>', '', '```text', c.out.split('\n').slice(0, 60).join('\n'), '```', '', '</details>');
+    });
+    L.push('');
+  });
+  L.push('---', '总体：' + (allReady ? '**可投稿**（所有稿件 READY）' : '**不可投稿**（有待修项）'));
+  fs.writeFileSync(outPath, L.join('\n') + '\n', 'utf8');
+  console.log('\n报告：' + outPath);
+  return allReady ? 0 : 1;
+}
 /**
  * 宿主接管包（--host-handoff）：把「这一节该写成什么」变成**给宿主模型的写作任务书**。
  * 为什么需要它：本地模型不写正文（会自造素材），而宿主模型有全场上下文与用户素材。
@@ -428,7 +588,7 @@ function builtinChecks(text, lang) {
     const t = m[1];
     if (ABBREV_WHITELIST.has(t) || seen.has(t)) continue;
     seen.add(t);
-    const around = body.slice(Math.max(0, m.index - 40), m.index + t.length + 40);
+    const around = body.slice(Math.max(0, m.index - 120), m.index + t.length + 120);   // 窗口太小会把「NASA (National … Administration)」截断 ⇒ 假阳性
     const defined = new RegExp('\\(\\s*' + t + '\\s*\\)').test(around)
       || new RegExp(t + '[^()\\n]{0,30}\\([^)]{3,60}\\)').test(around)
       || new RegExp('\\([^)]{3,40}\\s' + t + '\\)').test(around);
@@ -1092,6 +1252,71 @@ async function selftest() {
     return (/模型调用失败/.test(t2) && /机检发现（确定性）/.test(t2)) ? true : '模型失败时机检结果丢了';
   });
 
+  ck('★trace-numbers：编造的数字必须被抓（给行号）；素材里有的必须放行', () => {
+    const mat = '数据集 41.2% 的样本用于训练，共 1,024 条记录。';
+    const bad = traceNumbers('## 2. Methods\n\nWe trained on 87.3% of the data.\n', mat);
+    if (bad.status !== 'FAIL') return '编造数字没被抓：' + bad.status;
+    if (!/L3/.test(bad.out)) return '没给行号：' + bad.out;
+    const ok = traceNumbers('## 2. Methods\n\nWe trained on 41.2% of the data.\n', mat);
+    return ok.status === 'OK' ? true : '正确数字被误判：' + ok.out;
+  });
+
+  ck('★trace-citations：不在 .bib 的引用键必须 FAIL；超条目数的 [n] 也 FAIL', () => {
+    const bib = '@article{okkey,\n title={T}\n}\n@article{okkey2,\n title={U}\n}\n';
+    const bad = traceCitations('We follow \\cite{nokey}.\n', '', bib);
+    if (bad.status !== 'FAIL') return '假引用没被抓';
+    const good = traceCitations('We follow \\cite{okkey}.\n', '', bib);
+    if (good.status !== 'OK') return '真引用被误判：' + good.out;
+    const over = traceCitations('See [9].\n', '', bib);
+    return over.status === 'FAIL' ? true : '超条目数没被抓';
+  });
+
+  ck('★placeholders：有「待补」就不能 READY（BLOCKED 显形）', () => {
+    const p = placeholders('## 2. Methods\n\nSample size: 待补（需作者提供）。\n');
+    return (p.status === 'BLOCKED' && /L3/.test(p.out)) ? true : JSON.stringify(p);
+  });
+
+  ck('★verdictOf：门未跑齐 / 任一非 OK 都不算 READY', () => {
+    const base = [
+      { id: 'trace-numbers', status: 'OK' }, { id: 'trace-citations', status: 'OK' },
+      { id: 'placeholders', status: 'OK' }, { id: 'lang-fragment', status: 'OK' },
+      { id: 'abbrev-undefined', status: 'OK' }, { id: 'sentence-over-45', status: 'OK' },
+      { id: 'stylecheck', status: 'OK' }, { id: 'paragraph-logic', status: 'OK' }, { id: 'tense-check', status: 'PASS' },
+    ];
+    if (!verdictOf(base).ready) return '全 OK 却没 READY：' + JSON.stringify(verdictOf(base));
+    const short = base.filter((c) => ['stylecheck', 'paragraph-logic', 'tense-check'].indexOf(c.id) < 0);
+    if (verdictOf(short).ready) return '门未跑齐却 READY';
+    const failed = base.map((c) => (c.id === 'trace-numbers' ? { id: c.id, status: 'FAIL' } : c));
+    return verdictOf(failed).ready ? '有 FAIL 却 READY' : true;
+  });
+
+  // 端到端：注入 spawnFn 让三个门返回 OK/PASS，只测 author-loop 的溯源与判定链路
+  await ckA('★--author-loop：干净稿 ⇒ exit 0 且报告写 SUBMISSION_READY；换掉数字 ⇒ exit 1 NEEDS_REVISION', async () => {
+    const d = path.join(dir, 'loop');
+    fs.mkdirSync(d, { recursive: true });
+    const material = path.join(dir, 'MATERIAL.md');
+    fs.writeFileSync(material, '数据集共 1,024 条记录，41.2% 用于训练；引用键 zhang2021 为作者提供。\n', 'utf8');
+    const good = path.join(d, '01-method.md');
+    fs.writeFileSync(good, '## 2. Methods\n\nWe used 41.2% of the 1,024 records for training, following \\cite{zhang2021}.\n', 'utf8');
+    const okSpawn = () => ({ stdout: '状态：OK\n判定：OK\n', stderr: '', status: 0 });
+    const code0 = await runAuthorLoop([good], ['--material', material], { spawnFn: okSpawn });
+    if (code0 !== 0) return '干净稿 code=' + code0;
+    const rep = fs.readFileSync(path.join(d, 'AUTHOR-LOOP.md'), 'utf8');
+    if (!/SUBMISSION_READY/.test(rep)) return '报告没写 READY';
+    if (!/可投稿/.test(rep)) return '总体结论没写可投稿';
+    const bad = path.join(d, '02-method.md');
+    fs.writeFileSync(bad, '## 2. Methods\n\nWe used 87.3% of 5,000 records for training, following \\cite{fake2024}.\n', 'utf8');
+    const code1 = await runAuthorLoop([bad], ['--material', material], { spawnFn: okSpawn });
+    if (code1 !== 1) return '编造稿 code=' + code1;
+    const rep2 = fs.readFileSync(path.join(d, 'AUTHOR-LOOP.md'), 'utf8');
+    return (/NEEDS_REVISION/.test(rep2) && /trace-numbers=FAIL/.test(rep2) && /trace-citations=FAIL/.test(rep2)) ? true : rep2.slice(0, 300);
+  });
+
+  await ckA('★必失败面：--author-loop 缺 --material ⇒ exit 2（没素材无法判断编造）', async () => {
+    const d = path.join(dir, 'loop');
+    const code = await runAuthorLoop([path.join(d, '01-method.md')], [], {});
+    return code === 2 ? true : 'code=' + code;
+  });
   // 清理放在**所有臂之后**（先清理后测试会让后加的臂假红 —— 这轮踩过一次）
   server.close();
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* 清理失败不致命 */ }
@@ -1146,6 +1371,11 @@ async function main(argv) {
       console.log('  其它候选：' + eng.candidates.slice(1, 6).join(', ') + '（--model 可指定）');
     }
     return 0;
+  }
+  if (argv.indexOf('--author-loop') >= 0) {
+    const drafts = [];
+    argv.forEach((a, i) => { if (a === '--draft' && argv[i + 1]) drafts.push(argv[i + 1]); });
+    return runAuthorLoop(drafts, argv, {});
   }
   // 写作交给宿主：出每节写作任务书（插件出规格 → 宿主写正文 → 门做判据）
   if (argv.includes('--host-handoff')) {
