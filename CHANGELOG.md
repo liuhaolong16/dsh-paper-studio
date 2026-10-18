@@ -3,6 +3,14 @@
 
 # 变更记录
 
+## v3.50.2 —— 2026-10-18
+
+**发布闭环：`3.50.1` 只是传播延迟，`latest` 已自动指到它；真实安装验证通过。**
+
+- **上一条 v3.50.1 记录里的「npm i 装到的仍是 3.2.81」是当时读数，现已过期**，就地更正：约 15 分钟后复查，`npm view dsh-paper-studio@3.50.1` **可解析**，`dist-tags.latest` **= 3.50.1**（`npm dist-tag add` 返回 `already set to version 3.50.1`）。
+- **★真实安装验证（不是看元数据）**：临时目录 `npm i dsh-paper-studio@latest` ⇒ 退出码 0、装到 **3.50.1**、包内 `studio selftest` **254/254**；新工具在发布包里齐备并能跑：`abstract-strength` **7/7** · `corpus-regression` **5/5** · `number-consistency` **19/19**；`corpus-regression` 在安装后的包里带基线运行，**无退步 · 未变 22 格**。
+- **教训（两条，都已进记忆）**：① `npm publish` 退出码 0 之后还有一段**传播延迟**，`view` 立刻 404 不代表失败 —— 判成败要等并可重复验证；② 我上一版把「传播延迟」误写成「需要 OTP 才能前置」，实际 `--access public` 发布时已自动打 `latest`。
+
 ## v3.50.1 —— 2026-10-18
 
 **发布绕障：3.50.0 被 npm 的 staged 记录占号，改用 3.50.1 发布成功；`latest` 标签仍需 OTP 才能前置。**
