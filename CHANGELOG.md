@@ -3,6 +3,15 @@
 
 # 变更记录
 
+## v3.50.1 —— 2026-10-18
+
+**发布绕障：3.50.0 被 npm 的 staged 记录占号，改用 3.50.1 发布成功；`latest` 标签仍需 OTP 才能前置。**
+
+- `npm publish` 第一次尝试实际把 **3.50.0 推入了 staged 流程**（表面看输出被 tarball 清单截断，易误判为失败），随后再发同号即报 `E409 Cannot publish over previously staged version "3.50.0"`；而 `npm view @3.50.0` 又是 **404**（占号但不可解析）。
+- 处理：版本改为 **3.50.1** 重新发布 ⇒ **退出码 0，`+ dsh-paper-studio@3.50.1`**。
+- **仍未完成的一步**：`npm dist-tag add dsh-paper-studio@3.50.1 latest` 报 **EOTP**（需要一次性口令），因此现在 **`npm i dsh-paper-studio` 装到的仍是 3.2.81**；要用新版须显式 `npm i dsh-paper-studio@3.50.1`，或由人带 OTP 执行一次 dist-tag。
+- 注册表现状（实测）：版本含 `3.2.59 / 3.2.71 / 3.2.75 / 3.2.81 / 3.49.0 / 3.50.0(staged) / 3.50.1`；`dist-tags.latest = 3.2.81`。
+
 ## v3.50.0 —— 2026-10-18
 
 **新增 `corpus-regression`：把「判据在真实论文上会报什么」固化成基线 —— 补上自检证明不了的那一半。**
