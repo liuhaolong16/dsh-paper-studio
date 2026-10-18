@@ -325,6 +325,235 @@ async function resolveEngine(argv, opts = {}) {
   };
 }
 
+/**
+ * 宿主接管包（--host-handoff）：把「这一节该写成什么」变成**给宿主模型的写作任务书**。
+ * 为什么需要它：本地模型不写正文（会自造素材），而宿主模型有全场上下文与用户素材。
+ * 于是分工固定为：**插件出规格 → 宿主写正文 → 门做判据**。
+ */
+function hostHandoff(briefDir, outDir) {
+  const briefs = fs.readdirSync(briefDir).filter((f) => f.endsWith('.json')).sort();
+  if (!briefs.length) return { error: '前提层失败：' + briefDir + ' 里没有简报 json' };
+  fs.mkdirSync(outDir, { recursive: true });
+  const files = [];
+  briefs.forEach((f) => {
+    const brief = JSON.parse(fs.readFileSync(path.join(briefDir, f), 'utf8'));
+    const prompt = promptFor(brief, []);
+    const target = path.join(outDir, f.replace(/\.json$/, '.md'));
+    const words = brief.words || 600;
+    const md = [
+      '<!-- host-handoff:section=' + brief.id + ' · spec=host-model -->',
+      '# 写作任务书 · ' + brief.title,
+      '',
+      '> 这是给**宿主模型**的写作指令，**不是正文**。写完把正文写回同名 `.md`（去掉 `.prompt`）。',
+      '> 铁律：**不得编造素材** —— 没有的数据/引用/机构/年份一律写「待补」并注明需要作者提供什么。',
+      '',
+      '## 产出规格',
+      '- 回填路径：`' + target + '`',
+      '- 题头：`<!-- generated:engine=host model=<填模型名> · section=' + brief.id + ' -->`',
+      '- 正文标题：`## ' + brief.title + '`',
+      '- 语言：' + (brief.lang === 'zh' ? '中文' : 'English only')
+        + ' · 字数：约 ' + words + ' 词（合格带 ' + Math.round(words * 0.5) + '–' + Math.round(words * 1.8) + '）',
+      '- 写完就跑门：`node bin/paragraph-logic.cjs --draft <拼稿>`（**门读数才是判据**）',
+      '',
+      '## 提示词原文（可直接投给宿主模型）',
+      '```text',
+      prompt,
+      '```',
+      '',
+    ].join('\n');
+    const p = path.join(outDir, f.replace(/\.json$/, '.prompt.md'));
+    fs.writeFileSync(p, md, 'utf8');
+    files.push(p);
+  });
+  const readme = [
+    '# 宿主接管说明（--host-handoff）',
+    '',
+    '本地引擎**不写正文**：实测会自造素材（"气候变化与小农户"、"NHANES 2015-2016"），那不是草稿而是编造。',
+    '分工固定为：**插件出规格 → 宿主写正文 → 门做判据**。',
+    '',
+    '## 怎么用',
+    '1. 宿主模型逐节读 `NN-<id>.prompt.md`，按「提示词原文」写正文；',
+    '2. 把正文写回同目录 `NN-<id>.md`（带题头与 `## 标题`，只写正文、不回显标题）；',
+    '3. 拼稿后跑门：`node bin/paragraph-logic.cjs --draft draft/assembled.md`；',
+    '4. 要本地模型帮忙**审查**：`node bin/generate.cjs --review --draft draft/NN-<id>.md`（只出建议、不改稿、不当判据）。',
+    '',
+    '★ 纪律：任何「因为没有数据就编一段」都不允许 —— 缺素材就写「待补」并要求作者提供。',
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(outDir, 'README-HANDOFF.md'), readme, 'utf8');
+  return { files, readme: path.join(outDir, 'README-HANDOFF.md') };
+}
+
+/**
+ * 审查/校正（--review）：**默认纯机检（零模型、可复现）**，模型只在 `--with-model` 时对**已发现的问题**给建议。
+ *
+ * ★ 2026-10-19 实测换来的设计：先让 7B 自己"找问题"，对一份故意塞了 4 类缺陷的稿子（未定义缩写 XQZ/SPQ、
+ *   72 词长句、中文片段、无支撑断言）它回了 **NO-ISSUES**，3.4 秒。也就是说"让本地模型自由审查"＝假安全感。
+ *   正确分工：**发现归确定性机检**（stylecheck / paragraph-logic / tense-check，零 key、可复现），
+ *   **建议归模型**（只针对机检已报出的那几句），且模型的建议一律标 advisory、不改稿、不当判据。
+ */
+const REVIEW_TOOLS = [
+  { id: 'stylecheck', args: (f) => ['--draft', f] },
+  { id: 'paragraph-logic', args: (f) => ['--draft', f] },
+  { id: 'tense-check', args: (f) => ['--draft', f] },
+];
+
+/**
+ * 内置确定性小检查（零依赖）：这些正是"让 7B 自己找"时它**全部漏掉**的类别
+ * （实测：故意塞了未定义缩写 XQZ/SPQ、72 词长句、中文片段、无支撑断言 ⇒ 它回 NO-ISSUES）。
+ * 只报「能逐条指到原文」的事实，不做语义判断。
+ */
+const ABBREV_WHITELIST = new Set(['AI', 'ML', 'DL', 'NLP', 'LLM', 'LLMS', 'GPU', 'CPU', 'API', 'DOI', 'PDF',
+  'RSS', 'URL', 'HTTP', 'HTTPS', 'USA', 'UK', 'EU', 'IEEE', 'ACM', 'RCT', 'CI', 'SD', 'RMSE', 'MAE', 'MAPE']);
+
+function builtinChecks(text, lang) {
+  const out = [];
+  const lines = String(text || '').split('\n');
+  // ① 语言混入（英文稿里出现成段中文 / 中文稿里出现成段英文，本工具只判前者）
+  if (lang !== 'zh') {
+    const hits = [];
+    lines.forEach((l, i) => {
+      const cjk = (l.match(/[\u4e00-\u9fff]/g) || []).length;
+      if (cjk >= 4) hits.push('L' + (i + 1) + '：含中文 ' + cjk + ' 字 — ' + l.trim().slice(0, 60));
+    });
+    out.push({ id: 'lang-fragment', status: hits.length ? 'WARN' : 'OK', out: hits.length ? hits.join('\n') : '未发现中文片段' });
+  }
+  // ② 未定义缩写：全大写 2–6 字母，第一次出现处前后 40 字符内没有括号展开
+  const abbrevBad = [];
+  const body = String(text || '');
+  const seen = new Set();
+  const re = /\b([A-Z]{2,6})\b/g;
+  let m;
+  while ((m = re.exec(body))) {
+    const t = m[1];
+    if (ABBREV_WHITELIST.has(t) || seen.has(t)) continue;
+    seen.add(t);
+    const around = body.slice(Math.max(0, m.index - 40), m.index + t.length + 40);
+    const defined = new RegExp('\\(\\s*' + t + '\\s*\\)').test(around)
+      || new RegExp(t + '[^()\\n]{0,30}\\([^)]{3,60}\\)').test(around)
+      || new RegExp('\\([^)]{3,40}\\s' + t + '\\)').test(around);
+    if (!defined) {
+      const lineNo = body.slice(0, m.index).split('\n').length;
+      abbrevBad.push('L' + lineNo + '：' + t + ' 首次出现处未给展开');
+    }
+  }
+  out.push({ id: 'abbrev-undefined', status: abbrevBad.length ? 'WARN' : 'OK', out: abbrevBad.length ? abbrevBad.join('\n') : '未发现未定义缩写' });
+  // ③ 超长句（>45 词）
+  const longSent = [];
+  String(text || '').split(/(?<=[.!?。！？])\s+/).forEach((s) => {
+    const w = (s.match(/[A-Za-z][A-Za-z'’-]*/g) || []).length;
+    if (w > 45) longSent.push(w + ' 词 — ' + s.trim().slice(0, 90) + '…');
+  });
+  out.push({ id: 'sentence-over-45', status: longSent.length ? 'WARN' : 'OK', out: longSent.length ? longSent.join('\n') : '未发现超长句' });
+  return out;
+}
+
+function runMachineChecks(draft, opts = {}) {
+  const results = [];
+  try {
+    const text = fs.readFileSync(draft, 'utf8');
+    const lang = opts.lang || 'en';
+    for (const c of builtinChecks(text, lang)) results.push(c);
+  } catch (e) { results.push({ id: 'builtin', status: 'MISSING', out: '读不到稿件：' + e.message }); }
+  for (const t of REVIEW_TOOLS) {
+    const script = path.join(__dirname, t.id === 'stylecheck' ? 'stylecheck.cjs' : (t.id + '.cjs'));
+    if (!fs.existsSync(script)) { results.push({ id: t.id, status: 'MISSING', out: '脚本不存在：' + path.basename(script) }); continue; }
+    const r = (opts.spawnFn || spawnSync)(process.execPath, [script].concat(t.args(draft)), { encoding: 'utf8', timeout: 120000 });
+    const out = String(r.stdout || '') + String(r.stderr || '');
+    const m = /(?:状态|判定)[：:]\s*([A-Z_]+)/.exec(out) || /(PASS|REVIEW|ISSUES|WARN|FAIL|SKIP|OK)\b/.exec(out);
+    results.push({ id: t.id, status: m ? m[1] : (r.status === 0 ? 'OK' : 'EXIT_' + r.status), out });
+  }
+  return results;
+}
+
+/** 只把机检**报出来的问题行**交给模型，让它逐条给「改写建议」——不给它自由发现的机会。 */
+function suggestPrompt(issueText) {
+  return [
+    'You are a copy-editor. You are given a list of ALREADY-DETECTED issues from deterministic checkers.',
+    'For each issue, give ONE concrete minimal fix in the same line format: ISSUE #n | FIX',
+    'Do not invent new issues. Do not rewrite whole paragraphs. If you cannot fix an issue, write ISSUE #n | (needs author)',
+    '',
+    issueText,
+  ].join('\n');
+}
+
+async function askVia(eng, prompt, opts = {}) {
+  const url = opts.mockUrl || (String(eng.base || '').replace(/\/$/, '') + '/chat/completions');
+  let res;
+  try {
+    res = await (opts.postFn || post)(url, eng.key ? { Authorization: 'Bearer ' + eng.key } : {}, {
+      model: eng.model || 'mock', temperature: 0.1,
+      messages: [{ role: 'user', content: prompt }],
+    });
+  } catch (e) { return { ok: false, error: e.message }; }
+  if (res.status !== 200) return { ok: false, error: 'HTTP ' + res.status + ' · ' + String(res.body || '').slice(0, 160) };
+  try {
+    const j = JSON.parse(res.body);
+    const text = ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
+    return { ok: true, text };
+  } catch (e) { return { ok: false, error: '响应不是 JSON' }; }
+}
+
+async function runReview(draftPaths, argv, opts = {}) {
+  if (!draftPaths.length) { console.error('前提层失败：--review 需要 --draft <稿.md>'); return 2; }
+  const withModel = argv.includes('--with-model');
+  let eng = null;
+  if (withModel) {
+    eng = opts.mockUrl
+      ? { base: '', model: argOf(argv, '--model') || 'mock', engine: 'mock', key: '' }
+      : await resolveEngine(argv, opts);
+    if (eng.error) { console.error('提示：拿不到引擎 ⇒ 本次只跑机检（模型建议跳过）。'); eng = null; }
+  }
+  console.log('审查模式：' + (eng ? '机检 + 模型建议（模型只对已发现的问题给建议）' : '**纯机检（零模型、可复现）**'));
+  let failed = 0;
+  for (const d of draftPaths) {
+    if (!fs.existsSync(d)) { console.error('前提层失败：文件不存在 ' + d); return 2; }
+    const before = Buffer.from(fs.readFileSync(d)).toString('base64');
+    const checks = runMachineChecks(d, opts);
+    const flagged = checks.filter((c) => /REVIEW|ISSUES|WARN|FAIL/.test(c.status));
+    let modelLines = [];
+    let modelNote = '（未启用模型建议）';
+    if (eng && flagged.length) {
+      const issueText = flagged.map((c) => '[' + c.id + ' · ' + c.status + ']\n' + c.out.split('\n').slice(0, 40).join('\n')).join('\n\n');
+      const r = await askVia(eng, suggestPrompt(issueText), opts);
+      if (r.ok) {
+        modelLines = r.text.split('\n').map((l) => l.trim()).filter((l) => /^ISSUE\s*#\d+\s*\|/.test(l))
+          .map((l) => '- （模型建议）' + l.replace(/^ISSUE\s*#(\d+)\s*\|/, '第 $1 条 →'));
+        modelNote = modelLines.length ? '模型给了 ' + modelLines.length + ' 条建议' : '模型没给出可用建议（已丢弃其自由发挥）';
+      } else { modelNote = '模型调用失败：' + r.error; }
+    } else if (eng) {
+      modelNote = '机检没报问题 ⇒ 不浪费算力让模型找问题（实测它会对真有缺陷的稿子回 NO-ISSUES）';
+    }
+    const after = Buffer.from(fs.readFileSync(d)).toString('base64');
+    const out = d.replace(/\.md$/, '') + '.review.md';
+    const body = [
+      '<!-- review:deterministic engine=' + (eng ? eng.engine + ':' + eng.model : 'none') + ' -->',
+      '# 审查报告 · ' + path.basename(d),
+      '',
+      '> 分工：**发现问题＝确定性机检**（零 key、可复现）· **模型只对已发现的问题给建议**（advisory，不改稿）。',
+      '> 原稿未被改动：' + (before === after ? '✔ 字节未变' : '✘ 变了（这是 bug，请报告）'),
+      '',
+      '## 一、机检发现（确定性）',
+      ...checks.map((c) => '- **' + c.id + '**：' + c.status + (/REVIEW|ISSUES|WARN|FAIL/.test(c.status) ? ' ⚠' : '')),
+      '',
+      ...checks.filter((c) => /REVIEW|ISSUES|WARN|FAIL/.test(c.status)).map((c) => [
+        '<details><summary>' + c.id + ' · ' + c.status + '</summary>', '', '```text',
+        c.out.split('\n').slice(0, 60).join('\n'), '```', '', '</details>', ''].join('\n')),
+      '## 二、模型建议（advisory · 不做判据）',
+      modelNote,
+      ...modelLines,
+      '',
+      '---',
+      '机器判据仍是门：`node bin/paragraph-logic.cjs --draft <稿>` / `presubmit-all`。',
+      '',
+    ].filter((x) => x !== '').join('\n');
+    fs.writeFileSync(out, body, 'utf8');
+    console.log('✔ ' + path.basename(d) + ' → ' + out + '（机检 ' + checks.length + ' 项，其中 ' + flagged.length + ' 项有问题）');
+    if (flagged.length) failed += 1;
+  }
+  return 0; // advisory：不因发现而失败（判据在门那里）
+}
+
 /** 骨架模式：没有模型也要能出**可填的**东西，但必须长着一张"骨架脸"（槽位 + 标注），不冒充正文。 */
 function scaffoldFor(brief) {
   const must = (brief.must_have || []).filter(Boolean);
@@ -373,11 +602,21 @@ async function runGeneration(briefDir, outDir, argv, opts = {}) {
       console.error('  ★ 未配置不等于"生成了空稿"——本工具不会用模板拼接冒充正文。');
       return 2;
     }
-    console.log('引擎：' + eng.engine + ' · ' + eng.model + '（' + eng.why + '）');
+    // ★ 2026-10-19 用户定的职责边界：**本地模型不写正文**，只做审查/校正。
+    //   实测依据：7B 在只有「目标/必现要素」的简报上自造了「气候变化与小农户/FAO」「NHANES 2015-2016」
+    //   整段内容 —— 像论文但与用户研究无关，等于替作者编造素材。写作交给宿主（或云端强模型）。
     if (/^local-/.test(eng.engine)) {
-      console.log('  提示：本机小模型的稳定性不如云端，建议 --retries 1（门报的问题会回喂重写）；'
-        + '语言与回显标题已由 prompt 钉住，但仍以门读数为准。');
+      console.error('拒绝：本地引擎（' + eng.engine + ' · ' + eng.model + '）**不承担正文写作**。');
+      console.error('  实测它会在没有素材时自造领域内容（"气候变化与小农户/FAO"、"NHANES 2015-2016"），');
+      console.error('  看起来像论文但与你的研究无关 —— 这属于替作者编造素材，不是草稿。');
+      console.error('  两条合法路径：');
+      console.error('   ① **写作交给宿主模型**：node bin/generate.cjs --host-handoff --briefs <目录> --out <目录>');
+      console.error('      ⇒ 每节产出写作提示词（目标/必现要素/字数/语言/禁词），宿主写完回填 draft/ 再跑门；');
+      console.error('   ② 云端强模型：配 PAPER_STUDIO_LLM_* 或面板凭据后 --run。');
+      console.error('  ★ 本地引擎的正确用途是**审查/校正**：node bin/generate.cjs --review --draft <稿.md>');
+      return 2;
     }
+    console.log('引擎：' + eng.engine + ' · ' + eng.model + '（' + eng.why + '）');
   }
   fs.mkdirSync(outDir, { recursive: true });
   const retries = Number(argv.includes('--retries') ? argv[argv.indexOf('--retries') + 1] : 0) || 0;
@@ -726,19 +965,8 @@ async function selftest() {
     return r.engine === 'local-ollama' ? true : '引擎名=' + r.engine;
   });
 
-  // ★ 本轮核心：一条 key 都没有，本机 Ollama 在跑 ⇒ 插件自己逐节生成
-  await noEnv(async () => {
-    await ckA('★零 key 端到端：无 env + 无面板，自动发现本地引擎 ⇒ 生成成功且 provenance 写 engine=local-ollama', async () => {
-      const out = path.join(dir, 'draft-local');
-      const code = await runGeneration(briefDir, out, [], { probes: mockProbes });
-      if (code !== 0 && code !== 1) return 'code=' + code;
-      if (!fs.existsSync(path.join(out, 'assembled.md'))) return '没有拼稿';
-      const f = fs.readdirSync(out).filter((x) => /^\d{2}-.*\.md$/.test(x))[0];
-      if (!f) return '没有分节文件';
-      const t = fs.readFileSync(path.join(out, f), 'utf8');
-      return /<!-- generated:engine=local-ollama model=qwen2\.5-3b-32k:latest/.test(t) ? true : 'provenance 不对：' + t.split('\n')[0];
-    });
-  });
+  // ★ 2026-10-19：原先这条臂断言「零 key 时本地引擎会写正文」—— 该行为已按用户要求**取消**，
+  //   改由下面的「职责边界」臂守住相反方向（本地引擎必须拒绝写正文）。夹具随行为一起改，不留假绿。
 
   await noEnv(async () => {
     await ckA('★必失败面：--engine env 锁定但 env 为空 ⇒ exit 2（不许偷偷回落到本地引擎）', async () => {
@@ -784,8 +1012,102 @@ async function selftest() {
     return code === 2 ? true : 'code=' + code;
   });
 
+  // server.close() 也必须在**所有臂之后**：下面几条臂还要用它探"本地引擎"
+  // ★ 2026-10-19 用户定的职责边界：本地模型只做审查/校正，**正文写作交给宿主**
+  //   注：清理临时目录必须放在**所有**用夹具的臂之后 —— 上一版把 rmSync 写在这里，
+  //   结果后加的 5 条臂全因 briefs 已被删而红（自检立刻抓到，说明"先清理后测试"是自伤）。
+  await noEnv(async () => {
+    await ckA('★职责边界：只发现本地引擎时 --run 必须 exit 2 并说明「不承担正文写作」', async () => {
+      const out = path.join(dir, 'draft-local-refused');
+      let msg = '';
+      const origErr = console.error;
+      console.error = (...a) => { msg += a.join(' ') + '\n'; };
+      let code;
+      try { code = await runGeneration(briefDir, out, [], { probes: mockProbes }); } finally { console.error = origErr; }
+      if (code !== 2) return 'code=' + code;
+      if (!/不承担正文写作/.test(msg)) return '消息没说是职责边界：' + msg.slice(0, 140);
+      return fs.existsSync(path.join(out, '01-1-intro.md')) ? '居然写出了正文文件' : true;
+    });
+  });
+
+  ck('★--host-handoff：每节一份写作任务书 + README，含回填路径与「不得编造素材」', () => {
+    const out = path.join(dir, 'handoff');
+    const r = hostHandoff(briefDir, out);
+    if (r.error) return r.error;
+    if (r.files.length !== spec.sections.length) return '数量=' + r.files.length;
+    const t = fs.readFileSync(r.files[0], 'utf8');
+    if (!/写作任务书/.test(t)) return '缺标题';
+    if (!/不得编造素材/.test(t)) return '缺「不得编造素材」纪律';
+    if (!/回填路径/.test(t)) return '缺回填路径';
+    if (!/Must appear/.test(t)) return '没带提示词原文';
+    if (!fs.existsSync(r.readme)) return '缺 README';
+    if (!/正文写作交给宿主|宿主写正文/.test(fs.readFileSync(r.readme, 'utf8'))) return 'README 没写分工';
+    // 反控：剥掉 ``` 代码块后，任务书里不该出现长英文段落（那就是夹带正文了）
+    const stripped = t.replace(/```[\s\S]*?```/g, '');
+    const prose = stripped.split('\n').filter((l) => l.trim() && !/^[\s*>#\-|]/.test(l) && /[A-Za-z]/.test(l) && l.length > 200);
+    return prose.length ? '疑似夹带正文：' + prose[0].slice(0, 60) : true;
+  });
+
+  ckA('★--review 默认**纯机检**（不调模型、原稿不变、三项机检齐全）', async () => {
+    const d = path.join(dir, 'review-target.md');
+    fs.writeFileSync(d, [
+      '## 2. Methods',
+      '',
+      'The system is fast. It is also accurate. Users like it. It scales well. It is cheap. It is robust. It is simple. It is reliable.',
+      '',
+    ].join('\n'), 'utf8');
+    const before = fs.readFileSync(d);
+    let modelCalled = false;
+    const code = await runReview([d], [], {
+      postFn: async () => { modelCalled = true; throw new Error('should not be called'); },
+    });
+    if (code !== 0) return 'code=' + code;
+    if (modelCalled) return '纯机检却调了模型';
+    const out = d.replace(/\.md$/, '') + '.review.md';
+    if (!fs.existsSync(out)) return '没有产出 review 文件';
+    const t = fs.readFileSync(out, 'utf8');
+    if (!/机检发现（确定性）/.test(t)) return '缺机检段';
+    if (!/stylecheck/.test(t) || !/paragraph-logic/.test(t) || !/tense-check/.test(t)) return '机检项没跑齐';
+    if (!/advisory/.test(t)) return '缺 advisory 标注';
+    if (!before.equals(fs.readFileSync(d))) return '原稿被改了';
+    return /REVIEW|ISSUES|WARN/.test(t) ? true : '机检没报出任何问题（夹具本该触发：8 句无支撑段落）';
+  });
+
+  await ckA('★--with-model：模型只对已发现问题给建议并标 advisory；模型坏了也不影响机检结论', async () => {
+    const d = path.join(dir, 'review-target.md');
+    const ok = await runReview([d], ['--with-model', '--model', 'mock-model'], {
+      mockUrl,
+      postFn: async () => ({ status: 200, body: JSON.stringify({ choices: [{ message: { content: 'ISSUE #1 | add a citation for the robustness claim' } }] }) }),
+    });
+    if (ok !== 0) return 'code=' + ok;
+    const t = fs.readFileSync(d.replace(/\.md$/, '') + '.review.md', 'utf8');
+    if (!/模型建议（advisory · 不做判据）/.test(t)) return '缺模型建议段';
+    if (!/第 1 条 →/.test(t)) return '建议没被格式化：' + t.slice(-200);
+    const bad = await runReview([d], ['--with-model', '--model', 'mock-model'], {
+      mockUrl,
+      postFn: async () => ({ status: 500, body: 'boom' }),
+    });
+    if (bad !== 0) return '模型失败时不该让整体失败：code=' + bad;
+    const t2 = fs.readFileSync(d.replace(/\.md$/, '') + '.review.md', 'utf8');
+    return (/模型调用失败/.test(t2) && /机检发现（确定性）/.test(t2)) ? true : '模型失败时机检结果丢了';
+  });
+
+  // 清理放在**所有臂之后**（先清理后测试会让后加的臂假红 —— 这轮踩过一次）
   server.close();
-  fs.rmSync(dir, { recursive: true, force: true });
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* 清理失败不致命 */ }
+  ck('★builtinChecks：中文片段 / 未定义缩写 / 超长句 三类都要被抓（7B 自查时这三类全漏）', () => {
+    const bad = '## 2. Methods\n\nThe XQZ protocol improves accuracy significantly, and it is clear that this approach works better than the baseline in every condition we examined while also remaining computationally efficient across all tested configurations that we collected during the study period, which lasted eighteen months and involved multiple sites. 本研究使用了若干数据集。\n';
+    const r = builtinChecks(bad, 'en');
+    const st = (id) => (r.find((x) => x.id === id) || {}).status;
+    if (st('lang-fragment') !== 'WARN') return '没抓中文片段';
+    if (st('abbrev-undefined') !== 'WARN') return '没抓未定义缩写';
+    if (st('sentence-over-45') !== 'WARN') return '没抓超长句';
+    const good = '## 2. Methods\n\nWe used the XQZ protocol (Cross-domain Query Zipper) on 10 datasets.\n';
+    const g = builtinChecks(good, 'en');
+    const gs = (id) => (g.find((x) => x.id === id) || {}).status;
+    return (gs('lang-fragment') === 'OK' && gs('abbrev-undefined') === 'OK')
+      ? true : '反控误报：' + JSON.stringify(g.map((x) => [x.id, x.status]));
+  });
   const pass = results.filter((x) => x.ok).length;
   results.forEach((r) => console.log((r.ok ? 'PASS ' : 'FAIL ') + r.name + (r.ok ? '' : ' :: ' + r.why)));
   console.log('\ngenerate selftest: ' + pass + '/' + results.length + ' 通过');
@@ -825,6 +1147,25 @@ async function main(argv) {
     }
     return 0;
   }
+  // 写作交给宿主：出每节写作任务书（插件出规格 → 宿主写正文 → 门做判据）
+  if (argv.includes('--host-handoff')) {
+    const briefs = argv[argv.indexOf('--briefs') + 1];
+    const out = argv[argv.indexOf('--out') + 1];
+    if (!briefs || !fs.existsSync(briefs)) { console.error('前提层失败：--host-handoff 需要存在的 --briefs <目录>'); return 2; }
+    if (!out) { console.error('前提层失败：--host-handoff 需要 --out <目录>'); return 2; }
+    const r = hostHandoff(briefs, out);
+    if (r.error) { console.error(r.error); return 2; }
+    console.log('已出 ' + r.files.length + ' 份写作任务书 → ' + out);
+    console.log('  说明：' + r.readme);
+    console.log('  下一步：宿主模型逐节照任务书写正文并回填 NN-<id>.md，再跑 paragraph-logic 出读数。');
+    return 0;
+  }
+  // 本地审查/校正（只出建议，不改稿，不当判据）
+  if (argv.includes('--review')) {
+    const drafts = [];
+    argv.forEach((a, i) => { if (a === '--draft' && argv[i + 1]) drafts.push(argv[i + 1]); });
+    return runReview(drafts, argv);
+  }
   if (argv.includes('--run') || argv.includes('--scaffold') || argv.includes('--offline')) {
     const briefs = argv[argv.indexOf('--briefs') + 1];
     const out = argv[argv.indexOf('--out') + 1];
@@ -833,7 +1174,9 @@ async function main(argv) {
     return runGeneration(briefs, out, argv);
   }
   console.log('用法：--probe | --demo-spec | --brief --spec <json> --out <dir> | '
-    + '--run --briefs <dir> --out <dir> [--retries N] [--engine auto|env|local] | '
+    + '--host-handoff --briefs <dir> --out <dir>（写作交宿主：出每节写作任务书） | '
+    + '--review --draft <稿.md>（本地模型只出审查建议，不改稿） | '
+    + '--run --briefs <dir> --out <dir> [--retries N] [--engine auto|env]（**仅云端强模型**；本地引擎会被拒绝） | '
     + '--scaffold --briefs <dir> --out <dir>（零模型：出骨架，不冒充正文）| --selftest');
   return 2;
 }
@@ -844,4 +1187,5 @@ if (require.main === module) {
 module.exports = {
   buildBriefs, briefFor, promptFor, quickIssues, bannedWords, runGeneration, demoSpec,
   resolveEngine, probeLocal, panelEngine, scoreModel, scaffoldFor, stripEchoHeading, LOCAL_PROBES,
+  hostHandoff, runReview, runMachineChecks, builtinChecks, suggestPrompt, askVia
 };
