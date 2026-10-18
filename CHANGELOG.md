@@ -2217,3 +2217,28 @@
 
 **已知限制（如实记录）**
 - 真机 `paper_studio action=modes` 在**重启 DSH 前**仍会因模块缓存报 `non-lossless JSON`（`link:` 安装的代码改动不热生效；`set_bundle` 开关与升版本重装均无效，已实测）。仅此一条路径受影响，其余真机可用。
+
+## 3.51.0 — LaTeX 管线（md→tex · 结构不变量 · 可选编译）
+
+**为什么不只是文档里加一句"支持 LaTeX"**：此前插件只有"检测 LaTeX 命令"（bakeoff 不变量、cfp 模板识别），
+**不会生成、不会检查结构、不会编译**。真实后果是作者把 Markdown 稿手工搬进 .tex 时自造三类硬伤
+（_ 未转义、\cite 指向不存在的键、图路径写错），而没有任何机器门能挡住。本次补上整条管线。
+
+新增 in/latex.cjs（自检 **14/14**，含 6 条必失败臂）：
+- --emit <md> --out <tex> [--template article|elsarticle]：标题/章节/粗斜体/行内码/
+  图（blockquote 题注 → \caption + \label）/表（tabular）/列表/编号引用 → \cite{refN}
+- --check <tex> [--bib <bib>] [--root <dir>]：括号与环境配平 · \cite 键存在 · \ref 目标存在 ·
+  图件文件存在 · 每 figure 有题注 · 未转义 _ · 空节判定（**父节只带子节不报空**）
+- --compile <tex>：探测 pdflatex/xelatex/lualatex/tectonic；**无引擎 ⇒ SKIP + exit 3**，
+  绝不把"没编译"当"编译通过"
+
+判据纪律：未给 --bib / --root 时，相关项显式打印**未核对**（未核对 ≠ 通过）；
+--compile 的 OK / FAIL / SKIP 三态可区分，SKIP 不映射为 0。
+
+实测：论文 A 真实稿 --emit --template elsarticle → 42.4 KB .tex，
+--check --root submission → **OK**（引用 15 键 · 图 4 · 图件 4 命中，零问题）。
+
+★ 过程中修掉两个自身缺陷：① 空节判据把"父节只带子节"误判为空（真实稿报 5 个假阳性）；
+② 自检输出写成 14/14 缺"通过"后缀，audit 的 tools-probe 判为"跑不出 N/M"（契约要求 N/M 通过）。
+
+登记：pipeline.json selfchecks += 1（共 49）；能力登记表 += env.paper-latex（共 99）；udit **6/6 全绿**。
