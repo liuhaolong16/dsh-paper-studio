@@ -29,15 +29,40 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 
-/** 禁用词从 stylecheck 的真源取，不在这里另抄一份（两套词表＝两套真相）。 */
+/**
+ * 禁用词只从**词级**真源取：`revise.AI_MARKERS`（AI 腔标记）+ `stylecheck.WORD_LISTS.FILLERS`（填充词）。
+ *
+ * ★ 为什么不能把所有 WORD_LISTS 都抽一遍：`FORBIDDEN_OPENING` 是**句首短语规则**
+ *   （如 "In recent years, deep learning ..."），抽词会得到 `machine` / `learning` / `large` / `language`
+ *   —— 把机器学习论文的核心词当禁用词，等于让生成器无法写方法。这条是被 `--brief` 的实测输出抓出来的。
+ */
+function literalsOf(re) {
+  return [...new Set(String(re)
+    .split('|')
+    .map((s) => s.replace(/\(\?<[^)]*\)|\(\?[=!][^)]*\)|\\b|\\s\*?|\\\.|\[[^\]]*\]|[\\^$*+?.:(){}]/g, ' ')
+      .replace(/\s+/g, ' ').trim().toLowerCase())
+    .flatMap((s) => s.split(' '))
+    .filter((w) => w.length >= 4 && /^[a-z]+$/.test(w)))];
+}
+
+/**
+ * 过常用词剔除表：这些词在 AI_MARKERS 里是**短语**的一部分（如 `state-of-the-art`），
+ * 单独抽出来当禁用词会误伤正常学术表达——实测里 `state that ...` 被判"使用禁用词"就是这个假阳性。
+ * 只保留真正的 AI 腔（delve / pivotal / seamless / comprehensive / holistic / testament / realm ...）。
+ */
+const OVERCOMMON = new Set([
+  'state', 'only', 'also', 'into', 'plays', 'play', 'role', 'game', 'framework', 'solution',
+  'understanding', 'significant', 'crucial', 'vital', 'show', 'shows', 'result', 'results',
+  'that', 'this', 'with', 'from', 'chang', 'leverag', 'showcas',
+]);
+
 function bannedWords() {
   try {
+    const rv = require(path.join(__dirname, 'revise.cjs'));
     const sc = require(path.join(__dirname, 'stylecheck.cjs'));
-    const flat = Object.values(sc.WORD_LISTS || {}).flatMap((re) => {
-      const src = String(re);
-      return [...src.matchAll(/[a-z]{4,}/gi)].map((m) => m[0].toLowerCase());
-    });
-    return [...new Set(flat)].slice(0, 60);
+    const markers = (rv.AI_MARKERS || []).flatMap((m) => literalsOf(m.re || m));
+    const fillers = literalsOf((sc.WORD_LISTS && sc.WORD_LISTS.FILLERS) || '');
+    return [...new Set([...markers, ...fillers])].filter((w) => !OVERCOMMON.has(w)).slice(0, 40);
   } catch (e) {
     return [];
   }
@@ -178,6 +203,7 @@ async function runGeneration(briefDir, outDir, argv, opts = {}) {
     const brief = JSON.parse(fs.readFileSync(path.join(briefDir, f), 'utf8'));
     if (!brief.goal) { console.error('简报 ' + f + ' 缺 goal —— 拒绝生成（没有目标的正文必然是空话）'); return 2; }
     let issues = [];
+    let notes = [];
     let text = '';
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       const url = (opts.mockUrl || cfg.base.replace(/\/$/, '') + '/chat/completions');
@@ -204,8 +230,9 @@ async function runGeneration(briefDir, outDir, argv, opts = {}) {
         return 1;
       }
       if (!text.trim()) { console.error('生成失败（' + brief.title + '）：模型返回空正文'); return 1; }
-      // 当场自检：禁用词 / 字数带 / 必现要素
-      issues = quickIssues(text, brief);
+      // 当场自检：禁用词 / 字数带 / 必现要素（中文要素记入 notes，不判红）
+      notes = [];
+      issues = quickIssues(text, brief, notes);
       if (!issues.length) break;
       if (attempt === retries) failed += 1;
     }
@@ -213,8 +240,9 @@ async function runGeneration(briefDir, outDir, argv, opts = {}) {
     fs.writeFileSync(out,
       '<!-- generated:model=' + (cfg.model || 'mock') + ' · section=' + brief.id + ' -->\n\n## ' + brief.title + '\n\n' + text.trim() + '\n',
       'utf8');
-    parts.push({ file: out, issues });
+    parts.push({ file: out, issues, notes });
     console.log('✔ ' + brief.title + ' → ' + out + (issues.length ? '（仍有 ' + issues.length + ' 条自检问题）' : ''));
+    notes.forEach((n) => console.log('  · ' + n));
   }
 
   const assembled = path.join(outDir, 'assembled.md');
@@ -234,8 +262,11 @@ async function runGeneration(briefDir, outDir, argv, opts = {}) {
   return allIssues.length ? 1 : 0;
 }
 
-/** 生成后当场自检：这些是**纯本地可判**的，不依赖模型自评。 */
-function quickIssues(text, brief) {
+/** 生成后当场自检：这些是**纯本地可判**的，不依赖模型自评。
+ *  ★ 中英混排的现实：简报里的必现要素常写成中文（如"数据来源与许可"），而正文是英文，
+ *    用中文子串去英文正文里找必然"缺失" ⇒ 假阳性。改法：**CJK 要素一律记为"待人确认"**（不判红），
+ *    只有 ASCII 要素才做子串机检。这条是拿 chinese must_have + 英文正文实测出来的。 */
+function quickIssues(text, brief, notes) {
   const issues = [];
   const lower = text.toLowerCase();
   const hit = (brief.banned || []).filter((w) => w.length > 4 && new RegExp('\\b' + w + '\\b', 'i').test(lower));
@@ -246,6 +277,8 @@ function quickIssues(text, brief) {
   if (words < lo) issues.push('字数偏少：' + words + ' < ' + lo);
   if (words > hi) issues.push('字数偏多：' + words + ' > ' + hi);
   (brief.must_have || []).forEach((m) => {
+    const isCjk = /[\u4e00-\u9fff]/.test(String(m));
+    if (isCjk) { if (Array.isArray(notes)) notes.push('需人工确认（中文要素不做机检）：' + m); return; }
     const key = String(m).split(/[（(]/)[0].trim().slice(0, 6).toLowerCase();
     if (key && !lower.includes(key)) issues.push('缺必现要素："' + m + '"');
   });
@@ -282,12 +315,13 @@ async function selftest() {
     return true;
   });
 
-  ck('★禁用词来自 stylecheck 真源（不另抄词表）', () => {
+  ck('★禁用词取自词级真源，且**不含** machine/learning/state 等常用词（防误禁）', () => {
     const w = bannedWords();
-    if (!Array.isArray(w)) return '不是数组';
-    const sc = require(path.join(__dirname, 'stylecheck.cjs'));
-    const total = Object.values(sc.WORD_LISTS || {}).length;
-    return total > 0 && w.length > 0 ? true : 'stylecheck 词表为空或未取到';
+    if (!Array.isArray(w) || !w.length) return '禁用词为空（AI_MARKERS/FILLERS 未取到）';
+    const bad = ['machine', 'learning', 'large', 'language', 'models', 'recent', 'state', 'only', 'also'].filter((x) => w.includes(x));
+    if (bad.length) return '把常用词/术语当禁用词了：' + bad.join(', ');
+    const tone = ['delve', 'pivotal', 'seamless', 'comprehensive', 'holistic'];
+    return tone.some((t) => w.includes(t)) ? true : '没有任何 AI 腔词，词源可能是空的：' + w.slice(0, 8).join(',');
   });
 
   ck('prompt：含必现要素与禁用词，且明确"只输出正文"', () => {
@@ -301,8 +335,8 @@ async function selftest() {
   });
 
   ck('quickIssues：禁用词/字数/必现要素缺失都要报', () => {
-    const b = { words: 100, must_have: ['数据来源与许可'], banned: ['delve'] };
-    const iss = quickIssues('We delve into this. Short.', b);
+    const b = { words: 100, must_have: ['data source'], banned: ['delve'] };
+    const iss = quickIssues('We delve a bit. Short.', b);
     const has = (re) => iss.some((x) => re.test(x));
     if (!has(/禁用词/)) return '没报禁用词';
     if (!has(/字数偏少/)) return '没报字数';
@@ -311,10 +345,19 @@ async function selftest() {
   });
 
   ck('quickIssues：合格正文不报问题（防误报）', () => {
-    const b = { words: 20, must_have: ['数据来源'], banned: ['delve'] };
-    const text = '数据来源 is described here. ' + 'word '.repeat(18);
+    const b = { words: 20, must_have: ['data source'], banned: ['delve'] };
+    const text = 'The data source is described here. ' + 'word '.repeat(18);
     const iss = quickIssues(text, b);
     return iss.length === 0 ? true : JSON.stringify(iss);
+  });
+
+  // ★ 中英混排的现实：简报要素常写中文，正文是英文；用中文子串去英文里找必然"缺失"
+  ck('★中英混排：中文必现要素记为"待人确认"，不判红（防假阳性）', () => {
+    const b = { words: 20, must_have: ['数据来源与许可'], banned: [] };
+    const notes = [];
+    const iss = quickIssues('English prose about a data source. ' + 'word '.repeat(18), b, notes);
+    if (iss.length) return '中文要素被判红了：' + JSON.stringify(iss);
+    return notes.length === 1 && /需人工确认/.test(notes[0]) ? true : JSON.stringify(notes);
   });
 
   // mock LLM：/chat/completions 返回合格正文；/bad 返回 500

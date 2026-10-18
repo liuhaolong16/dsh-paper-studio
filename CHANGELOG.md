@@ -2295,3 +2295,20 @@ studio draft 只产**规划文档**（骨架/证据表/跑法），不产正文�
 生成物一律带 <!-- generated:model=... --> 标注，便于事后审计哪些文字是模型写的。
 
 登记：pipeline.json selfchecks **51** · 能力登记表 **101**（env.paper-generate，T2）· udit **6/6 全绿**。
+
+## 3.53.1 — 用真实简报做闭环演练，修掉三处生成侧判据缺陷
+
+拿 --brief 的真实输出 + 一节英文正文做闭环，**门当场抓出三个假阳性**，逐个修：
+
+| # | 缺陷 | 现象 | 修法 |
+|---|---|---|---|
+| ① | 禁用词从**所有** WORD_LISTS 抽词 | 把 machine / learning / large / language 当禁用词（它们是 FORBIDDEN_OPENING 短语规则的碎片）→ **机器学习论文无法写方法** | 改为只取 evise.AI_MARKERS（词级）+ stylecheck.FILLERS |
+| ② | 同上，抽到 state 这类高频常用词 | we state its assumptions 被判"使用禁用词" | 加 OVERCOMMON 剔除表（state/only/also/into/framework/solution…） |
+| ③ | 必现要素用中文子串去英文正文里找 | 简报写"数据来源与许可"，正文是英文 ⇒ **必然"缺失"** | CJK 要素改为**记入 notes「需人工确认」，不判红**；ASCII 要素才做子串机检 |
+
+闭环实测（同一份 brief）：
+- quickIssues → **问题 0 条 · 待人工确认 3 条**（三条中文要素如实登记）
+- definition-first --draft → **OK（R4 SCOPE_OK）** —— 首版正文缺界定句被 R4 抓到，补"covers … it does not cover …"后转 OK
+- paragraph-logic --draft → **REVIEW**（段 6 · 硬提示 0 · 软提示 2 · 断言无支撑 0）
+
+自检 **11/11**（新增中英混排必现要素用例）· udit 6/6 · 登记表 evidence 同步为 **11/11**。
