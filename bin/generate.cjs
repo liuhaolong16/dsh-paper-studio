@@ -333,32 +333,128 @@ async function resolveEngine(argv, opts = {}) {
  */
 function normalizeNum(s) { return String(s).replace(/[,，\s]/g, '').replace(/[%％]$/, ''); }
 
+/** 这些是**结构性/格式性**数字，不是实证数字，不该要求素材溯源（真稿跑出来的噪声清单）。 */
+const STRUCTURAL_RES = [
+  /\S+@\S+\.\S+/g,                                     // 邮箱
+  /https?:\/\/\S+/g,                                     // URL
+  /doi:\s*\S+/gi,                                        // DOI
+  /\[[^\]]{0,20}\]/g,                                   // 引用标记 [3] / [2,3] / [1–4]
+  /\b(?:Section|Sect\.|Table|Tab\.|Fig\.|Figure|Eq\.|Equation|Step|Appendix|Algorithm)\s*[\d.]+/gi,
+  /\bS\d{1,2}\b/g,                                      // S1 / S2 补充材料编号
+  /\bpx\b|\bdpi\b/gi,
+  /\b10\.\d{4,9}\/\S+/g,                            // bare-doi：10.5281/zenodo.xxxx
+  /\b\d{8,}\b/g,                                      // 长数字串：标识符/PMID/Zenodo id，不是实证数字
+  /\b\d{1,3}\s+references?\b/gi,                     // 「15 references」由 bib 决定，不要求素材
+  /swh:\S+/g,                                          // Software Heritage 归档标识
+  /\b[0-9a-f]{16,}\b/g,                                // 长十六进制（提交哈希 / 目录哈希）
+  /\(\s*\d+\s*pp\s*\)/g,                               // 「(61 pp)」页码
+];
+
+/** 通用数学常数：出现在稿件里属常识，不要求作者提供溯源。 */
+const CONST_WHITELIST = new Set(['1.4826', '0.6745', '2.71828', '3.14159', '0.05', '0.01']);
+
+/**
+ * 是不是**承重数字**（需要素材溯源的实证数字）。
+ * 真稿跑出来的教训：把 `Section 3.1`、`(1)(2)` 枚举、`max_depth=4` 这类结构/参数数字也要求溯源，
+ * 会产出几十条假阳性，把真缺口（R²、seed 值）淹没 —— 判据不可信等于没有。
+ * 规则：百分比 / ≥2 位小数 / ≥10 的整数 / 带物理单位（Ah·°C·V·A·W）的小整数 ⇒ 承重。
+ */
+function isLoadBearing(raw) {
+  const s = String(raw || '').trim();
+  if (/[%％]$/.test(s)) return true;
+  const m = /^(\d+)(?:\.(\d+))?/.exec(s);
+  if (!m) return false;
+  const intPart = Number(m[1]);
+  const dec = m[2] || '';
+  if (dec.length >= 2) return true;
+  if (intPart >= 10) return true;
+  return false;
+}
+/**
+ * 剥掉参考文献区：文献表里的年份/页码/会议缩写不是正文主张，
+ * 拿它们做溯源与缩写检查会产出大量假阳性（真稿实测：15 条年份 + 8 个会议缩写）。
+ * 只按标题定位（References / Bibliography / 参考文献）与行首 [n] 条目；正文里的 [n] 引用不受影响。
+ */
+function stripBibliography(text) {
+  const lines = String(text || '').split('\n');
+  const out = [];
+  let inBib = false;
+  for (const line of lines) {
+    if (/^\s*#{1,6}\s*(?:references|bibliography|参考文献)\s*$/i.test(line.trim())) { inBib = true; continue; }
+    if (/^\s*#{1,6}\s+/.test(line) && inBib) { inBib = false; }
+    if (inBib) continue;
+    if (/^\s*(?:\*\*)?\[\d{1,3}\](?:\*\*)?\s+\S/.test(line)) continue;   // 行首 [n] 文献条目
+    out.push(line);
+  }
+  return out.join('\n');
+}
 function extractNumbers(text) {
   const out = [];
   String(text || '').split('\n').forEach((line, i) => {
-    if (/^\s*#{1,6}\s/.test(line)) return;              // 标题里的节号不算承重数字
+    // ★ 整行跳过标题会把「## 阈值 1.95」这类**标题里的实证数字**一并丢掉（真稿实测：1.95/23 明明在素材里却被判缺失）
+    //   正确做法是剥掉标题记号与节号，再扫剩下的正文
+    let clean = line.replace(/^\s*#{1,6}\s*/, '').replace(/^\d+(?:\.\d+)*[.)]?\s+/, '');
+    STRUCTURAL_RES.forEach((re) => { clean = clean.replace(re, ' '); });
     const re = /\d+(?:[.,]\d+)*\s*[%％]?/g;
     let m;
-    while ((m = re.exec(line))) {
+    while ((m = re.exec(clean))) {
       const raw = m[0].trim();
       const n = normalizeNum(raw);
       if (!n || n.length === 0) continue;
       if (n.length === 1 && /\.$/.test(raw)) continue;   // 行首编号
+      if (CONST_WHITELIST.has(n)) continue;
       out.push({ value: n, raw, line: i + 1, text: line.trim().slice(0, 90) });
     }
   });
   return out;
 }
 
+/**
+ * 把「逐数字一条」聚合成「逐行一条」：真稿里一行常带 6–7 个数字，
+ * 不去重会产出 300+ 条同文本条目，人根本读不动（真稿实测）。
+ */
+function groupByLine(bad) {
+  const map = new Map();
+  bad.forEach((b) => {
+    if (!map.has(b.line)) map.set(b.line, { line: b.line, values: [], text: b.text });
+    map.get(b.line).values.push(b.raw);
+  });
+  return [...map.values()].sort((a, b) => a.line - b.line)
+    .map((g) => 'L' + g.line + '：' + g.values.join(', ') + ' — ' + g.text);
+}
+/**
+ * 四舍五入容差匹配：稿子把 −5.807 写成 5.81 属**同一事实的不同精度**，判 FAIL 是假阳性。
+ * 容差取稿子里该数字的显示精度：2 位小数 ⇒ ±0.005；整数 ⇒ 只接受精确匹配（避免 23 与 24 互认）。
+ * 这是「溯源」而不是「数值审计」：容差只吸收舍入，不会把 87.3% 认成 41.2%。
+ */
+function nearMatch(n, matValues) {
+  const s = String(n || '');
+  if (!/\./.test(s)) return false;
+  const dec = (s.split('.')[1] || '').length;
+  if (!dec) return false;
+  const tol = 0.5 * Math.pow(10, -dec) + 1e-12;
+  const v = Number(s);
+  for (const m of matValues) {
+    const mv = Number(m);
+    if (!isFinite(mv)) continue;
+    if (Math.abs(mv - v) <= tol || Math.abs(-mv - v) <= tol) return true;
+  }
+  return false;
+}
 function traceNumbers(draft, materialText) {
   const mat = new Set(extractNumbers(materialText).map((x) => x.value));
-  const bad = extractNumbers(draft).filter((x) => !mat.has(x.value));
+  const all = extractNumbers(draft);
+  const load = all.filter((x) => isLoadBearing(x.raw));
+  const skipped = all.length - load.length;
+  const matValues = [...mat];
+  const bad = load.filter((x) => !mat.has(x.value) && !nearMatch(x.value, matValues));
   return {
     id: 'trace-numbers',
     status: bad.length ? 'FAIL' : 'OK',
     out: bad.length
-      ? bad.map((b) => 'L' + b.line + '：' + b.raw + ' 在素材里找不到 — ' + b.text).join('\n')
-      : '稿件中的数字全部可溯源（素材 ' + mat.size + ' 个数字）',
+      ? groupByLine(bad).join('\n')
+      : ('承重数字全部可溯源（素材 ' + mat.size + ' 个数字；另有 ' + skipped + ' 个结构性数字未参与溯源）'),
+    summary: '承重 ' + load.length + ' / 不可溯源 ' + bad.length + ' / 结构性跳过 ' + skipped,
   };
 }
 
@@ -369,8 +465,22 @@ function bibKeys(bibText) {
   return keys;
 }
 
+/**
+ * 参考文献条目数：.bib 数 @type{key, ；Markdown/Vancouver 参考文献表按行首编号（1. / [1] / 1)）数。
+ * 真实稿件几乎都用数字式 [n]，只认 \\cite{key} 等于对真稿失效 —— 这条是真稿跑出来的缺口。
+ */
+function bibEntryCount(bibText) {
+  const keys = bibKeys(bibText);
+  if (keys.size) return keys.size;
+  let n = 0;
+  String(bibText || '').split('\n').forEach((l) => { if (/^\s*(\[\d{1,3}\]|\d{1,3}[.)])\s+\S/.test(l)) n += 1; });
+  return n;
+}
+
 function traceCitations(draft, materialText, bibText) {
   const keys = bibKeys(bibText);
+  const total = bibEntryCount(bibText);
+  let unchecked = 0;
   const issues = [];
   const lines = String(draft || '').split('\n');
   lines.forEach((line, i) => {
@@ -381,19 +491,22 @@ function traceCitations(draft, materialText, bibText) {
       const ok = keys.size ? keys.has(k) : String(materialText || '').indexOf(k) >= 0;
       if (!ok) issues.push('L' + (i + 1) + '：引用键 ' + k + ' 在' + (keys.size ? '.bib' : '素材') + '里不存在');
     }
-    // 数字式引用 [n]：只有给了 .bib 才能核（按条目数），否则如实记为未核对
+    // 数字式引用 [n]：给了参考文献（.bib 或 Markdown 表）就核上界；没有则**记未核对**，不当通过
     const nums = line.match(/\[(\d{1,3})\]/g) || [];
-    if (nums.length && keys.size) {
-      nums.forEach((s) => {
+    if (nums.length) {
+      if (!total) unchecked += nums.length;
+      else nums.forEach((s) => {
         const n = Number(s.replace(/[\[\]]/g, ''));
-        if (n > keys.size) issues.push('L' + (i + 1) + '：[' + n + '] 超过 .bib 条目数 ' + keys.size);
+        if (n > total) issues.push('L' + (i + 1) + '：[' + n + '] 超过参考文献条目数 ' + total);
       });
     }
   });
+  if (unchecked) issues.push('共 ' + unchecked + ' 处 [n] 因未提供参考文献而**未核对**（未核对 ≠ 通过）');
+  const note = total ? ('参考文献 ' + total + ' 条' + (keys.size ? '（.bib 键名核验）' : '（按条目数核上界）')) : '未给参考文献';
   return {
     id: 'trace-citations',
     status: issues.length ? 'FAIL' : 'OK',
-    out: issues.length ? issues.join('\n') : ('引用键全部可溯源（' + (keys.size ? '.bib ' + keys.size + ' 条' : '按素材字面') + '）'),
+    out: issues.length ? issues.join('\n') : ('引用全部可溯源（' + note + '）'),
   };
 }
 
@@ -444,7 +557,8 @@ async function runAuthorLoop(drafts, argv, opts) {
   const report = [];
   let allReady = true;
   for (const f of files) {
-    const draft = fs.readFileSync(f, 'utf8');
+    const draftRaw = fs.readFileSync(f, 'utf8');
+    const draft = stripBibliography(draftRaw);   // 文献表不参与正文溯源/缩写检查
     const checks = [];
     checks.push(traceNumbers(draft, materialText));
     checks.push(traceCitations(draft, materialText, bibText));
@@ -563,7 +677,7 @@ const REVIEW_TOOLS = [
  * （实测：故意塞了未定义缩写 XQZ/SPQ、72 词长句、中文片段、无支撑断言 ⇒ 它回 NO-ISSUES）。
  * 只报「能逐条指到原文」的事实，不做语义判断。
  */
-const ABBREV_WHITELIST = new Set(['AI', 'ML', 'DL', 'NLP', 'LLM', 'LLMS', 'GPU', 'CPU', 'API', 'DOI', 'PDF',
+const ABBREV_WHITELIST = new Set(['AI', 'ML', 'DL', 'NLP', 'LLM', 'LLMS', 'GPU', 'CPU', 'API', 'DOI', 'PDF', 'PNG', 'CSV', 'OA', 'SOH', 'RUL', 'AND', 'OR', 'NOT',
   'RSS', 'URL', 'HTTP', 'HTTPS', 'USA', 'UK', 'EU', 'IEEE', 'ACM', 'RCT', 'CI', 'SD', 'RMSE', 'MAE', 'MAPE']);
 
 function builtinChecks(text, lang) {
@@ -1317,6 +1431,23 @@ async function selftest() {
     const code = await runAuthorLoop([path.join(d, '01-method.md')], [], {});
     return code === 2 ? true : 'code=' + code;
   });
+  ck('★承重数字分类：Section 3.1 / (1)(2) / [14] 不算承重；4.46 / 87.3% / 168 / 1.4826 的处理要正确', () => {
+    if (isLoadBearing('3.1')) return '把 1 位小数的节号当承重了';
+    if (isLoadBearing('1')) return '把单数字当承重了';
+    if (!isLoadBearing('0.874')) return '2 位小数的指标没算承重';
+    if (!isLoadBearing('87.3%')) return '百分比没算承重';
+    if (!isLoadBearing('168')) return '>10 的整数没算承重';
+    return true;
+  });
+
+  ck('★溯源报告按行聚合：一行 3 个缺失数字只报 1 条，且列出全部值', () => {
+    const r = traceNumbers('## 2. Methods\n\nWe used 0.874 and 4.46 and 168 cycles.\n', '');
+    if (r.status !== 'FAIL') return '没判 FAIL';
+    const lines = r.out.split('\n').filter(Boolean);
+    if (lines.length !== 1) return '没聚合：' + lines.length + ' 条';
+    return (lines[0].indexOf('0.874') >= 0 && lines[0].indexOf('4.46') >= 0 && lines[0].indexOf('168') >= 0)
+      ? true : '聚合行没列全：' + lines[0];
+  });
   // 清理放在**所有臂之后**（先清理后测试会让后加的臂假红 —— 这轮踩过一次）
   server.close();
   try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* 清理失败不致命 */ }
@@ -1417,5 +1548,6 @@ if (require.main === module) {
 module.exports = {
   buildBriefs, briefFor, promptFor, quickIssues, bannedWords, runGeneration, demoSpec,
   resolveEngine, probeLocal, panelEngine, scoreModel, scaffoldFor, stripEchoHeading, LOCAL_PROBES,
-  hostHandoff, runReview, runMachineChecks, builtinChecks, suggestPrompt, askVia
+  hostHandoff, runReview, runMachineChecks, builtinChecks, suggestPrompt, askVia,
+  runAuthorLoop, traceNumbers, traceCitations, bibEntryCount, placeholders, verdictOf
 };
