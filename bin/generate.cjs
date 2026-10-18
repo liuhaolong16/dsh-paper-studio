@@ -225,18 +225,21 @@ function getJson(urlStr, timeoutMs) {
 }
 
 /**
- * 本地模型挑哪个：**装得下整节简报** > 会写 > 参数量。
- * 实测依据：同一台机上 `qwen2.5vl:3b`（视觉）与 `qwen2.5-3b-32k`（文本+大上下文）都在，
- * 写正文该选后者——用视觉模型写论文文本既慢又容易跑偏，所以给视觉模型明确降权。
+ * 本地模型挑哪个：**参数量 > 指令微调 > 上下文够用 > 非视觉**。
+ * ★ 2026-10-19 修正：上一版把"大上下文"给到 30 分，导致装了 7B 之后**仍然会选 3B-32k**
+ *   （实测：`qwen2.5-3b-32k` 胜 `qwen2.5:7b-instruct`）。而写一节正文只需要 2–4k 上下文，
+ *   32k 早够 —— 让上下文压倒参数量等于"装了更好的模型却不用它"。
+ *   现在参数量上限 40 分（14B 打满、7B 约 21、3B 约 10.5），上下文只做"够用即加分"（6 分）。
  */
 function scoreModel(name) {
   const n = String(name || '').toLowerCase();
   let s = 0;
-  if (/32k|64k|128k|65536|131072/.test(n)) s += 30;
-  if (/(^|[^a-z])(vl|vision|llava|mmproj)([^a-z]|$)/.test(n)) s -= 25;
-  if (/instruct|chat/.test(n)) s += 2;
   const m = /(\d+(?:\.\d+)?)\s*b(?![a-z0-9])/.exec(n);
-  if (m) s += Math.min(14, Number(m[1]));
+  if (m) s += Math.min(40, Number(m[1]) * 1.5);
+  if (/32k|64k|128k|65536|131072/.test(n)) s += 6;
+  else if (/16k|8k/.test(n)) s += 4;
+  if (/instruct|chat/.test(n)) s += 5;                                  // 没微调过的基座不听指令
+  if (/(^|[^a-z])(vl|vision|llava|mmproj)([^a-z]|$)/.test(n)) s -= 25;   // 视觉模型写论文次优
   return s;
 }
 
