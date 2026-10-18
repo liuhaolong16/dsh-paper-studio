@@ -1,0 +1,121 @@
+{
+ "version": "v1.0.0",
+ "corpus": "D:/deep seek工作区1/paper-gene/corpus",
+ "at": "2026-10-18T10:35:11.618Z",
+ "snapshot": {
+  "P1-Dropout-Hinton2012.txt": {
+   "number-consistency": {
+    "status": "PASS",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "SKIP",
+    "codes": []
+   }
+  },
+  "P2-Transformer-Vaswani2017.txt": {
+   "number-consistency": {
+    "status": "SKIP",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "REVIEW",
+    "codes": []
+   }
+  },
+  "P3-ResNet-He2016.txt": {
+   "number-consistency": {
+    "status": "PASS",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P1-LLMAgents-survey-2308.11432.txt": {
+   "number-consistency": {
+    "status": "SKIP",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "REVIEW",
+    "codes": []
+   }
+  },
+  "P2-MaterialsDiscovery-review-2508.03278.txt": {
+   "number-consistency": {
+    "status": "PASS",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P3-InformationPlane-review-2003.09671.txt": {
+   "number-consistency": {
+    "status": "SKIP",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P1-OU-thesis.txt": {
+   "number-consistency": {
+    "status": "WARN",
+    "codes": [
+     "MULTI_CONTEXT"
+    ]
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P2-OU-dissertation-PhD.txt": {
+   "number-consistency": {
+    "status": "PASS",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P2-UTwente-BSc-thesis.txt": {
+   "number-consistency": {
+    "status": "SKIP",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P1-FADL-federated-1811.11400.txt": {
+   "number-consistency": {
+    "status": "WARN",
+    "codes": [
+     "CYCLES_EPOCHS"
+    ]
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  },
+  "P2-ML-EHR-nonadherence-1811.12234.txt": {
+   "number-consistency": {
+    "status": "PASS",
+    "codes": []
+   },
+   "abstract-strength": {
+    "status": "OK",
+    "codes": []
+   }
+  }
+ }
+}

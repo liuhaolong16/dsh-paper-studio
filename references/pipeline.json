@@ -1394,7 +1394,8 @@
     "misflag.cjs": "node bin/misflag.cjs --selftest",
     "disclose.cjs": "node bin/disclose.cjs --selftest",
     "presubmit-all.cjs": "node bin/presubmit-all.cjs --selftest",
-    "abstract-strength.cjs": "node bin/abstract-strength.cjs --selftest"
+    "abstract-strength.cjs": "node bin/abstract-strength.cjs --selftest",
+    "corpus-regression.cjs": "node bin/corpus-regression.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",

@@ -3,6 +3,22 @@
 
 # 变更记录
 
+## v3.50.0 —— 2026-10-18
+
+**新增 `corpus-regression`：把「判据在真实论文上会报什么」固化成基线 —— 补上自检证明不了的那一半。**
+
+- **为什么必须做**：昨天新增「三套值并存」后，用 11 份真实原文回扫 **11/11 全 FAIL**。而当时 **自检 19/19 全绿、audit 6/6 全绿，一条都没看出来** —— 因为自检只覆盖我们自己造的夹具，六个误报族全部只出现在真实文本里。⇒ **夹具全绿 ≠ 判据可用**。
+- **做法**：对语料目录下每份 `*.txt` 跑指定门（默认 `number-consistency` + `abstract-strength`），记录 `status` 与 `issue codes`，与 `references/corpus-baseline.json` 比对：
+  - **恶化**（PASS/SKIP → WARN/REVIEW/FAIL，或 FAIL 的 code 集合变大）⇒ **报红，退出码 1**；
+  - **改善**（FAIL/REVIEW → PASS/SKIP）⇒ 只提示，必须人确认后 `--update` 刷基线；
+  - 新文件记 `added`、消失记 `missing`（提示，不判红）；
+  - 工具自己崩溃 ⇒ 记 `CRASH`，**不把"跑不起来"记成"没问题"**。
+- **基线现状**：**11 份真实原文 × 2 门 = 22 格**，运行结果为**零退步**（`references/corpus-baseline.json`，2,185 字节）。
+- **`--selftest` 5/5**，含**必失败臂**：把基线里"三分值那格"人为改回 PASS（模拟判据曾经更宽松）⇒ 现在必须判**退步**；另有改善、新增、缺失三种分支各一例。
+- **诚实边界（写进输出）**：**基线记录的是「当时的行为」，不是「正确的行为」** —— 出现退步要先查判据，**不许直接 `--update` 把红刷绿**。
+- 登记：`pipeline.json` selfchecks **48 条** · 能力登记表 **98 条**（`env.paper-corpus-regression`）；`audit` **6/6 全绿**。
+- 打包预检（`npm pack --dry-run`）：**162 个文件 / 1,084 KB**，新增的两个 `bin/*.cjs` 与 `references/corpus-baseline.json` **全部在内**。
+
 ## v3.49.0 —— 2026-10-18
 
 **新增 `abstract-strength`：摘要强度 ≤ 正文限定门（图谱 R1）—— 四个图谱门里最后一个缺口补上。**
