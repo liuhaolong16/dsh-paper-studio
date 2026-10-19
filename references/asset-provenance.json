@@ -24,6 +24,22 @@
       "upstream": "https://www.zotero.org/styles/（CSL 官方样式库）",
       "attribution_required": true,
       "note": "来源与作者见 assets/csl/PROVENANCE.md；未改动内容"
+    },
+    {
+      "file": "assets/ui-style/style-card.paper-editorial.json",
+      "sha256": "sha256:f3734964658fb5cb70a4793c9637f48d7e2648680ffd6ea9f7732cbbaf02f575",
+      "license": "MIT",
+      "upstream": "https://github.com/luckymaomi/ui（Editorial 风格卡，MIT）",
+      "attribution_required": true,
+      "note": "改编：保留 token 结构与禁止项思路，按论文工具阅读场景重写；署名见 NOTICE.md「随包分发的第三方资产」"
+    },
+    {
+      "file": "assets/ui-style/prompt.template.md",
+      "sha256": "sha256:cafb68f46a61f47e86e3ada50fa3cb4321ffa9f6ecc5754c3ea3475e9cc9da5f",
+      "license": "MIT",
+      "upstream": "本仓自产（基于上述风格卡与 ui-clarity 原则重写）",
+      "attribution_required": false,
+      "note": "本仓自产，按 MIT 随包分发"
     }
   ]
 }

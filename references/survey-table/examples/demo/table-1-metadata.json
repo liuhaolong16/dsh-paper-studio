@@ -1,0 +1,17 @@
+{
+  "tableId": "table-1",
+  "title": "Condition-normalized electrochemical evidence (demo)",
+  "note": "Entries retain bound to the stated conditions; the ± does not imply an unconditional cross-study ranking.",
+  "columns": [
+    { "id": "material", "label": "Material", "type": "text" },
+    { "id": "temperature", "label": "Temperature", "type": "numeric", "unit": "°C", "condition": true },
+    { "id": "atmosphere", "label": "Atmosphere", "type": "text", "condition": true },
+    { "id": "scale", "label": "Scale", "type": "text", "condition": true },
+    { "id": "normalization", "label": "Normalization", "type": "text", "condition": true },
+    { "id": "comparison", "label": "Comparison", "type": "text" }
+  ],
+  "rows": [
+    { "id": "r1", "label": "Reference cell at 750 °C" },
+    { "id": "r2", "label": "Reference cell at 800 °C" }
+  ]
+}

@@ -2302,7 +2302,8 @@ studio draft 只产**规划文档**（骨架/证据表/跑法），不产正文�
 
 | # | 缺陷 | 现象 | 修法 |
 |---|---|---|---|
-| ① | 禁用词从**所有** WORD_LISTS 抽词 | 把 machine / learning / large / language 当禁用词（它们是 FORBIDDEN_OPENING 短语规则的碎片）→ **机器学习论文无法写方法** | 改为只取 evise.AI_MARKERS（词级）+ stylecheck.FILLERS |
+| ① | 禁用词从**所有** WORD_LISTS 抽词 | 把 machine / learning / large / language 当禁用词（它们是 FORBIDDEN_OPENING 短语规则的碎片）→ **机器学习论文无法写方法** | 改为只取 
+evise.AI_MARKERS（词级）+ stylecheck.FILLERS |
 | ② | 同上，抽到 state 这类高频常用词 | we state its assumptions 被判"使用禁用词" | 加 OVERCOMMON 剔除表（state/only/also/into/framework/solution…） |
 | ③ | 必现要素用中文子串去英文正文里找 | 简报写"数据来源与许可"，正文是英文 ⇒ **必然"缺失"** | CJK 要素改为**记入 notes「需人工确认」，不判红**；ASCII 要素才做子串机检 |
 
@@ -2468,3 +2469,16 @@ node bin\generate.cjs --author-loop --draft <稿.md|目录> --material <素材.m
 - 论文 A 中文初稿（105 KB）：`placeholders=BLOCKED`（稿内确有「待核实项（不猜）」标记）——这正是该门要拦的东西。
 
 自检 33/33 · 全量 254/254 · audit 6/6。
+
+## 3.59.0 — 2026-10-19
+
+**新增两个能力：综述表格引用溯源（	able-trace）+ UI 风格约束（style-card）。两者的共同点是「把 AI 的自由度换成可核对的约束」。**
+
+- **in/table-trace.cjs（自检 8/8）**：综述对比表的四层证据链——fulltext（带 DOI/页码、声明已对照 PDF）→ structured/parsing-qa → table-metadata（列/单位/条件列/行/表注）→ table-citations（逐格 → 文献键 → DOI + 页码 + ≥20 字原文）。判据：数值格必有出处、登记来源必须被引用、行列一致、表注存在。判定码 12 个；--example 可跑 demo；资产在 
+eferences/survey-table/。
+- **in/style-card.cjs（自检 4/4）**：默认卡 ssets/ui-style/style-card.paper-editorial.json（暖米白/软黑、直角、无阴影、1px 边框、衬线标题+无衬线正文、状态色仅四种、23 条禁止类名 + 6 条禁止正则）；--card/--prompt/--check/--selftest；卡外颜色、圆角阴影、渐变、彩色单边强调一律报红。
+- 登记：
+eferences/pipeline.json 的 selfchecks 加两条；能力登记表加 env.paper-table-trace / env.paper-style-card；随包资产台账补 ssets/ui-style/*（style-card 改编自 luckymaomi/ui，MIT，署名见 NOTICE.md）。
+- 读数：studio **254/254**（未变）· audit **6/6** · package-audit **11/11** · license-audit **PASS**（FAIL 0）· 两个新工具自检 **8/8** / **4/4**。
+- 注：本轮未改插件工具面（paper_studio 的 action 枚举与 plugin/dist 不动），两个新工具是 CLI/资产，宿主可直接 
+ode bin/<tool>.cjs 调用。

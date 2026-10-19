@@ -1,0 +1,80 @@
+{
+  "name": "paper-editorial",
+  "label": "论文工具 · 编辑杂志风（克制版）",
+  "source": "改编自 luckymaomi/ui 的 Editorial 风格卡（MIT），按论文工具的阅读场景收紧",
+  "colors": {
+    "bg": "#F9F8F6",
+    "surface": "#FFFFFF",
+    "fg": "#1C1C1C",
+    "fgSecondary": "rgba(28,28,28,0.66)",
+    "fgTertiary": "rgba(28,28,28,0.42)",
+    "border": "rgba(28,28,28,0.12)",
+    "borderStrong": "rgba(28,28,28,0.32)",
+    "accent": "#1C1C1C",
+    "status": {
+      "success": "#2F6B4F",
+      "warning": "#8A6A2F",
+      "danger": "#A33A3A",
+      "info": "#3A5A7A"
+    }
+  },
+  "radius": { "card": "0", "input": "0", "button": "0", "full": "0" },
+  "border": { "width": "1px", "style": "solid", "color": "rgba(28,28,28,0.12)" },
+  "shadow": { "none": "none", "hover": "none", "focus": "0 0 0 2px rgba(28,28,28,0.24)" },
+  "typography": {
+    "heading": "serif",
+    "body": "sans",
+    "mono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    "headingStack": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", Georgia, serif",
+    "bodyStack": "Inter, \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+    "sizes": {
+      "hero": "40px",
+      "h1": "32px",
+      "h2": "24px",
+      "h3": "20px",
+      "body": "15px",
+      "small": "13px",
+      "label": "12px"
+    },
+    "lineHeight": { "heading": "1.15", "body": "1.7" },
+    "weights": { "heading": "400", "body": "400", "strong": "500" }
+  },
+  "spacing": {
+    "scale": [4, 8, 12, 16, 24, 32, 48, 64],
+    "section": "48px",
+    "container": "24px",
+    "card": "20px",
+    "gap": { "sm": "8px", "md": "16px", "lg": "24px" }
+  },
+  "components": {
+    "button": { "primary": "bg fg / text bg / 1px border fg / hover 反转", "secondary": "transparent / 1px borderStrong / hover bg fg 0.04" },
+    "card": { "surface": "bg surface / 1px border / 无阴影 / 无圆角" },
+    "table": { "header": "bg rgba(28,28,28,0.04) / 12px label / 字距 0.08em / 全大写可选", "row": "1px 分隔线 / 数字列右对齐 / 首列左对齐", "scroll": "容器 max-height + overflow:auto（表头 sticky）" },
+    "input": { "style": "1px 底边（或全边框）/ focus 变 fg / 无外发光" }
+  },
+  "forbidden": {
+    "classes": [
+      "rounded-sm", "rounded", "rounded-md", "rounded-lg", "rounded-xl", "rounded-2xl", "rounded-3xl", "rounded-full",
+      "shadow-sm", "shadow", "shadow-md", "shadow-lg", "shadow-xl", "shadow-2xl",
+      "border-2", "border-4", "border-8",
+      "bg-gradient-to-r", "bg-gradient-to-l", "bg-gradient-to-t", "bg-gradient-to-b",
+      "font-black", "font-extrabold"
+    ],
+    "patterns": [
+      "^rounded-(?!none)", "^shadow-(?!none)", "^border-[248]", "^bg-gradient-",
+      "border-(l|r)-[a-z]+-[0-9]{3}", "bg-(red|blue|green|yellow|purple|pink)-[0-9]{3}"
+    ],
+    "reasons": {
+      "rounded-*": "本卡只用直角；圆角大小不统一是风格漂移的第一来源",
+      "shadow-*": "阴影会随背景变化，跨页面最难对齐；用 1px 边框表达层次",
+      "border-2+": "粗边框只属于 Neo-Brutalist，混进来就变成两套风格",
+      "bg-gradient-*": "渐变是模型默认审美，必须显式禁掉",
+      "border-(l|r)-彩色": "彩色单边强调会与状态色混淆；状态用完整边框+浅底+文字色"
+    }
+  },
+  "required": {
+    "page": ["一个主标题", "分区（入口/摘要/异常/明细/操作）", "容器内边距一致"],
+    "table": ["thead", "数字列右对齐", "容器 overflow:auto", "空态文案"],
+    "a11y": ["正文对比度 ≥ 4.5:1", "focus 可见", "不只靠颜色传达状态"]
+  }
+}

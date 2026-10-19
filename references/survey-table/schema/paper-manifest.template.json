@@ -1,0 +1,23 @@
+{
+  "paper": {
+    "id": "02-02-01-002",
+    "title": "示例论文标题",
+    "doi": "10.0000/example",
+    "zoteroCollection": "示例综述"
+  },
+  "fulltext": [
+    {
+      "file": "fulltext/02-02-01-002-06-fulltext.md",
+      "sourcePdf": "02-02-01-002.pdf",
+      "pages": 12,
+      "checkedAgainstPdf": true
+    }
+  ],
+  "tables": [
+    {
+      "id": "table-1",
+      "metadata": "table-1-metadata.json",
+      "citations": "table-1-citations.json"
+    }
+  ]
+}

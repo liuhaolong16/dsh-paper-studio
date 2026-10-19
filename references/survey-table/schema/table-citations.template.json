@@ -1,0 +1,24 @@
+{
+  "tableId": "table-1",
+  "sources": {
+    "zotero:AAAA1111": {
+      "doi": "10.1039/D1EE01234A",
+      "title": "Source paper title",
+      "year": 2021,
+      "page": "p.4",
+      "locator": "Table 2 / L120-L124",
+      "quote": "At 750 °C in dry H2 the area-specific resistance was 0.22 Ω cm2.",
+      "file": "fulltext/02-02-01-002-06-fulltext.md"
+    }
+  },
+  "cells": {
+    "r1": {
+      "material": [{ "source": "zotero:AAAA1111" }],
+      "temperature": [{ "source": "zotero:AAAA1111" }],
+      "atmosphere": [{ "source": "zotero:AAAA1111" }],
+      "scale": [{ "source": "zotero:AAAA1111" }],
+      "normalization": [{ "source": "zotero:AAAA1111" }],
+      "comparison": [{ "source": "zotero:AAAA1111" }]
+    }
+  }
+}

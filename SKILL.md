@@ -274,6 +274,27 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 - 自检：`node bin/keys-store.cjs --selftest` ⇒ **10/10**（含三条必失败面：损坏 JSON 不抛且给原因 · 非法 provider 名被拒 · 原子写不留残片）；studio 另有 8 条面板夹具，全部走临时 `DSH_PAPER_KEYS_FILE`，**不碰真凭据**。
 - 面板本体（客户端半体）做成**独立插件**（`dsh-paper-keys`）：paper-studio 保持"零面板"承诺，卸载面板不影响论文能力本体。
 
+## 综述对比表 · 引用溯源（`table-trace` · v3.59.0）
+
+> 解决的是**表格里的数字没有出处**：审稿人问"这个 0.09 是哪来的"时，能回到原文那一页。
+
+- **四层证据链**：`fulltext.md`（带 DOI/页码，声明已对照原始 PDF）→ `structured.json` + `parsing-qa.md` → `table-metadata.json`（列/单位/条件列/行/表注）→ `table-citations.json`（逐格 → 文献键 → DOI + 页码 + ≥20 字原文）。
+- **命令**：`node bin/table-trace.cjs <manifest.json> [--json]` · `--example` · `--selftest`（**8/8**）。退出码 0/1/2。
+- **判据**：数值格必有引用；每条来源需 DOI/URL + 页码或定位 + ≥20 字原文片段；登记来源必须被引用；行列一致；表注存在；全文需声明已对照 PDF。
+- **判定码**：`E_SOURCE_NO_ID` / `E_SOURCE_NO_LOC` / `E_SOURCE_NO_QUOTE` / `E_SOURCE_UNKNOWN` / `E_SOURCE_UNUSED` / `E_NUM_UNSOURCED` / `E_NUM_CELL_MISSING` / `E_ROW_UNKNOWN` / `E_COL_UNKNOWN` / `E_NOTE_MISSING` / `E_FULLTEXT_UNCHECKED` / `E_FILE_MISSING`。
+- **资产**：`references/survey-table/`（README + 三个 schema 模板 + 可跑 demo）。
+- **分工**：`claim-anchor` 管正文主张→锚点，`author-loop` 管正文数字溯源；本工具管**综述表格**这一层。顺序：表格过 `table-trace` → 再进 `author-loop`。
+
+## UI 风格约束（`style-card` · v3.59.0）
+
+> 解决的是**AI 生成的界面丑且风格漂移**：根因不是缺审美，是缺约束——给不出 token 时，模型只会回落到训练集里频率最高的那套默认值。
+
+- **默认卡**：`assets/ui-style/style-card.paper-editorial.json`（暖米白 `#F9F8F6` / 软黑 `#1C1C1C`、直角、无阴影、1px 边框、衬线标题+无衬线正文、状态色仅四种、23 条禁止类名 + 6 条禁止正则）。
+- **命令**：`node bin/style-card.cjs --list | --card [id] | --prompt | --check <文件或目录> | --selftest`（**4/4**）。
+- **机检**：卡外颜色、`rounded-*`、`shadow-*`、`border-2+`、渐变、彩色单边强调一律报红；`--check` 退出码 0/1。
+- **用法**：把卡 JSON + `assets/ui-style/prompt.template.md` 一起塞进提示词；一个产品同时只允许一张卡生效，换页面不换卡。
+- **边界**：只判可机检的风格约束，不判版式美学；最终版式仍需人看。
+
 <!-- AUTO:skill-modules:start 由 bin/sync-skill-modules.cjs 生成；勿手改 -->
 
 ## 能力模块索引（按需要单独加载 · 7 个模块）

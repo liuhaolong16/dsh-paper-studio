@@ -1399,7 +1399,9 @@
     "latex.cjs": "node bin/latex.cjs --selftest",
     "tex-engine.cjs": "node bin/tex-engine.cjs --selftest",
     "generate.cjs": "node bin/generate.cjs --selftest",
-    "local-engine.cjs": "node bin/local-engine.cjs --selftest"
+    "local-engine.cjs": "node bin/local-engine.cjs --selftest",
+    "table-trace.cjs": "node bin/table-trace.cjs --selftest",
+    "style-card.cjs": "node bin/style-card.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",

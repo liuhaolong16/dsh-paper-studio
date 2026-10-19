@@ -84,3 +84,9 @@
 <!-- ATTR-COURTESY:end -->
 
 > 机器核：`node bin/license-audit.cjs` —— **漏署**（表达源不在须署名区）与**虚标**（思想源被写进须署名区）都会 **FAIL**；NOTICE 缺分区标记同样 FAIL（无法判定 ≠ 通过）。
+
+## 随包分发的第三方资产 · UI 风格卡（2026-10-19 新增）
+
+- `assets/ui-style/style-card.paper-editorial.json`：改编自 [luckymaomi/ui](https://github.com/luckymaomi/ui)（**MIT**）的 Editorial 风格卡；只保留 token 结构与「禁止项」思路，按论文工具的阅读场景重写，未逐字复制其页面代码。署名：luckymaomi。
+- `assets/ui-style/prompt.template.md`：本仓自产（MIT），依据上述风格卡与同一作者的 ui-clarity 原则（分区 / 对齐 / 表格可读 / token 纪律）重写。
+

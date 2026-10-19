@@ -1,0 +1,32 @@
+{
+  "tableId": "table-1",
+  "sources": {
+    "zotero:AAAA1111": {
+      "doi": "10.0000/demo.002",
+      "title": "Demo source paper",
+      "year": 2024,
+      "page": "p.4",
+      "locator": "Table 2 / demo-fulltext L7-L9",
+      "quote": "At 750 °C in dry H2, the area-specific resistance of the reference cell was 0.22 Ω cm2.",
+      "file": "fulltext/02-02-01-002-06-fulltext.md"
+    }
+  },
+  "cells": {
+    "r1": {
+      "material": [{ "source": "zotero:AAAA1111" }],
+      "temperature": [{ "source": "zotero:AAAA1111" }],
+      "atmosphere": [{ "source": "zotero:AAAA1111" }],
+      "scale": [{ "source": "zotero:AAAA1111" }],
+      "normalization": [{ "source": "zotero:AAAA1111" }],
+      "comparison": [{ "source": "zotero:AAAA1111" }]
+    },
+    "r2": {
+      "material": [{ "source": "zotero:AAAA1111" }],
+      "temperature": [{ "source": "zotero:AAAA1111" }],
+      "atmosphere": [{ "source": "zotero:AAAA1111" }],
+      "scale": [{ "source": "zotero:AAAA1111" }],
+      "normalization": [{ "source": "zotero:AAAA1111" }],
+      "comparison": [{ "source": "zotero:AAAA1111" }]
+    }
+  }
+}
