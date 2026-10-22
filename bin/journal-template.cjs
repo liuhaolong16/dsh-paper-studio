@@ -129,7 +129,8 @@ function docxFacts(file) {
 
   const colors = [];
   for (const m of doc.matchAll(/<w:color\b[^>]*w:val="([^"]+)"/g)) colors.push(m[1].toUpperCase());
-  for (const m of styles.matchAll(/<w:color\b[^>]*w:val="([^"]+)"/g)) colors.push(m[1].toUpperCase());
+  const styleColors = [];
+  for (const m of styles.matchAll(/<w:color\b[^>]*w:val="([^"]+)"/g)) styleColors.push(m[1].toUpperCase());
 
   const styleFacts = {};
   for (const block of styles.split(/<w:style\b/).slice(1)) {
@@ -162,6 +163,7 @@ function docxFacts(file) {
     },
     line_spacing: line ? Number(line) / 240 : null,
     colors: Array.from(new Set(colors)),
+    styleColors: Array.from(new Set(styleColors)),
     styles: styleFacts,
   };
 }
@@ -385,6 +387,9 @@ function selftest() {
   const styleFactsOk = JSON.parse(JSON.stringify(styleFacts));
   styleFactsOk.styles.S1.size_pt = 12;
   check('style size match must pass', compareDocx(styleFactsOk, styleSpec).length === 0, compareDocx(styleFactsOk, styleSpec));
+  const styleColorOnly = JSON.parse(JSON.stringify(good));
+  styleColorOnly.styleColors = ['365F91', '4F81BD'];
+  check('latent style colors must not fail', compareDocx(styleColorOnly, genericSpec).length === 0, compareDocx(styleColorOnly, genericSpec));
 
   const texGood = { cls: 'elsarticle', options: ['a4paper', '10pt'] };
   const texSpec = { latex: { class: 'elsarticle', required_options: ['a4paper', '10pt'] } };

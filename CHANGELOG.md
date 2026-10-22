@@ -2565,3 +2565,14 @@ ode bin/<tool>.cjs 调用。
 - 通过时任务书 `00-写作任务书.md` 会写入「**期刊模板（严格按此）**：<刊>（<id>）→ <spec 路径>；<Word/LaTeX 摘要>」。
 - 实测：未知刊 exit 1；JoES `--format docx` exit 1；MDPI 通过且任务书写入模板行。
 - 读数：studio 254/254 · journal-template 11/11 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.68.0 — 2026-10-22
+
+**修掉颜色误报：样式里的潜在颜色不再算正文违规，自检 11→12。**
+
+- `docxFacts` 把 `word/document.xml` 的直接颜色与 `word/styles.xml` 的样式颜色分开：`colors`（正文）与 `styleColors`（潜在样式）。
+- `compareDocx` 只对正文颜色做严格判定；样式颜色改由 `styleMap` 的角色级检查负责。默认 Word 模板里一堆 theme 色（365F91/4F81BD/…）不再刷屏。
+- 实测 `run/fixtures/manuscript_zh.docx` vs `generic`：从 22 项误报收敛为 **3 项真问题**（Letter 纸 vs A4；默认字号 11pt vs 12pt）。
+- 新增 selftest：潜在样式色必须不判失败；`--selftest` **12/12**。
+- 读数：studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

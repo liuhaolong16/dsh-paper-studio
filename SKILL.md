@@ -301,7 +301,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 
 - **知识库**：`templates/`（`index.json` + 每刊 `spec.json` + `files/` 官方模板原件）；每条的 `status` 为 `verified` / `verified-partial` / `fallback`。
 - **已收录（2026-10-22）**：`generic`（本仓通用 Word 格式）· `elsevier-elsarticle`（Elsevier/JoES，LaTeX）· `ieee-journals`（IEEEtran + IEEE Transactions Word 模板）· `acs-journals`（achemso）· `plos-one`（指南，partial）· `mdpi-journals`（MDPI Word 模板，A4/2.5-1.6-1.27cm/Palatino Linotype）· `taylor-francis`（T&F Word 模板，A4/2.5-3.0cm/Times 12pt/双倍行距）· `cn-haut` / `cn-hjnu`（中文期刊官方须知，partial，模板待取）。
-- **命令**：`node bin/journal-template.cjs --list` · `--resolve --journal <刊名> [--format docx|latex]` · `--preflight --journal <名> [--format docx|latex]`（PASS/BLOCK，写作前先跑）· `--scaffold --journal <id> --out <文件>` · `--check <稿.docx> --journal <id>` · `--check-tex <稿.tex> --journal <id>` · `--selftest`（**11/11**）；docx 还查命名样式（Title / Heading1 / References）的字号与加粗。
+- **命令**：`node bin/journal-template.cjs --list` · `--resolve --journal <刊名> [--format docx|latex]` · `--preflight --journal <名> [--format docx|latex]`（PASS/BLOCK，写作前先跑）· `--scaffold --journal <id> --out <文件>` · `--check <稿.docx> --journal <id>` · `--check-tex <稿.tex> --journal <id>` · `--selftest`（**12/12**）；docx 还查命名样式（Title / Heading1 / References）的字号与加粗。
 - **机检**：docx 查页面尺寸、四边页边距、默认字体（ascii/eastAsia）、字号、行距、非黑色文字；tex 查 `\documentclass` 类名与必需选项（含 `journal=` 前缀）。
 - **缺模板判定码**：`NO_TEMPLATE`（整刊未收录）· `NO_DOCX_TEMPLATE`（只有 LaTeX/指南，缺 Word 模板）——两者都必须先收集，不许回退到 `generic`。
 - **draft 已强制**：`paper-studio draft --out <目录> --journal <刊>` 开工前自动跑模板预检；缺模板直接 exit 1（`--format docx` 时要求 Word 模板）；任务书会写入“期刊模板（严格按此）”一行。

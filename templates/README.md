@@ -32,7 +32,7 @@ templates/
 2. **下载原件**：存到 `templates/<id>/files/`；记录来源 URL、抓取日期、HTTP 状态。
 3. **取格式参数**：从模板文件/官方指南原文取证（页边距、正文字体字号、行距、标题层级字号、颜色、参考文献样式），每项写进 `spec.json` 的 `sources[].note`。
 4. **登记**：`index.json` 加条目；`spec.json` 填 `files`（sha256）、`license`、`verified_at`。
-5. **机检**：`node bin/journal-template.cjs --list`、`--check-tex` 或 `--check` 必须过；`--selftest` 11/11。
+5. **机检**：`node bin/journal-template.cjs --list`、`--check-tex` 或 `--check` 必须过；`--selftest` 12/12。
 6. **不许猜**：官网打不开 / 被验证码挡住时，改用官方镜像（如 CTAN）或官方 PDF 指南；**不绕过付费墙、验证码、DRM**。拿不到就如实记 `status=unverified`，不得把 guess 写成 verified。
 
 ## 当前覆盖（2026-10-22）
