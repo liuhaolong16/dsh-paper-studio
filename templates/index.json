@@ -147,6 +147,31 @@
       "path": "templates/frontiers/spec.json",
       "verified_at": "2026-10-22",
       "strict": true
+    },
+    {
+      "id": "elsevier-data-in-brief",
+      "journal": "Data in Brief（Elsevier 官方 Word 模板）",
+      "aliases": [
+        "Data in Brief",
+        "DIB"
+      ],
+      "kind": "docx-template",
+      "status": "verified-partial",
+      "path": "templates/elsevier-data-in-brief/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
+    },
+    {
+      "id": "elsevier-methodsx",
+      "journal": "MethodsX（Elsevier 官方 Word 模板）",
+      "aliases": [
+        "MethodsX"
+      ],
+      "kind": "docx-template",
+      "status": "verified-partial",
+      "path": "templates/elsevier-methodsx/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
     }
   ]
 }

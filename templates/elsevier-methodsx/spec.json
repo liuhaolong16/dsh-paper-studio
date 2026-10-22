@@ -1,0 +1,70 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "elsevier-methodsx",
+  "journal": "MethodsX（Elsevier 官方 Word 模板）",
+  "aliases": [
+    "MethodsX"
+  ],
+  "publisher": "Elsevier",
+  "kind": "docx-template",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://www.sciencedirect.com/journal/journal-of-energy-storage/publish/guide-for-authors",
+      "note": "Elsevier Guide for authors 页内链接（2026-10-22 浏览器实读）",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://legacyfileshare.elsevier.com/promis_misc/MethodsX-Method-Article-Template.docx",
+      "note": "官方 MethodsX 方法文章模板（76615 bytes）",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "Elsevier 官方作者模板（站点条款）",
+    "redistributable": "unknown"
+  },
+  "docx": {
+    "template_file": "files/MethodsX-Method-Article-Template.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 1.27,
+      "bottom": 1.27,
+      "left": 1.27,
+      "right": 1.27
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "size_pt": 11
+    },
+    "line_spacing": 1.15,
+    "styleMap": {},
+    "note": "正文 11pt、行距 1.15；字体按 NormalWeb=Times New Roman 记录，样式层未统一声明"
+  },
+  "colors": {
+    "text": "#000000",
+    "allowed": [
+      "000000",
+      "1F497D",
+      "4472C4",
+      "0070C0"
+    ],
+    "note": "模板含深蓝/链接蓝"
+  },
+  "notes": [
+    "MethodsX 专用模板；不适用于普通 Elsevier 研究论文。"
+  ],
+  "files": [
+    {
+      "path": "files/MethodsX-Method-Article-Template.docx",
+      "sha256": "sha256:3e43b70f35be085ba67b68297d3b44b97af29cabcdc541532d1a6e328c123003",
+      "role": "word-template"
+    }
+  ]
+}

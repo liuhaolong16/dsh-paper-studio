@@ -1,0 +1,78 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "elsevier-data-in-brief",
+  "journal": "Data in Brief（Elsevier 官方 Word 模板）",
+  "aliases": [
+    "Data in Brief",
+    "DIB"
+  ],
+  "publisher": "Elsevier",
+  "kind": "docx-template",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://www.sciencedirect.com/journal/journal-of-energy-storage/publish/guide-for-authors",
+      "note": "Elsevier Guide for authors 页内链接（2026-10-22 浏览器实读）",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://legacyfileshare.elsevier.com/promis_misc/data-in-brief-article-template.docx",
+      "note": "官方 Data in Brief 文章模板（84299 bytes）",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "Elsevier 官方作者模板（站点条款）",
+    "redistributable": "unknown"
+  },
+  "docx": {
+    "template_file": "files/data-in-brief-article-template.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.54,
+      "bottom": 2.54,
+      "left": 2.54,
+      "right": 2.54
+    },
+    "default_font": {
+      "ascii": null,
+      "size_pt": 11
+    },
+    "line_spacing": null,
+    "styles": {
+      "Heading1": {
+        "size_pt": 16,
+        "bold": true
+      }
+    },
+    "styleMap": {
+      "Heading1": "Heading1"
+    },
+    "note": "正文字体未在样式层声明；字数/结构按 Guide。status=partial：字体项未取证"
+  },
+  "colors": {
+    "text": "#000000",
+    "allowed": [
+      "000000",
+      "4F81BD",
+      "4472C4"
+    ],
+    "note": "模板含标题蓝/强调蓝"
+  },
+  "notes": [
+    "这是 Elsevier 旗下 Data in Brief 的模板，不是通用 Elsevier 期刊模板。"
+  ],
+  "files": [
+    {
+      "path": "files/data-in-brief-article-template.docx",
+      "sha256": "sha256:5c02d5f9e0762e05f69c06d1d042ea800b6214427c82a78166863dfd17264190",
+      "role": "word-template"
+    }
+  ]
+}

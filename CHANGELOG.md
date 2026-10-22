@@ -2627,3 +2627,15 @@ ode bin/<tool>.cjs 调用。
 - 实测：`run/fixtures` 对 `generic` = **0/2**（两份稿都是 Letter + 11pt）；先 `--apply` 修到临时目录后再跑 = **2/2 通过**。
 - 用途：投稿包交付前、批量改格式后、换刊重排后的一次性验收。
 - 读数：journal-template 12/12 · verify 10/10 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.74.0 — 2026-10-22
+
+**Elsevier 旗下两个子刊的官方 Word 模板入库（Data in Brief / MethodsX）。**
+
+- 来源：ScienceDirect 的 Guide for authors 页内直链 → `legacyfileshare.elsevier.com/promis_misc/...docx`（该域可直下，84KB / 76KB）。
+- Data in Brief：A4 / 四边 2.54cm / 11pt / Heading1 16pt 加粗；正文字体未在样式层声明 ⇒ `verified-partial`。
+- MethodsX：A4 / 四边 1.27cm / Times New Roman 11pt / 行距 1.15 ⇒ `verified-partial`（样式层未统一声明字体）。
+- 说明：这不是“通用 Elsevier 期刊模板”——Elsevier 普通研究论文只给 LaTeX `elsarticle`，Word 按 Guide 的结构/字数要求，没有统一版式文件；已在 notes 写明。
+- `--verify` 从 10/10 → **12/12 通过**。
+- 读数：journal-template 12/12 · verify 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
