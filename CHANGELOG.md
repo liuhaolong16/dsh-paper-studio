@@ -2597,3 +2597,13 @@ ode bin/<tool>.cjs 调用。
 - 实测：`manuscript_zh.docx` 先 `--apply` generic → `--check` **通过**；再 `--apply` MDPI → `--check` **通过**（补建 3 个样式）。
 - 依赖：python-docx（走 `studio.resolvePython` 解析解释器）。
 - 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.71.0 — 2026-10-22
+
+**新增 `--build`：Markdown 按期刊 spec 直接生成 Word，写出来就是合规版式。**
+
+- `node bin/journal-template.cjs --build 稿.md --journal <刊> --out 新.docx`：`#` → Title、`##` → Heading1、`###` → Heading2、`####` → Heading3、`- ` → List Bullet，其余为正文；页面/页边距/字体/字号/行距/命名样式全部按 spec 落。
+- 修复点：`get_or_add_style` 现在优先用 spec 的真实 styleId（`MDPI12title` 等），不再误映射到内置 `Title`。
+- 实测：同一段 Markdown → `--build generic` → `--check` **通过**；`--build MDPI` → `--check` **通过**。
+- 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

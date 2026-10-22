@@ -469,6 +469,33 @@ function cmdPreflight(index, journal, format) {
   return 0;
 }
 
+function cmdBuild(index, md, journal, out) {
+  const entry = resolveJournal(index, journal);
+  if (!entry) { console.log(`缺模板：${journal} 不在知识库 ⇒ 先收集再写（NO_TEMPLATE）`); return 1; }
+  const spec = loadSpec(entry);
+  if (!spec.docx) { console.log(`该刊没有 Word 模板参数（kind=${spec.kind}）⇒ 不能按 Word 模板生成`); return 1; }
+  if (!md || !fs.existsSync(md)) { console.log(`前提层失败：Markdown 不存在 ${md}`); return 2; }
+  if (!out) { console.log('用法：--build <稿.md> --journal <名> --out <out.docx>'); return 2; }
+  let py;
+  try {
+    const studio = require('./studio.cjs');
+    py = studio.resolvePython(studio.readPipeline()).exe;
+  } catch (e) {
+    console.log('前提层失败：找不到可用 Python（' + String((e && e.message) || e).slice(0, 120) + '）');
+    return 2;
+  }
+  try {
+    const { execFileSync } = require('child_process');
+    const r = execFileSync(py, [path.join(__dirname, 'template_build.py'), md, specPathOf(entry), out], { encoding: 'utf8' });
+    console.log(`已按 ${entry.journal}（${entry.id}）生成：${out}`);
+    if (r.trim()) console.log('  ' + r.trim().split('\n').slice(-1)[0]);
+    return 0;
+  } catch (e) {
+    console.log('生成失败：' + String((e && (e.stdout || e.message)) || e).slice(0, 300));
+    return 1;
+  }
+}
+
 function cmdApply(index, docx, journal, out) {
   const entry = resolveJournal(index, journal);
   if (!entry) { console.log(`缺模板：${journal} 不在知识库 ⇒ 先收集再改（NO_TEMPLATE）`); return 1; }
@@ -512,6 +539,12 @@ function main(argv) {
       process.exitCode = cmdResolve(index, journal, opt('--format'));
       return;
     }
+    if (args.includes('--build')) {
+      const md = args[args.indexOf('--build') + 1];
+      if (!md || md.startsWith('--') || !journal) { console.log('用法：--build <稿.md> --journal <名> --out <out.docx>'); process.exitCode = 2; return; }
+      process.exitCode = cmdBuild(index, md, journal, opt('--out'));
+      return;
+    }
     if (args.includes('--apply')) {
       const inFile = args[args.indexOf('--apply') + 1];
       if (!inFile || inFile.startsWith('--') || !journal) { console.log('用法：--apply <in.docx> --journal <名> --out <out.docx>'); process.exitCode = 2; return; }
@@ -541,7 +574,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);
