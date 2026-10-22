@@ -2586,3 +2586,14 @@ ode bin/<tool>.cjs 调用。
 - 实测正文模板：Letter 21.59×27.94cm / 上下 2.01cm、左 2.26cm、右 2.08cm / Times New Roman 12pt / 单倍行距 / Title 16pt 加粗 / 正文色 020202。
 - `frontiers` 条目：`--preflight` PASS，`compareDocx` 0 问题；`--scaffold` 可复制模板起稿。
 - 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.70.0 — 2026-10-22
+
+**新增 `--apply`：按期刊 spec 重排已有 docx 的版面，修“格式不规范”不再靠手改。**
+
+- `node bin/journal-template.cjs --apply 旧稿.docx --journal <刊> --out 新稿.docx`：重写每个 section 的纸张尺寸与四边页边距、Normal 的西文字体/字号/行距/eastAsia 字体，以及 `styleMap` 角色的字号/加粗/颜色。
+- 本稿缺少模板样式时自动补建同名段落样式（实测 MDPI 的 `MDPI12title` / `MDPI21heading1` / `MDPI81references`）。
+- 实测：`manuscript_zh.docx` 先 `--apply` generic → `--check` **通过**；再 `--apply` MDPI → `--check` **通过**（补建 3 个样式）。
+- 依赖：python-docx（走 `studio.resolvePython` 解析解释器）。
+- 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

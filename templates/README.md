@@ -62,6 +62,7 @@ templates/
 node bin/journal-template.cjs --list
 node bin/journal-template.cjs --resolve --journal "Journal of Energy Storage" --format latex
 node bin/journal-template.cjs --preflight --journal MDPI --format docx
+node bin/journal-template.cjs --apply 旧稿.docx --journal MDPI --out 新稿.docx
 node bin/journal-template.cjs --scaffold --journal MDPI --out 稿.docx
 node bin/journal-template.cjs --check-tex 稿.tex --journal elsevier-elsarticle
 node bin/journal-template.cjs --check 稿.docx --journal generic

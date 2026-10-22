@@ -469,6 +469,33 @@ function cmdPreflight(index, journal, format) {
   return 0;
 }
 
+function cmdApply(index, docx, journal, out) {
+  const entry = resolveJournal(index, journal);
+  if (!entry) { console.log(`缺模板：${journal} 不在知识库 ⇒ 先收集再改（NO_TEMPLATE）`); return 1; }
+  const spec = loadSpec(entry);
+  if (!spec.docx) { console.log(`该刊没有 Word 模板参数（kind=${spec.kind}）⇒ 不能按模板重排 Word`); return 1; }
+  if (!docx || !fs.existsSync(docx)) { console.log(`前提层失败：文件不存在 ${docx}`); return 2; }
+  if (!out) { console.log('用法：--apply <in.docx> --journal <名> --out <out.docx>'); return 2; }
+  let py;
+  try {
+    const studio = require('./studio.cjs');
+    py = studio.resolvePython(studio.readPipeline()).exe;
+  } catch (e) {
+    console.log('前提层失败：找不到可用 Python（' + String((e && e.message) || e).slice(0, 120) + '）');
+    return 2;
+  }
+  try {
+    const { execFileSync } = require('child_process');
+    const r = execFileSync(py, [path.join(__dirname, 'template_apply.py'), docx, specPathOf(entry), out], { encoding: 'utf8' });
+    console.log(`已按 ${entry.journal}（${entry.id}）重排：${out}`);
+    if (r.trim()) console.log('  ' + r.trim().split('\n').slice(-1)[0]);
+    return 0;
+  } catch (e) {
+    console.log('重排失败：' + String((e && (e.stdout || e.message)) || e).slice(0, 300));
+    return 1;
+  }
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const opt = (name) => {
@@ -483,6 +510,12 @@ function main(argv) {
     if (args.includes('--resolve')) {
       if (!journal) { console.log('用法：--resolve --journal <刊名或 id> [--format docx|latex]'); process.exitCode = 2; return; }
       process.exitCode = cmdResolve(index, journal, opt('--format'));
+      return;
+    }
+    if (args.includes('--apply')) {
+      const inFile = args[args.indexOf('--apply') + 1];
+      if (!inFile || inFile.startsWith('--') || !journal) { console.log('用法：--apply <in.docx> --journal <名> --out <out.docx>'); process.exitCode = 2; return; }
+      process.exitCode = cmdApply(index, inFile, journal, opt('--out'));
       return;
     }
     if (args.includes('--preflight')) {
@@ -508,7 +541,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);
