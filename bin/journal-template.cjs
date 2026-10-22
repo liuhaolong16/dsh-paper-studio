@@ -251,9 +251,10 @@ function cmdResolve(index, journal, format) {
   }
   const spec = loadSpec(entry);
   if (format === 'docx' && !spec.docx) {
+    const what = spec.latex ? 'LaTeX 类模板' : (spec.kind === 'guidelines' ? '格式指南（guidelines）' : '非 Word 模板');
     console.log(JSON.stringify({
       ok: false, code: 'NO_DOCX_TEMPLATE', journal: entry.journal, id: entry.id, kind: entry.kind,
-      guidance: '该刊目前只有 LaTeX 类模板；Word 投稿需先收集该刊 Word 模板并入知识库（不得套用 LaTeX 参数或通用模板）。'
+      guidance: `该刊目前只有${what}；Word 投稿需先收集该刊 Word 模板并入知识库（不得套用其它格式或通用模板）。`
     }, null, 2));
     return 1;
   }

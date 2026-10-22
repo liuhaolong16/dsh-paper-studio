@@ -2503,3 +2503,13 @@ ode bin/<tool>.cjs 调用。
 - **`--scaffold`**：从 `spec.docx.template_file` 或 `spec.latex.template` 复制官方模板到目标路径；无模板文件返回 `NO_TEMPLATE_FILE`。
 - 机检颜色白名单支持 `colors.allowed`（MDPI 的超链接蓝/灰/暗红不再误报）。
 - 读数：journal-template **9/9** · studio **254/254** · audit **6/6** · package-audit **11/11** · license-audit **PASS**。
+
+
+## 3.62.0 — 2026-10-22
+
+**中文期刊入库（须知级）：河南工业大学学报（自然科学版）、汉江师范学院学报。**
+
+- `cn-haut`：官方投稿须知——中文摘要 300 字（含【目的】【方法】【结果】【结论】）、英文摘要 ≥400 词、GB/T 7714—2015、研究论文 ≥20 篇/近 5 年 ≥50%、三线表、标题 1/1.1/1.1.1。
+- `cn-hjnu`：官方来稿须知——全文 ≤8500 字、摘要 ≤200 字、关键词 3–5、GB/T 7714—2015、三线表、插图 3M+ jpg；官方要求参照“论文模板”，但模板只在 CNKI 投稿系统内。
+- 两条均为 `guidelines` / `verified-partial`：`docx=null`，Word 投稿仍会 `NO_DOCX_TEMPLATE` 阻断，直到取得模板文件。
+- 读数：journal-template 9/9 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

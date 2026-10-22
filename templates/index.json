@@ -91,6 +91,33 @@
       "path": "templates/mdpi-journals/spec.json",
       "verified_at": "2026-10-22",
       "strict": true
+    },
+    {
+      "id": "cn-haut",
+      "journal": "河南工业大学学报（自然科学版）",
+      "aliases": [
+        "河南工业大学学报",
+        "河南工业大学学报自然科学版",
+        "HAUT"
+      ],
+      "kind": "guidelines",
+      "status": "verified-partial",
+      "path": "templates/cn-haut/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
+    },
+    {
+      "id": "cn-hjnu",
+      "journal": "汉江师范学院学报",
+      "aliases": [
+        "汉江师范学院学报",
+        "HJNU"
+      ],
+      "kind": "guidelines",
+      "status": "verified-partial",
+      "path": "templates/cn-hjnu/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
     }
   ]
 }

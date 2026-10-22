@@ -1,0 +1,45 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "cn-hjnu",
+  "journal": "汉江师范学院学报",
+  "aliases": [
+    "汉江师范学院学报",
+    "HJNU"
+  ],
+  "publisher": "汉江师范学院",
+  "kind": "guidelines",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://kyc.hjnu.edu.cn/info/1055/1763.htm",
+      "note": "官方来稿须知原文（2026-10-22 实读）；明确要求参照“论文模板”，但模板在 CNKI 投稿系统内，官网未直接给出文件",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "期刊官网来稿须知（仅本地参考，不再分发）",
+    "redistributable": false
+  },
+  "docx": null,
+  "rule_summary": {
+    "length": "全文（含图表、摘要、参考文献）不宜超过 8500 字",
+    "abstract_zh": "200 字以内",
+    "keywords": "3-5 个，分号间隔",
+    "structure": "作者通讯信息—基金项目—作者简介—中文标题—署名与单位—中文摘要—关键词—中图分类号—文献标识码—正文—注释—参考文献—英文标题—署名与单位—英文摘要—英文关键词",
+    "headings": "正文各级标题限 15 字以内",
+    "references": "GB/T 7714—2015，顺序编码制，正文右上标",
+    "tables": "三线表；插图 3M 以上 .jpg 原图"
+  },
+  "notes": [
+    "官方要求“参照本刊论文模板”，但模板只在中国知网投稿系统内；官网未提供文件，Word 投稿前必须从投稿系统取得。"
+  ],
+  "files": [
+    {
+      "path": "guidelines.md",
+      "role": "guideline",
+      "sha256": "sha256:d5a3ac9be17b9a9da24f275788a74fc6e26aafea5c6e573c4bf891d0e2bfdca4"
+    }
+  ]
+}

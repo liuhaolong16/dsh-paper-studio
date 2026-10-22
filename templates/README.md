@@ -45,11 +45,13 @@ templates/
 | `acs-journals` | ACS 期刊 | latex-class | verified | CTAN 官方包；`[journal=<code>,manuscript=article]{achemso}`，基类 article 12pt/letter |
 | `plos-one` | PLOS ONE | guidelines | verified-partial | PLOS 正文格式 PDF：标题 18/16/14pt 加粗、行号、禁彩色；正文正文字体字号未取证 |
 | `mdpi-journals` | MDPI（Materials 官方模板） | docx-template | verified | .dot（实为 OOXML）：A4 / 上2.5 下1.6 左右1.27cm / Palatino Linotype / 1.1667 行距 / 标题18pt、一级12pt、参考文献9pt |
+| `cn-haut` | 河南工业大学学报（自然科学版） | guidelines | verified-partial | 官网投稿须知：中文摘要300字、英文≥400词、GB/T 7714—2015、三线表；**无模板文件** |
+| `cn-hjnu` | 汉江师范学院学报 | guidelines | verified-partial | 官网来稿须知：全文≤8500字、摘要200字、GB/T 7714—2015、三线表；模板在 CNKI 投稿系统内 |
 
 ### 已知缺口（下一轮）
 
 - Elsevier / IEEE / ACS / PLOS 的 **Word 模板**尚未收集（当前只有 LaTeX 或指南）；Word 投稿时 `--format docx` 会返回 `NO_DOCX_TEMPLATE`，必须先补。MDPI 的 Word 模板已收。
-- 中文期刊（河南工业大学学报、汉江师范学院学报等）只有合同、没有官方模板文件。
+- 中文期刊：已收河南工业大学学报、汉江师范学院学报的**官方须知**（guidelines，partial）；两刊的 Word 模板分别在投稿系统/CNKI 内，尚未取得。
 - Springer Nature / Wiley / Taylor & Francis / 中文核心刊未收录。
 
 ## 命令

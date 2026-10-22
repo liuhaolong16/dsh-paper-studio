@@ -1,0 +1,46 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "cn-haut",
+  "journal": "河南工业大学学报（自然科学版）",
+  "aliases": [
+    "河南工业大学学报",
+    "河南工业大学学报自然科学版",
+    "HAUT"
+  ],
+  "publisher": "河南工业大学",
+  "kind": "guidelines",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://xb.haut.edu.cn/tgxz/zk.htm",
+      "note": "官方投稿须知原文（2026-10-22 实读）；页面未提供 .doc/.docx 模板附件",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "期刊官网投稿须知（仅本地参考，不再分发）",
+    "redistributable": false
+  },
+  "docx": null,
+  "rule_summary": {
+    "abstract_zh": "报道性摘要 300 字左右，须含【目的】【方法】【结果】【结论】标识",
+    "abstract_en": "不少于 400 词，须含【Objective】【Method】【Result】【Conclusion】标识",
+    "structure": "题目—作者—单位—摘要—关键词(5~8)—中图分类号—文献标志码—英文题名/作者/单位/摘要/关键词—正文—参考文献",
+    "headings": "阿拉伯数字连续编号 1 / 1.1 / 1.1.1，最多 3 级",
+    "references": "顺序编码制，GB/T 7714—2015；研究论文 ≥20 篇、近 5 年 ≥50%；综述 ≥50 篇、英文 ≥50%",
+    "tables": "三线表；图表题中英文对照",
+    "units": "法定计量单位；四位以上整数/小数用千分空"
+  },
+  "notes": [
+    "只有投稿须知，没有官方 Word 模板；Word 投稿前必须先向编辑部/投稿系统取得模板，否则 NO_DOCX_TEMPLATE。"
+  ],
+  "files": [
+    {
+      "path": "guidelines.md",
+      "role": "guideline",
+      "sha256": "sha256:c7b5560d7a181cedbb4fe1b464ee7ab6d2e8779049de5de5084618ec5f42be45"
+    }
+  ]
+}
