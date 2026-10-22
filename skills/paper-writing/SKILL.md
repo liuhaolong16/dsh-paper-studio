@@ -27,6 +27,7 @@ description: |
 
 ## 相关真源与资产
 
+- `references/writer-integration.md（写作开工时如何调用模板库：preflight/build/apply/check 与 handoff 字段）`
 - `assets/phrase-bank.json（本仓自产词库）`
 - `references/pipeline.json（篇幅预算 budget_words）`
 - `references/external-adoptions.md`

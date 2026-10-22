@@ -297,6 +297,8 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 
 ## 期刊模板知识库（`journal-template` · v3.60.0）
 
+> **写作侧接入**：开工前 preflight、起稿 scaffold/build、交付前 check 的完整调用约定见 `references/writer-integration.md`（外部 `paper-writer` 技能已加同名开工段）。
+
 > 规则：**指定期刊 ⇒ 严格按该刊模板，字号/字体/页边距/颜色一项不能错；没指定 ⇒ 用 `generic`；指定了但库里没有 ⇒ 先收集入知识库，不得直接套通用模板。**
 
 - **知识库**：`templates/`（`index.json` + 每刊 `spec.json` + `files/` 官方模板原件）；每条的 `status` 为 `verified` / `verified-partial` / `fallback`。

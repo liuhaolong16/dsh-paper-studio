@@ -770,7 +770,7 @@
         "证据-断言对照（每条事实的来源）",
         "待作者确认项"
       ],
-      "precondition": "必须有作者材料 / 已验证检索 / 领域常识三者之一；皆无 ⇒ 只给框架 + 检索计划（由 `author-material` 门机械判定，不再只是一句约定）。逐节正文起草交给**外部技能** `paper-writer`（本插件只编排与过门；该技能为 CC-BY-NC-SA，只引路径不搬运内容）。**预注册协议（L-23）**：实证稿若后续会声称 a-priori / pre-registered 判据，须在起草前由作者写 `protocol.md`（研究问题+证伪条件+阈值+过滤规则+自测）并上传开源仓库——这是「fixed a priori」的可核对证据，不写则后续 `prereg-claim` 门会因「有声称无证据」失败。"
+      "precondition": "必须有作者材料 / 已验证检索 / 领域常识三者之一；皆无 ⇒ 只给框架 + 检索计划（由 `author-material` 门机械判定，不再只是一句约定）。逐节正文起草交给**外部技能** `paper-writer`（本插件只编排与过门；该技能为 CC-BY-NC-SA，只引路径不搬运内容）。**预注册协议（L-23）**：实证稿若后续会声称 a-priori / pre-registered 判据，须在起草前由作者写 `protocol.md`（研究问题+证伪条件+阈值+过滤规则+自测）并上传开源仓库——这是「fixed a priori」的可核对证据，不写则后续 `prereg-claim` 门会因「有声称无证据」失败。**期刊模板开工约定**：指定刊先跑 `journal-template --preflight`，用 `--scaffold`/`--build` 起稿，交付前 `--check`；未指定刊走 generic；缺模板先 `--new` 收集（详见 `references/writer-integration.md`）。"
     }
   ],
   "gates": [
@@ -1232,13 +1232,19 @@
           "claim_policy"
         ],
         "optional": [
-          "notes"
+          "notes",
+          "journal_template_id",
+          "journal_template_spec",
+          "journal_template_status"
         ],
         "types": {
           "material_kind": "string",
           "material_path_or_note": "string",
           "claim_policy": "string",
-          "notes": "string"
+          "notes": "string",
+          "journal_template_id": "string",
+          "journal_template_spec": "string",
+          "journal_template_status": "string"
         },
         "closed_sets": {
           "material_kind": [
@@ -1251,6 +1257,12 @@
             "materials_only",
             "verified_retrieval",
             "field_common_knowledge"
+          ],
+          "journal_template_status": [
+            "verified",
+            "verified-partial",
+            "fallback",
+            "none"
           ]
         },
         "field_rules": {
@@ -1598,6 +1610,7 @@
         "figures"
       ],
       "assets": [
+        "references/writer-integration.md（写作开工时如何调用模板库：preflight/build/apply/check 与 handoff 字段）",
         "assets/phrase-bank.json（本仓自产词库）",
         "references/pipeline.json（篇幅预算 budget_words）",
         "references/external-adoptions.md",

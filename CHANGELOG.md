@@ -2714,3 +2714,14 @@ ode bin/<tool>.cjs 调用。
 - 之前把 `plos-one` 这类只有 docx 参数、没有模板文件的条目也算进“可用 Word 参数”，读起来像 10 条可用；实际能 `--scaffold`/`--apply` 套模板的只有 8 条。
 - 现在分四栏：有官方 Word 模板文件（8）· 只有 Word 格式参数（2：generic、plos-one）· 有 LaTeX 模板（3）· 仅指南无模板（2：cn-haut、cn-hjnu）。
 - 读数：journal-template 12/12 · verify 14/14 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.82.0 — 2026-10-22
+
+**两件事收口：把另一会话留下的 prereg-claim 门入库；把模板规则接进 `paper-writer` 的开工步骤。**
+
+- `gates/_gate-prereg-claim.py` 入库（L-23）：`pre-regist*` 声称必须有登记证据（osf.io / aspredicted / clinicaltrials / registry / protocol.md / 链接），无证据 ⇒ FAIL；门已登记 `pipeline.json` 且 `--selftest` 3/3。
+- 修复门在 GBK 控制台打印 `⇒` 崩溃：脚本入口 `sys.stdout.reconfigure(encoding="utf-8", errors="replace")`；内置副本与外部门（`D:\DeepSeek\research-paper-playbook`）已逐字节同步，`studio selftest` 回到 **254/254**。
+- `references/lessons-from-first-draft.md` 补 L-23 / L-24（格式硬伤合集：缺作者、编号乱序、摘要不自含、量化不可核算），L-22 标已挂门。
+- **写作侧接入**：新增 `references/writer-integration.md`（开工前 preflight → 起稿 scaffold/build/apply → 交付前 check/report 的完整约定）；`handoff.contracts` 的 `paper-writer` 交接新增 `journal_template_id` / `journal_template_spec` / `journal_template_status`（closed set：verified / verified-partial / fallback / none）；`task_types[write].precondition` 写入“期刊模板开工约定”；外部 `paper-writer` SKILL.md 增加 “Before drafting: journal template gate” 段；`skills/paper-writing/SKILL.md` 由 `sync-skill-modules` 重新生成（7 模块 / 34 命令一致）。
+- 读数：studio 254/254 · gate-runner 54/54 · journal-template 12/12 · verify 14/14 · audit 6/6 · package-audit 11/11 · license-audit PASS。
