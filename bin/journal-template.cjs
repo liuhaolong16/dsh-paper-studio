@@ -22,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const KB = path.join(ROOT, 'templates');
@@ -523,6 +524,42 @@ function cmdApply(index, docx, journal, out) {
   }
 }
 
+function cmdVerify(index) {
+  const rows = [];
+  let failed = 0;
+  for (const entry of index.templates || []) {
+    let spec;
+    try { spec = loadSpec(entry); }
+    catch (e) { rows.push({ id: entry.id, ok: false, why: 'spec 读不出：' + e.message }); failed++; continue; }
+    const issues = [];
+    for (const f of spec.files || []) {
+      if (!f.sha256) continue;
+      const p = path.resolve(path.dirname(specPathOf(entry)), f.path);
+      if (!fs.existsSync(p)) { issues.push('文件缺失 ' + f.path); continue; }
+      const actual = 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+      if (actual !== f.sha256) issues.push('hash 不符 ' + f.path);
+    }
+    if (spec.docx && spec.docx.template_file) {
+      const p = path.resolve(path.dirname(specPathOf(entry)), spec.docx.template_file);
+      if (!fs.existsSync(p)) issues.push('Word 模板缺失 ' + spec.docx.template_file);
+      else {
+        try { issues.push(...compareDocx(docxFacts(p), spec).map((i) => `模板自检 ${i.code} ${i.field}`)); }
+        catch (e) { issues.push('Word 模板读不出：' + e.message); }
+      }
+    }
+    if (spec.latex && spec.latex.template) {
+      const p = path.resolve(path.dirname(specPathOf(entry)), spec.latex.template);
+      if (!fs.existsSync(p)) issues.push('LaTeX 模板缺失 ' + spec.latex.template);
+      else issues.push(...compareTex(texFacts(p), spec).map((i) => `模板自检 ${i.code} ${i.field}`));
+    }
+    rows.push({ id: entry.id, ok: issues.length === 0, why: issues.join('；') });
+    if (issues.length) failed++;
+  }
+  for (const r of rows) console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.id}${r.ok ? '' : '  ' + r.why}`);
+  console.log(`\nverify: ${rows.length - failed}/${rows.length} 通过`);
+  return failed === 0 ? 0 : 1;
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const opt = (name) => {
@@ -539,6 +576,7 @@ function main(argv) {
       process.exitCode = cmdResolve(index, journal, opt('--format'));
       return;
     }
+    if (args.includes('--verify')) { process.exitCode = cmdVerify(index); return; }
     if (args.includes('--build')) {
       const md = args[args.indexOf('--build') + 1];
       if (!md || md.startsWith('--') || !journal) { console.log('用法：--build <稿.md> --journal <名> --out <out.docx>'); process.exitCode = 2; return; }
@@ -574,7 +612,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --verify | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);

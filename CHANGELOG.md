@@ -2607,3 +2607,13 @@ ode bin/<tool>.cjs 调用。
 - 修复点：`get_or_add_style` 现在优先用 spec 的真实 styleId（`MDPI12title` 等），不再误映射到内置 `Title`。
 - 实测：同一段 Markdown → `--build generic` → `--check` **通过**；`--build MDPI` → `--check` **通过**。
 - 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.72.0 — 2026-10-22
+
+**新增 `--verify`：知识库自检，挡知识与模板漂移。**
+
+- `node bin/journal-template.cjs --verify`：逐条检查 spec 可读、`files[]` 的 sha256 与磁盘一致、Word/LaTeX 模板存在且 `compareDocx`/`compareTex` 对 spec 自洽；任一失败 exit 1。
+- 首跑：**10/10 通过**（generic、Elsevier、IEEE、ACS、PLOS、MDPI、HAUT、HJNU、T&F、Frontiers）。
+- 意义：以后改 spec 或换模板文件，一条命令就能发现“文档写的和文件里的不一致”。
+- 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
