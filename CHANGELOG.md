@@ -2513,3 +2513,14 @@ ode bin/<tool>.cjs 调用。
 - `cn-hjnu`：官方来稿须知——全文 ≤8500 字、摘要 ≤200 字、关键词 3–5、GB/T 7714—2015、三线表、插图 3M+ jpg；官方要求参照“论文模板”，但模板只在 CNKI 投稿系统内。
 - 两条均为 `guidelines` / `verified-partial`：`docx=null`，Word 投稿仍会 `NO_DOCX_TEMPLATE` 阻断，直到取得模板文件。
 - 读数：journal-template 9/9 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.63.0 — 2026-10-22
+
+**字号/字体/加粗也进机检：解析 docx 命名样式，按 `styleMap` 对照模板；自检 9→11。**
+
+- `docxFacts` 新增 `styles`：逐个解析 `word/styles.xml` 的 `w:style`（id / name / 字体 / 字号 / 加粗 / 颜色）。
+- `compareDocx` 支持 `docx.styleMap` + `docx.styles`：按角色（Title/Heading1/References…）对照字号、加粗、颜色；缺样式记 `E_STYLE_MISSING`。
+- MDPI 卡绑定真实样式 id（`MDPI12title` / `MDPI21heading1` / `MDPI81references`），实测 18pt/12pt/9pt 与加粗状态全部对上（0 问题）。
+- 注意：Word 的 styleId 会去掉点号（`MDPI_1.2_title` → `MDPI12title`），`styleMap` 必须写 id 不是显示名。
+- 自检 **11/11** · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

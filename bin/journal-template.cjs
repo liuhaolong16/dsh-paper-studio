@@ -131,6 +131,19 @@ function docxFacts(file) {
   for (const m of doc.matchAll(/<w:color\b[^>]*w:val="([^"]+)"/g)) colors.push(m[1].toUpperCase());
   for (const m of styles.matchAll(/<w:color\b[^>]*w:val="([^"]+)"/g)) colors.push(m[1].toUpperCase());
 
+  const styleFacts = {};
+  for (const block of styles.split(/<w:style\b/).slice(1)) {
+    const id = attr(block, 'w:styleId');
+    if (!id) continue;
+    const name = (block.match(/<w:name\b[^>]*w:val="([^"]+)"/) || [])[1] || null;
+    const rpr = (block.match(/<w:rPr>[\s\S]*?<\/w:rPr>/) || [''])[0];
+    const fonts = (rpr.match(/<w:rFonts\b[^>]*>/) || [''])[0];
+    const sz = (rpr.match(/<w:sz\b[^>]*>/) || [''])[0];
+    const color = (rpr.match(/<w:color\b[^>]*w:val="([^"]+)"/) || [])[1] || null;
+    const bold = /<w:b\s*\/>|<w:b\b[^>]*w:val="(?:1|true|on)"/.test(rpr);
+    styleFacts[id] = { name, ascii: attr(fonts, 'w:ascii'), size_pt: sz ? Number(attr(sz, 'w:val')) / 2 : null, bold, color };
+  }
+
   const sizeHalf = attr(normalSz || defSz, 'w:val');
   const line = attr(normalSpacing, 'w:line');
 
@@ -149,6 +162,7 @@ function docxFacts(file) {
     },
     line_spacing: line ? Number(line) / 240 : null,
     colors: Array.from(new Set(colors)),
+    styles: styleFacts,
   };
 }
 
@@ -200,6 +214,26 @@ function compareDocx(facts, spec) {
     const value = String(color).toUpperCase();
     if (value === 'AUTO') continue;
     if (!allowed.has(value)) push('E_COLOR', 'w:color', '#000000', '#' + value);
+  }
+
+  const styleMap = (d.styleMap) || spec.styleMap;
+  const styleSpec = (d.styles) || spec.styles;
+  if (styleMap && facts.styles) {
+    for (const [role, styleId] of Object.entries(styleMap)) {
+      const want = (styleSpec || {})[role];
+      const got = facts.styles[styleId];
+      if (!want) continue;
+      if (!got) { push('E_STYLE_MISSING', role, styleId, null); continue; }
+      if (want.size_pt && got.size_pt && Math.abs(got.size_pt - want.size_pt) > EPS.pt) {
+        push('E_STYLE_SIZE', role + '.' + styleId, want.size_pt, got.size_pt);
+      }
+      if (typeof want.bold === 'boolean' && got.bold !== want.bold) {
+        push('E_STYLE_BOLD', role + '.' + styleId, want.bold, got.bold);
+      }
+      if (want.color && got.color && String(got.color).replace('#', '').toUpperCase() !== String(want.color).replace('#', '').toUpperCase()) {
+        push('E_STYLE_COLOR', role + '.' + styleId, want.color, got.color);
+      }
+    }
   }
 
   return issues;
@@ -342,6 +376,15 @@ function selftest() {
   for (const code of ['E_MARGIN', 'E_FONT_SIZE', 'E_FONT_ASCII', 'E_COLOR']) {
     check(`bad facts must hit ${code}`, badIssues.includes(code), badIssues);
   }
+
+  const styleSpec = { styleMap: { Heading1: 'S1' }, styles: { Heading1: { size_pt: 12, bold: true } } };
+  const styleFacts = JSON.parse(JSON.stringify(good));
+  styleFacts.styles = { S1: { size_pt: 10, bold: true, color: '000000' } };
+  const styleCodes = compareDocx(styleFacts, styleSpec).map((i) => i.code);
+  check('style size mismatch must hit E_STYLE_SIZE', styleCodes.includes('E_STYLE_SIZE'), styleCodes);
+  const styleFactsOk = JSON.parse(JSON.stringify(styleFacts));
+  styleFactsOk.styles.S1.size_pt = 12;
+  check('style size match must pass', compareDocx(styleFactsOk, styleSpec).length === 0, compareDocx(styleFactsOk, styleSpec));
 
   const texGood = { cls: 'elsarticle', options: ['a4paper', '10pt'] };
   const texSpec = { latex: { class: 'elsarticle', required_options: ['a4paper', '10pt'] } };

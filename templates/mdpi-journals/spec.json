@@ -60,7 +60,12 @@
         "size_pt": 9
       }
     },
-    "note": "正文样式 MDPI_3.1_text 未显式设字号（继承模板默认）；用模板另存为 .docx 即按模板生效"
+    "note": "正文样式 MDPI_3.1_text 未显式设字号（继承模板默认）；用模板另存为 .docx 即按模板生效",
+    "styleMap": {
+      "Title": "MDPI12title",
+      "Heading1": "MDPI21heading1",
+      "References": "MDPI81references"
+    }
   },
   "colors": {
     "text": "#000000",
