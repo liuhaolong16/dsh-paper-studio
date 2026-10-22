@@ -2493,3 +2493,13 @@ ode bin/<tool>.cjs 调用。
 - **登记**：pipeline selfchecks +1；能力登记表 +1（env.paper-journal-template）；package.json.files 加 	emplates。
 - **版权**：Elsevier/IEEE/ACS 模板为 LPPL 1.3+（可再分发，保留来源与许可）；PLOS 指南仅本地参考。
 - 读数：studio **254/254** · audit **6/6** · package-audit **11/11** · license-audit **PASS**。
+
+
+## 3.61.0 — 2026-10-22
+
+**模板库补 MDPI 官方 Word 模板，并新增 `--scaffold`：直接按官方模板生成初稿，避免“从空白 Word 开始”导致的版式漂移。**
+
+- **MDPI**：`mdpi-journals`（Materials 官方 `.dot`，实为 OOXML）：A4 / 上2.5 下1.6 左右1.27cm / Palatino Linotype / 1.1667 行距 / 标题18pt、一级12pt、参考文献9pt；`--scaffold --journal MDPI --out 稿.docx` 可直接起稿。
+- **`--scaffold`**：从 `spec.docx.template_file` 或 `spec.latex.template` 复制官方模板到目标路径；无模板文件返回 `NO_TEMPLATE_FILE`。
+- 机检颜色白名单支持 `colors.allowed`（MDPI 的超链接蓝/灰/暗红不再误报）。
+- 读数：journal-template **9/9** · studio **254/254** · audit **6/6** · package-audit **11/11** · license-audit **PASS**。

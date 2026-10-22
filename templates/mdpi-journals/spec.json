@@ -1,0 +1,80 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "mdpi-journals",
+  "journal": "MDPI 期刊（Materials 官方 Word 模板）",
+  "aliases": [
+    "MDPI",
+    "Materials",
+    "mdpi"
+  ],
+  "publisher": "MDPI",
+  "kind": "docx-template",
+  "status": "verified",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://www.mdpi.com/journal/materials/instructions",
+      "note": "Instructions for Authors 页给出 Microsoft Word template 链接（.dot，实为 OOXML 包）",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://mdpi-res.com/files/word-templates/materials-template.dot",
+      "note": "官方模板原件；python-docx 因 content-type 为 template 拒读，本项目 ZIP 解析器可读",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "MDPI 官方作者模板（站点条款；仅投稿使用，再分发前核对）",
+    "redistributable": "unknown"
+  },
+  "docx": {
+    "template_file": "files/materials-template.dot",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.5,
+      "bottom": 1.6,
+      "left": 1.27,
+      "right": 1.27
+    },
+    "default_font": {
+      "ascii": "Palatino Linotype",
+      "eastAsia": null,
+      "size_pt": null
+    },
+    "line_spacing": 1.1667,
+    "styles": {
+      "Title": {
+        "size_pt": 18,
+        "bold": true
+      },
+      "Heading1": {
+        "size_pt": 12,
+        "bold": true
+      },
+      "References": {
+        "size_pt": 9
+      }
+    },
+    "note": "正文样式 MDPI_3.1_text 未显式设字号（继承模板默认）；用模板另存为 .docx 即按模板生效"
+  },
+  "colors": {
+    "text": "#000000",
+    "allowed": [
+      "000000",
+      "0000FF",
+      "605E5C",
+      "954F72",
+      "808080"
+    ],
+    "note": "蓝色为超链接，灰色/暗红为模板样式色"
+  },
+  "notes": [
+    "投稿必须从该模板另存为 .docx 写作；不得用 generic 替代。",
+    "Word 模板是 .dot 扩展名但内容是 OOXML；本项目 direct ZIP 解析可读。"
+  ]
+}

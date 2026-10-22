@@ -195,6 +195,7 @@ function compareDocx(facts, spec) {
 
   const allowed = new Set(['000000', 'AUTO']);
   if (spec.colors && spec.colors.text) allowed.add(String(spec.colors.text).replace('#', '').toUpperCase());
+  for (const color of (spec.colors && spec.colors.allowed) || []) allowed.add(String(color).replace('#', '').toUpperCase());
   for (const color of facts.colors || []) {
     const value = String(color).toUpperCase();
     if (value === 'AUTO') continue;
@@ -364,6 +365,34 @@ function selftest() {
   return failed === 0 ? 0 : 1;
 }
 
+function cmdScaffold(index, journal, out) {
+  const entry = resolveJournal(index, journal);
+  if (!entry) {
+    console.log(`缺模板：${journal} 不在知识库 ⇒ 先收集再写（NO_TEMPLATE）`);
+    return 1;
+  }
+  if (!out) {
+    console.log('用法：--scaffold --journal <名> --out <输出文件>');
+    return 2;
+  }
+  const spec = loadSpec(entry);
+  const rel = (spec.docx && spec.docx.template_file) || (spec.latex && spec.latex.template) || null;
+  if (!rel) {
+    console.log(`该条目没有可复制的模板文件（id=${entry.id}, kind=${spec.kind}）⇒ NO_TEMPLATE_FILE`);
+    return 1;
+  }
+  const src = path.resolve(path.dirname(specPathOf(entry)), rel);
+  if (!fs.existsSync(src)) {
+    console.log(`前提层失败：模板文件不存在 ${rel}`);
+    return 2;
+  }
+  fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+  fs.copyFileSync(src, out);
+  console.log(`已按 ${entry.journal}（${entry.id}）模板生成：${out}`);
+  console.log(`模板原件：${rel}（${fs.statSync(out).size} bytes）`);
+  return 0;
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const opt = (name) => {
@@ -380,6 +409,12 @@ function main(argv) {
       process.exitCode = cmdResolve(index, journal, opt('--format'));
       return;
     }
+    if (args.includes('--scaffold')) {
+      const out = opt('--out');
+      if (!journal) { console.log('用法：--scaffold --journal <名> --out <输出文件>'); process.exitCode = 2; return; }
+      process.exitCode = cmdScaffold(index, journal, out);
+      return;
+    }
     if (args.includes('--check')) {
       const file = args[args.indexOf('--check') + 1];
       if (!file || file.startsWith('--') || !journal) { console.log('用法：--check <稿.docx> --journal <刊名或 id>'); process.exitCode = 2; return; }
@@ -392,7 +427,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);

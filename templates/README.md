@@ -44,10 +44,11 @@ templates/
 | `ieee-journals` | IEEE 期刊/会议 | latex-class | verified | CTAN 官方包；`[journal]{IEEEtran}`，letter / 双栏 / 10pt |
 | `acs-journals` | ACS 期刊 | latex-class | verified | CTAN 官方包；`[journal=<code>,manuscript=article]{achemso}`，基类 article 12pt/letter |
 | `plos-one` | PLOS ONE | guidelines | verified-partial | PLOS 正文格式 PDF：标题 18/16/14pt 加粗、行号、禁彩色；正文正文字体字号未取证 |
+| `mdpi-journals` | MDPI（Materials 官方模板） | docx-template | verified | .dot（实为 OOXML）：A4 / 上2.5 下1.6 左右1.27cm / Palatino Linotype / 1.1667 行距 / 标题18pt、一级12pt、参考文献9pt |
 
 ### 已知缺口（下一轮）
 
-- Elsevier / IEEE / ACS / PLOS 的 **Word 模板**尚未收集（当前只有 LaTeX 或指南）；Word 投稿时 `--format docx` 会返回 `NO_DOCX_TEMPLATE`，必须先补。
+- Elsevier / IEEE / ACS / PLOS 的 **Word 模板**尚未收集（当前只有 LaTeX 或指南）；Word 投稿时 `--format docx` 会返回 `NO_DOCX_TEMPLATE`，必须先补。MDPI 的 Word 模板已收。
 - 中文期刊（河南工业大学学报、汉江师范学院学报等）只有合同、没有官方模板文件。
 - Springer Nature / Wiley / Taylor & Francis / 中文核心刊未收录。
 
@@ -56,6 +57,7 @@ templates/
 ```powershell
 node bin/journal-template.cjs --list
 node bin/journal-template.cjs --resolve --journal "Journal of Energy Storage" --format latex
+node bin/journal-template.cjs --scaffold --journal MDPI --out 稿.docx
 node bin/journal-template.cjs --check-tex 稿.tex --journal elsevier-elsarticle
 node bin/journal-template.cjs --check 稿.docx --journal generic
 node bin/journal-template.cjs --selftest

@@ -77,6 +77,20 @@
       "path": "templates/plos-one/spec.json",
       "verified_at": "2026-10-22",
       "strict": true
+    },
+    {
+      "id": "mdpi-journals",
+      "journal": "MDPI 期刊（Materials 官方 Word 模板）",
+      "aliases": [
+        "MDPI",
+        "Materials",
+        "mdpi"
+      ],
+      "kind": "docx-template",
+      "status": "verified",
+      "path": "templates/mdpi-journals/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
     }
   ]
 }
