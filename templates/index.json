@@ -133,6 +133,20 @@
       "path": "templates/taylor-francis/spec.json",
       "verified_at": "2026-10-22",
       "strict": true
+    },
+    {
+      "id": "frontiers",
+      "journal": "Frontiers 期刊（官方 Word 模板）",
+      "aliases": [
+        "Frontiers",
+        "Frontiers in",
+        "frontiers"
+      ],
+      "kind": "docx-template",
+      "status": "verified",
+      "path": "templates/frontiers/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
     }
   ]
 }

@@ -45,6 +45,7 @@ templates/
 | `acs-journals` | ACS 期刊 | latex-class | verified | CTAN 官方包；`[journal=<code>,manuscript=article]{achemso}`，基类 article 12pt/letter |
 | `plos-one` | PLOS ONE | guidelines | verified-partial | PLOS 正文格式 PDF：标题 18/16/14pt 加粗、行号、禁彩色；正文正文字体字号未取证 |
 | `mdpi-journals` | MDPI（Materials 官方模板） | docx-template | verified | .dot（实为 OOXML）：A4 / 上2.5 下1.6 左右1.27cm / Palatino Linotype / 1.1667 行距 / 标题18pt、一级12pt、参考文献9pt；`styleMap` 绑定 `MDPI12title`/`MDPI21heading1`/`MDPI81references` |
+| `frontiers` | Frontiers | docx-template | verified | 官方 Word 模板：Letter / 上下 2.01、左 2.26、右 2.08cm / Times New Roman 12pt / 单倍行距 / Title 16pt 加粗 |
 | `taylor-francis` | Taylor & Francis | docx-template | verified | 官方 Word 模板（.dotx）：A4 / 四边 2.5cm（左右 3.0）/ Times New Roman 12pt / 双倍行距 / 标题14pt 加粗 / 摘要11pt |
 | `cn-haut` | 河南工业大学学报（自然科学版） | guidelines | verified-partial | 官网投稿须知：中文摘要300字、英文≥400词、GB/T 7714—2015、三线表；**无模板文件** |
 | `cn-hjnu` | 汉江师范学院学报 | guidelines | verified-partial | 官网来稿须知：全文≤8500字、摘要200字、GB/T 7714—2015、三线表；模板在 CNKI 投稿系统内 |

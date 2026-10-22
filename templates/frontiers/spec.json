@@ -1,0 +1,76 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "frontiers",
+  "journal": "Frontiers 期刊（官方 Word 模板）",
+  "aliases": [
+    "Frontiers",
+    "Frontiers in",
+    "frontiers"
+  ],
+  "publisher": "Frontiers",
+  "kind": "docx-template",
+  "status": "verified",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://www.frontiersin.org/guidelines/author-guidelines",
+      "note": "官方 Author guidelines 页给出 Word templates 链接",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://www.frontiersin.org/Design/zip/Frontiers_Word_Templates.zip",
+      "note": "官方 Word 模板 zip（984961 bytes，含 Frontiers_Template.docx 与 Supplementary_Material.docx）",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "Frontiers 官方作者模板（站点条款；仅投稿使用，再分发前核对）",
+    "redistributable": "unknown"
+  },
+  "docx": {
+    "template_file": "files/Frontiers_Template.docx",
+    "page": {
+      "size": "Letter",
+      "width_cm": 21.59,
+      "height_cm": 27.94
+    },
+    "margins_cm": {
+      "top": 2.01,
+      "bottom": 2.01,
+      "left": 2.26,
+      "right": 2.08
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": null,
+      "size_pt": 12
+    },
+    "line_spacing": 1.0,
+    "styles": {
+      "Title": {
+        "size_pt": 16,
+        "bold": true
+      },
+      "Heading1": {
+        "bold": true
+      }
+    },
+    "styleMap": {
+      "Title": "Title",
+      "Heading1": "Heading1"
+    },
+    "note": "Supplemental 模板同名 zip 内另有 Supplementary_Material.docx；正文样式 Heading 字号未显式设（继承 12pt）"
+  },
+  "colors": {
+    "text": "#020202",
+    "allowed": [
+      "020202",
+      "AUTO"
+    ],
+    "note": "模板正文近黑 020202，非纯黑 000000"
+  },
+  "notes": [
+    "Frontiers 用 Letter 纸（非 A4），页边距约 2cm；必须从模板另存 .docx 写作。"
+  ]
+}

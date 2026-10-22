@@ -2576,3 +2576,13 @@ ode bin/<tool>.cjs 调用。
 - 实测 `run/fixtures/manuscript_zh.docx` vs `generic`：从 22 项误报收敛为 **3 项真问题**（Letter 纸 vs A4；默认字号 11pt vs 12pt）。
 - 新增 selftest：潜在样式色必须不判失败；`--selftest` **12/12**。
 - 读数：studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.69.0 — 2026-10-22
+
+**Frontiers 官方 Word 模板入库（第 4 个真正的 Word 模板）。**
+
+- 来源：Frontiers Author guidelines 页的 Word templates 链接 → `Frontiers_Word_Templates.zip`（984961 bytes，含正文模板与补充材料模板各一份 docx）。
+- 实测正文模板：Letter 21.59×27.94cm / 上下 2.01cm、左 2.26cm、右 2.08cm / Times New Roman 12pt / 单倍行距 / Title 16pt 加粗 / 正文色 020202。
+- `frontiers` 条目：`--preflight` PASS，`compareDocx` 0 问题；`--scaffold` 可复制模板起稿。
+- 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
