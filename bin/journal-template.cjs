@@ -437,6 +437,33 @@ function cmdScaffold(index, journal, out) {
   return 0;
 }
 
+function cmdPreflight(index, journal, format) {
+  const entry = resolveJournal(index, journal);
+  if (!entry) {
+    console.log(`BLOCK  NO_TEMPLATE  ${journal}`);
+    console.log('  该刊未收录：先去官网 Guide for Authors / Templates 收集官方模板，入 templates/<id>/ 后再写。');
+    return 1;
+  }
+  const spec = loadSpec(entry);
+  const fmt = format || 'docx';
+  if (fmt === 'docx' && !spec.docx) {
+    console.log(`BLOCK  NO_DOCX_TEMPLATE  ${entry.journal}（${entry.id}，kind=${spec.kind}）`);
+    console.log('  只有非 Word 材料：先收集该刊 Word 模板，不得套用其它格式或 generic。');
+    return 1;
+  }
+  if (fmt === 'latex' && !spec.latex) {
+    console.log(`BLOCK  NO_LATEX_TEMPLATE  ${entry.journal}（${entry.id}，kind=${spec.kind}）`);
+    return 1;
+  }
+  const detail = fmt === 'latex'
+    ? `class=${spec.latex.class} options=${(spec.latex.required_options || []).join(',') || '(见模板)'}`
+    : `页面=${(spec.docx.page || {}).size || '?'} 页边距=${JSON.stringify(spec.docx.margins_cm || {})} 默认字体=${(spec.docx.default_font || {}).ascii || '?'}`;
+  console.log(`PASS   ${entry.journal}（${entry.id}）`);
+  console.log(`  spec: ${entry.path}`);
+  console.log(`  ${fmt}: ${detail}`);
+  return 0;
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const opt = (name) => {
@@ -451,6 +478,11 @@ function main(argv) {
     if (args.includes('--resolve')) {
       if (!journal) { console.log('用法：--resolve --journal <刊名或 id> [--format docx|latex]'); process.exitCode = 2; return; }
       process.exitCode = cmdResolve(index, journal, opt('--format'));
+      return;
+    }
+    if (args.includes('--preflight')) {
+      if (!journal) { console.log('用法：--preflight --journal <名> [--format docx|latex]'); process.exitCode = 2; return; }
+      process.exitCode = cmdPreflight(index, journal, opt('--format'));
       return;
     }
     if (args.includes('--scaffold')) {
@@ -471,7 +503,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);

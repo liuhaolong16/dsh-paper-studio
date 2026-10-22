@@ -55,5 +55,10 @@
       "sha256": "sha256:da751920a317ed318b7b5cd7fa585a6cc7d28502d457856382e9be24b10a3bd7",
       "role": "class"
     }
-  ]
+  ],
+  "collection_api": {
+    "publication_titles": "https://template-selector.ieee.org/api/ieee-template-selector/publication-title/publication-type/1",
+    "article_types": "https://template-selector.ieee.org/api/ieee-template-selector/template/publication-type/{typeId}/publication-title/{titleId}",
+    "note": "2026-10-22 实测：titles 返回 1 万+ 刊；article_types 返回 templateMeta（如 IEEE-Transactions-Word-templates-and-instructions.zip, Word）。下载直链未定位（/template/download/* 与静态路径均 404/418），需走向导 Download Template 步骤。"
+  }
 }

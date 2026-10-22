@@ -2524,3 +2524,12 @@ ode bin/<tool>.cjs 调用。
 - MDPI 卡绑定真实样式 id（`MDPI12title` / `MDPI21heading1` / `MDPI81references`），实测 18pt/12pt/9pt 与加粗状态全部对上（0 问题）。
 - 注意：Word 的 styleId 会去掉点号（`MDPI_1.2_title` → `MDPI12title`），`styleMap` 必须写 id 不是显示名。
 - 自检 **11/11** · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.64.0 — 2026-10-22
+
+**新增写作前预检 `--preflight`：一条命令给出 PASS/BLOCK，把“缺模板就阻断”变成可执行入口。**
+
+- `node bin/journal-template.cjs --preflight --journal <名> [--format docx|latex]` → PASS 打印 spec 路径与关键格式；`NO_TEMPLATE` / `NO_DOCX_TEMPLATE` / `NO_LATEX_TEMPLATE` 直接 BLOCK（退出 1）。
+- IEEE 模板采集 API 已定位并写入 `templates/ieee-journals/spec.json` 的 `collection_api`：publication-titles（1 万+ 刊）与 article_types（返回 Word zip 的 templateMeta）；下载直链未定位（404/418），仍需走向导 Download Template。
+- 读数：journal-template 11/11 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
