@@ -299,7 +299,31 @@ function cmdResolve(index, journal, format) {
   return 0;
 }
 
-function cmdCheck(index, docx, journal) {
+function writeReport(out, title, facts, issues, entry) {
+  const L = [];
+  L.push('# ' + title, '');
+  L.push('- 期刊：' + entry.journal + '（' + entry.id + '）');
+  L.push('- 模板：`' + entry.path + '`');
+  L.push('- 判定：' + (issues.length ? `**未通过（${issues.length} 项）**` : '**通过**'), '');
+  L.push('## 实测值', '');
+  if (facts.page) L.push(`- 页面：${facts.page.width_cm.toFixed(2)} × ${facts.page.height_cm.toFixed(2)} cm`);
+  if (facts.margins_cm) L.push(`- 页边距：上 ${facts.margins_cm.top.toFixed(2)} / 下 ${facts.margins_cm.bottom.toFixed(2)} / 左 ${facts.margins_cm.left.toFixed(2)} / 右 ${facts.margins_cm.right.toFixed(2)} cm`);
+  if (facts.default_font) L.push(`- 默认字体：${facts.default_font.ascii || '?'} / ${facts.default_font.size_pt || '?'} pt`);
+  if (facts.line_spacing) L.push(`- 行距：${facts.line_spacing}`);
+  L.push('');
+  L.push('## 不符合项', '');
+  if (!issues.length) L.push('（无）');
+  else {
+    L.push('| 代码 | 字段 | 期望 | 实际 |');
+    L.push('|---|---|---|---|');
+    for (const i of issues) L.push(`| ${i.code} | ${i.field} | ${i.expected} | ${i.actual} |`);
+  }
+  L.push('');
+  fs.writeFileSync(out, L.join('\n'), 'utf8');
+  return out;
+}
+
+function cmdCheck(index, docx, journal, reportOut) {
   const entry = resolveJournal(index, journal);
   if (!entry) {
     console.log(`缺模板：${journal} 不在知识库 ⇒ 先收集再写（NO_TEMPLATE）`);
@@ -314,7 +338,12 @@ function cmdCheck(index, docx, journal) {
     console.log(`前提层失败：文件不存在 ${docx}`);
     return 2;
   }
-  const issues = compareDocx(docxFacts(docx), spec);
+  const facts = docxFacts(docx);
+  const issues = compareDocx(facts, spec);
+  if (reportOut) {
+    writeReport(reportOut, '期刊格式检查报告 · ' + path.basename(docx), facts, issues, entry);
+    console.log(`报告：${reportOut}`);
+  }
   if (issues.length === 0) {
     console.log(`通过：${docx} 符合 ${entry.journal}（${entry.id}）`);
     return 0;
@@ -632,7 +661,7 @@ function main(argv) {
     if (args.includes('--check')) {
       const file = args[args.indexOf('--check') + 1];
       if (!file || file.startsWith('--') || !journal) { console.log('用法：--check <稿.docx> --journal <刊名或 id>'); process.exitCode = 2; return; }
-      process.exitCode = cmdCheck(index, file, journal);
+      process.exitCode = cmdCheck(index, file, journal, opt('--report'));
       return;
     }
     if (args.includes('--check-tex')) {
@@ -641,7 +670,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --verify | --check-batch <目录> --journal <名> | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --verify | --check-batch <目录> --journal <名> | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> [--report <报告.md>] | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);

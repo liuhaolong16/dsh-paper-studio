@@ -2639,3 +2639,13 @@ ode bin/<tool>.cjs 调用。
 - 说明：这不是“通用 Elsevier 期刊模板”——Elsevier 普通研究论文只给 LaTeX `elsarticle`，Word 按 Guide 的结构/字数要求，没有统一版式文件；已在 notes 写明。
 - `--verify` 从 10/10 → **12/12 通过**。
 - 读数：journal-template 12/12 · verify 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.75.0 — 2026-10-22
+
+**`--check` 可生成 Markdown 检查报告，给导师/合作者看的“逐项复核单”。**
+
+- `node bin/journal-template.cjs --check 稿.docx --journal <刊> --report 检查报告.md`
+- 报告含：期刊与 spec 路径、判定（通过/未通过 N 项）、实测值（页面/页边距/默认字体/行距）、不符合项表格（代码/字段/期望/实际）。
+- 实测 `manuscript_zh.docx` vs generic：报告 3 项不符（Letter 纸、11pt），与命令行输出一致。
+- 读数：journal-template 12/12 · verify 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
