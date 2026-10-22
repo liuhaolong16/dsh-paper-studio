@@ -2555,3 +2555,13 @@ ode bin/<tool>.cjs 调用。
 - `taylor-francis` 条目：`--preflight` PASS，`compareDocx` 0 问题；`--scaffold` 可复制 .dotx 起稿。
 - 注意：官方链接指向 staging 域名（站点配置遗留），已在 sources 如实记录。
 - 读数：journal-template 11/11 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.67.0 — 2026-10-22
+
+**把“缺模板就阻断”接到写作入口：`draft` 开工前自动跑期刊模板预检。**
+
+- `paper-studio draft --out <目录> --journal <刊>`：先解析 `templates/`；无条目 ⇒ `NO_TEMPLATE` exit 1；有 `--format docx` 但只有 LaTeX/指南 ⇒ `NO_DOCX_TEMPLATE` exit 1；只有指南无模板文件 ⇒ `NO_TEMPLATE_FILE` exit 1。
+- 通过时任务书 `00-写作任务书.md` 会写入「**期刊模板（严格按此）**：<刊>（<id>）→ <spec 路径>；<Word/LaTeX 摘要>」。
+- 实测：未知刊 exit 1；JoES `--format docx` exit 1；MDPI 通过且任务书写入模板行。
+- 读数：studio 254/254 · journal-template 11/11 · audit 6/6 · package-audit 11/11 · license-audit PASS。

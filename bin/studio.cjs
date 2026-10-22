@@ -1173,6 +1173,31 @@ function formSectionBudget(form, opts) {
   return { unit, total, source, minutes, per };
 }
 
+/** 期刊模板预检（draft 开工前）：指定刊必须能在 templates/ 里解析到可用模板；未指定刊不拦。 */
+function journalTemplatePreflight(journal, format) {
+  if (!journal) return { ok: true, skipped: true };
+  let jt;
+  try { jt = require('./journal-template.cjs'); }
+  catch (e) { return { ok: false, code: 'TEMPLATE_TOOL_MISSING', message: String((e && e.message) || e) }; }
+  const entry = jt.resolveJournal(jt.loadIndex(), journal);
+  if (!entry) {
+    return { ok: false, code: 'NO_TEMPLATE', message: `知识库没有「${journal}」—— 先去期刊官网 Guide for Authors / Templates 收集官方模板，入 templates/<id>/ 后再开写；不得套 generic。` };
+  }
+  let spec;
+  try { spec = JSON.parse(fs.readFileSync(path.resolve(ROOT, entry.path), 'utf8')); }
+  catch (e) { return { ok: false, code: 'TEMPLATE_SPEC_UNREADABLE', message: `${entry.path} 读不出来：${String((e && e.message) || e)}` }; }
+  if (format === 'docx' && !spec.docx) {
+    return { ok: false, code: 'NO_DOCX_TEMPLATE', message: `「${entry.journal}」只有${spec.latex ? 'LaTeX 模板' : '格式指南'}；Word 投稿需先收集该刊 Word 模板。` };
+  }
+  if (!spec.docx && !spec.latex) {
+    return { ok: false, code: 'NO_TEMPLATE_FILE', message: `「${entry.journal}」只有指南、没有模板文件；先取得模板再开写。` };
+  }
+  const summary = spec.docx
+    ? `Word 模板 ${spec.docx.template_file || '(未登记)'}；页面 ${((spec.docx.page || {}).size) || '?'}`
+    : `LaTeX ${spec.latex.class}${(spec.latex.required_options || []).length ? ' [' + spec.latex.required_options.join(',') + ']' : ''}`;
+  return { ok: true, skipped: false, entry, spec, summary };
+}
+
 function draftPlan(outDir, opts = {}) {
   if (!outDir) { const e = new Error('前提层失败：draft 需要 --out <目录>'); e.code = 'NO_OUT'; throw e; }
   const flagSection = opts.section || null;
@@ -1201,6 +1226,9 @@ function draftPlan(outDir, opts = {}) {
   L.push('> **本文件不含论文内容** —— 内容由作者与助手在下面的阶段里逐格产出，逐门验收。', '');
   L.push('## 0. 基本情况', '');
   L.push(`- 目标刊 / 学位要求：${journal}`);
+  if (opts.template && opts.template.ok && !opts.template.skipped) {
+    L.push(`- **期刊模板（严格按此）**：${opts.template.entry.journal}（${opts.template.entry.id}）→ \`${opts.template.entry.path}\`；${opts.template.summary}`);
+  }
   L.push(`- 写作语言：${lang}`);
   L.push(`- **稿件体裁**：${genre}（决定用哪套骨架与哪些门适用；骨架集＝${ss.set}${ss.set === 'default' ? '（该体裁暂无专属骨架，用缺省套）' : ''}）`);
   if (ss.attribution) L.push(`- **骨架出处与许可**：${ss.attribution}`);
@@ -7550,10 +7578,12 @@ if (cmd === 'form') {
           return 2;
         }
       }
+      const jtCheck = journalTemplatePreflight(flag('--journal'), flag('--format'));
+      if (!jtCheck.ok) { console.error(`前提层失败：${jtCheck.code} —— ${jtCheck.message}`); return 1; }
       const r = draftPlan(flag('--out'), {
         name: flag('--name'), journal: flag('--journal'), lang: flag('--lang'),
         materials: flag('--materials'), genre: flag('--genre') || null, dryRun: rest.includes('--dry-run'),
-        form: dForm, answers: dAnswers, section: flag('--section') || null,
+        form: dForm, answers: dAnswers, section: flag('--section') || null, template: jtCheck,
       });
       if (json) console.log(JSON.stringify(r, null, 2));
       else {

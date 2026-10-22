@@ -304,6 +304,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 - **命令**：`node bin/journal-template.cjs --list` · `--resolve --journal <刊名> [--format docx|latex]` · `--preflight --journal <名> [--format docx|latex]`（PASS/BLOCK，写作前先跑）· `--scaffold --journal <id> --out <文件>` · `--check <稿.docx> --journal <id>` · `--check-tex <稿.tex> --journal <id>` · `--selftest`（**11/11**）；docx 还查命名样式（Title / Heading1 / References）的字号与加粗。
 - **机检**：docx 查页面尺寸、四边页边距、默认字体（ascii/eastAsia）、字号、行距、非黑色文字；tex 查 `\documentclass` 类名与必需选项（含 `journal=` 前缀）。
 - **缺模板判定码**：`NO_TEMPLATE`（整刊未收录）· `NO_DOCX_TEMPLATE`（只有 LaTeX/指南，缺 Word 模板）——两者都必须先收集，不许回退到 `generic`。
+- **draft 已强制**：`paper-studio draft --out <目录> --journal <刊>` 开工前自动跑模板预检；缺模板直接 exit 1（`--format docx` 时要求 Word 模板）；任务书会写入“期刊模板（严格按此）”一行。
 - **收录流程与版权**：见 `templates/README.md`；模板原件 LPPL 1.3+（Elsevier/IEEE/ACS），PLOS 指南仅本地参考。
 - **已知缺口**：Elsevier/IEEE/ACS/PLOS 的 Word 模板、中文期刊模板、Springer/Wiley/T&F 未收录。
 
