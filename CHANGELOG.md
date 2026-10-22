@@ -2660,3 +2660,14 @@ ode bin/<tool>.cjs 调用。
 - 新增 spec 字段 `template_colors`：只用于 `--verify` 的模板自检（允许模板自带说明色），**稿件 `--check` 仍严格禁止彩色正文**。
 - `--verify` 12/12 → **13/13 通过**。
 - 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.77.0 — 2026-10-22
+
+**新增 `--new`：为未收录期刊建“待收集”条目，把收集流程固化成命令。**
+
+- `node bin/journal-template.cjs --new --id <id> --journal "<刊名>" [--publisher <社>] [--url <官方页>]`
+- 生成 `templates/<id>/files/` + `spec.json` 骨架（kind=pending、status=unverified、sources 带 URL、notes 写下一步），并登记 index；同 id 已存在时拒绝覆盖。
+- 新条目在拿到模板前 `--preflight` 会 `NO_DOCX_TEMPLATE` 阻断；`--verify` 不因“还没收模板”误报。
+- 实测：建 `demo-test` → verify 14/14 → preflight 阻断 → 删除并回滚 index → verify 13/13。
+- 读数：journal-template 12/12 · verify 13/13 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

@@ -613,6 +613,41 @@ function cmdVerify(index) {
   return failed === 0 ? 0 : 1;
 }
 
+function cmdNew(index, id, journal, opts = {}) {
+  if (!id || !journal) { console.log('用法：--new --id <id> --journal "<刊名>" [--publisher <社>] [--url <官方页>]'); return 2; }
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) { console.log('id 只能用小写字母、数字、连字符：' + id); return 2; }
+  if ((index.templates || []).some((e) => e.id === id)) { console.log(`条目已存在：${id}（拒绝覆盖；要改请直接改 spec.json）`); return 1; }
+  const dir = path.join(KB, id);
+  fs.mkdirSync(path.join(dir, 'files'), { recursive: true });
+  const spec = {
+    schema: 'paper-studio.journal-template.v1',
+    id,
+    journal,
+    aliases: opts.alias ? [opts.alias] : [],
+    publisher: opts.publisher || '',
+    kind: 'pending',
+    status: 'unverified',
+    strict: true,
+    verified_at: new Date().toISOString().slice(0, 10),
+    sources: opts.url ? [{ url: opts.url, note: '待核对：官方 Guide for Authors / Templates 页', fetched_at: new Date().toISOString().slice(0, 10) }] : [],
+    license: { name: '待核对', redistributable: 'unknown' },
+    docx: null,
+    colors: { text: '#000000' },
+    files: [],
+    notes: [
+      '待收集：官方 Word / LaTeX 模板文件；取得后放入 files/ 并填 docx/latex 段。',
+      '填完后跑 --verify 与 --preflight；status 从 unverified 改为 verified / verified-partial。'
+    ]
+  };
+  fs.writeFileSync(path.join(dir, 'spec.json'), JSON.stringify(spec, null, 2) + '\n', 'utf8');
+  index.templates = (index.templates || []).concat([{ id, journal, aliases: spec.aliases, kind: 'pending', status: 'unverified', path: `templates/${id}/spec.json`, verified_at: spec.verified_at, strict: true }]);
+  index.updated = new Date().toISOString().slice(0, 10);
+  fs.writeFileSync(INDEX, JSON.stringify(index, null, 2) + '\n', 'utf8');
+  console.log(`已建条目：templates/${id}/spec.json`);
+  console.log('下一步：下载官方模板 → 放 files/ → 填 docx/latex 与 sources → 跑 --verify；缺模板时 --preflight 会阻断。');
+  return 0;
+}
+
 function main(argv) {
   const args = argv.slice(2);
   const opt = (name) => {
@@ -627,6 +662,10 @@ function main(argv) {
     if (args.includes('--resolve')) {
       if (!journal) { console.log('用法：--resolve --journal <刊名或 id> [--format docx|latex]'); process.exitCode = 2; return; }
       process.exitCode = cmdResolve(index, journal, opt('--format'));
+      return;
+    }
+    if (args.includes('--new')) {
+      process.exitCode = cmdNew(index, opt('--id'), opt('--journal'), { publisher: opt('--publisher'), url: opt('--url'), alias: opt('--alias') });
       return;
     }
     if (args.includes('--check-batch')) {
@@ -671,7 +710,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --verify | --check-batch <目录> --journal <名> | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> [--report <报告.md>] | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --verify | --new --id <id> --journal <名> [--publisher <社>] [--url <官方页>] | --check-batch <目录> --journal <名> | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> [--report <报告.md>] | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);
