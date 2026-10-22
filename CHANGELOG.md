@@ -2671,3 +2671,15 @@ ode bin/<tool>.cjs 调用。
 - 新条目在拿到模板前 `--preflight` 会 `NO_DOCX_TEMPLATE` 阻断；`--verify` 不因“还没收模板”误报。
 - 实测：建 `demo-test` → verify 14/14 → preflight 阻断 → 删除并回滚 index → verify 13/13。
 - 读数：journal-template 12/12 · verify 13/13 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.78.0 — 2026-10-22
+
+**上海交通大学学报官方 Word 模板入库：`.doc` 用本机 Word COM 转 `.docx` 后收进知识库。**
+
+- 官方原件：`https://xuebao.sjtu.edu.cn/fileup/1006-2467/ITEM/20260330091011.doc`（156160 bytes）。
+- 转换：PowerShell `Word.Application` → `SaveAs2(..., 16)` → 146140 bytes docx；转换不改版式。
+- 实测：A4 / 上下 2.54cm、左右 3.18cm / 中文宋体 + 西文 Times New Roman；模板内红字 FF0000 为说明；正文为直接格式化（无命名样式）。
+- `cn-sjtu` 标 `verified-partial`（字号未在样式层声明）；`template_colors` 放行模板内红字，稿件 `--check` 仍禁彩色。
+- `--verify` 13/13 → **14/14 通过**。
+- 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

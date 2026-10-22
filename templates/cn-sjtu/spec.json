@@ -1,0 +1,71 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "cn-sjtu",
+  "journal": "上海交通大学学报",
+  "aliases": [
+    "上海交通大学学报",
+    "上海交大学报",
+    "SJTU"
+  ],
+  "publisher": "上海交通大学",
+  "kind": "docx-template",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://www.qk.sjtu.edu.cn/xb/CN/column/item762.shtml",
+      "note": "官方作者须知页列出《论文模板》下载",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://xuebao.sjtu.edu.cn/fileup/1006-2467/ITEM/20260330091011.doc",
+      "note": "官方论文模板 .doc（156160 bytes）；2026-10-22 用本机 Word COM 转 .docx（146140 bytes）",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "期刊官网公开论文模板（仅本地参考，不再分发）",
+    "redistributable": false
+  },
+  "docx": {
+    "template_file": "files/sjtu-natural-science-template.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.54,
+      "bottom": 2.54,
+      "left": 3.18,
+      "right": 3.18
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": "宋体",
+      "size_pt": null
+    },
+    "line_spacing": null,
+    "styleMap": {},
+    "note": "正文样式为直接格式化（转换后无命名样式）；字号未在样式层声明；模板内红字 FF0000 为说明"
+  },
+  "colors": {
+    "text": "#000000",
+    "note": "模板内 FF0000 红字为填写说明，正式稿必须删除"
+  },
+  "template_colors": [
+    "FF0000"
+  ],
+  "files": [
+    {
+      "path": "files/sjtu-natural-science-template.docx",
+      "sha256": "sha256:dca9654da9aa9117772beb153a074b7bd93015149566f0206624438ae76bd3f2",
+      "role": "word-template"
+    }
+  ],
+  "notes": [
+    "中文刊 Word 模板：A4 / 上下 2.54cm、左右 3.18cm / 中文宋体 + 西文 Times New Roman。",
+    "官方原件是 .doc；本库存的是用 Word COM 转换后的 .docx，转换不改变版式，但样式表为直接格式化。"
+  ]
+}
