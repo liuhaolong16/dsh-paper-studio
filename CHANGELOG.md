@@ -2482,3 +2482,14 @@ eferences/pipeline.json 的 selfchecks 加两条；能力登记表加 env.paper-
 - 读数：studio **254/254**（未变）· audit **6/6** · package-audit **11/11** · license-audit **PASS**（FAIL 0）· 两个新工具自检 **8/8** / **4/4**。
 - 注：本轮未改插件工具面（paper_studio 的 action 枚举与 plugin/dist 不动），两个新工具是 CLI/资产，宿主可直接 
 ode bin/<tool>.cjs 调用。
+
+## 3.60.0 — 2026-10-22
+
+**新增期刊模板知识库（	emplates/ + in/journal-template.cjs），把「格式不符合期刊要求」变成可调度、可机检的硬约束。**
+
+- **规则**：指定期刊 ⇒ 严格按 	emplates/<id>/spec.json；未指定 ⇒ generic；库里没有 ⇒ NO_TEMPLATE / NO_DOCX_TEMPLATE，必须先收集入知识库，不得套通用模板。
+- **已收录**：generic（本仓通用 Word：A4 / 上下 2.54cm、左右 3.17cm / 宋体+Times 12pt / 1.5 倍行距 / 标题黑体 16pt）· elsevier-elsarticle（CTAN 官方包，模板 [preprint,12pt]）· ieee-journals（[journal]{IEEEtran}，letter/双栏/10pt）· cs-journals（[journal=<code>,manuscript=article]{achemso}）· plos-one（正文格式 PDF：标题 18/16/14pt、行号、禁彩色；partial）。
+- **机检**：--check 查 docx 页面尺寸/四边页边距/默认字体（ascii+eastAsia）/字号/行距/非黑颜色；--check-tex 查文档类与必需选项（含 journal= 前缀）；--selftest **9/9**（正控 + 必失败夹具 + 别名解析 + 缺刊）。
+- **登记**：pipeline selfchecks +1；能力登记表 +1（env.paper-journal-template）；package.json.files 加 	emplates。
+- **版权**：Elsevier/IEEE/ACS 模板为 LPPL 1.3+（可再分发，保留来源与许可）；PLOS 指南仅本地参考。
+- 读数：studio **254/254** · audit **6/6** · package-audit **11/11** · license-audit **PASS**。

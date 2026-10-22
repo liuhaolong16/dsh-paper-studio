@@ -295,6 +295,18 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 - **用法**：把卡 JSON + `assets/ui-style/prompt.template.md` 一起塞进提示词；一个产品同时只允许一张卡生效，换页面不换卡。
 - **边界**：只判可机检的风格约束，不判版式美学；最终版式仍需人看。
 
+## 期刊模板知识库（`journal-template` · v3.60.0）
+
+> 规则：**指定期刊 ⇒ 严格按该刊模板，字号/字体/页边距/颜色一项不能错；没指定 ⇒ 用 `generic`；指定了但库里没有 ⇒ 先收集入知识库，不得直接套通用模板。**
+
+- **知识库**：`templates/`（`index.json` + 每刊 `spec.json` + `files/` 官方模板原件）；每条的 `status` 为 `verified` / `verified-partial` / `fallback`。
+- **已收录（2026-10-22）**：`generic`（本仓通用 Word 格式）· `elsevier-elsarticle`（Elsevier/JoES，LaTeX）· `ieee-journals`（IEEEtran）· `acs-journals`（achemso）· `plos-one`（指南，partial）。
+- **命令**：`node bin/journal-template.cjs --list` · `--resolve --journal <刊名> [--format docx|latex]` · `--check <稿.docx> --journal <id>` · `--check-tex <稿.tex> --journal <id>` · `--selftest`（**9/9**）。
+- **机检**：docx 查页面尺寸、四边页边距、默认字体（ascii/eastAsia）、字号、行距、非黑色文字；tex 查 `\documentclass` 类名与必需选项（含 `journal=` 前缀）。
+- **缺模板判定码**：`NO_TEMPLATE`（整刊未收录）· `NO_DOCX_TEMPLATE`（只有 LaTeX/指南，缺 Word 模板）——两者都必须先收集，不许回退到 `generic`。
+- **收录流程与版权**：见 `templates/README.md`；模板原件 LPPL 1.3+（Elsevier/IEEE/ACS），PLOS 指南仅本地参考。
+- **已知缺口**：Elsevier/IEEE/ACS/PLOS 的 Word 模板、中文期刊模板、Springer/Wiley/T&F 未收录。
+
 <!-- AUTO:skill-modules:start 由 bin/sync-skill-modules.cjs 生成；勿手改 -->
 
 ## 能力模块索引（按需要单独加载 · 7 个模块）

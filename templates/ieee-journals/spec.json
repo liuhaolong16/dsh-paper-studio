@@ -1,0 +1,59 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "ieee-journals",
+  "journal": "IEEE 期刊/会议（IEEEtran 文档类）",
+  "aliases": [
+    "IEEE",
+    "IEEEtran",
+    "IEEE Transactions",
+    "IEEE journal"
+  ],
+  "publisher": "IEEE",
+  "kind": "latex-class",
+  "status": "verified",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://mirrors.tuna.tsinghua.edu.cn/CTAN/macros/latex/contrib/IEEEtran.zip",
+      "note": "CTAN 官方包（LPPL 1.3）；cls 第 142/153 行：默认 letterpaper、twocolumn；第 246 行默认 journal 模式",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "LPPL 1.3",
+    "url": "http://www.latex-project.org/lppl.txt",
+    "redistributable": true
+  },
+  "latex": {
+    "class": "IEEEtran",
+    "required_options": [
+      "journal"
+    ],
+    "page": "letter",
+    "body_pt": 10,
+    "columns": 2,
+    "template": "files/bare_jrnl.tex",
+    "class_source": "files/IEEEtran.cls"
+  },
+  "docx": null,
+  "colors": {
+    "text": "#000000"
+  },
+  "notes": [
+    "会议用 conference 选项，期刊用 journal；不得混用。",
+    "Word 投稿需先收集 IEEE Word 模板（本卡只覆盖 LaTeX）。"
+  ],
+  "files": [
+    {
+      "path": "files/bare_jrnl.tex",
+      "sha256": "sha256:7a5e5dfdb7c17d6dcc827d1a985245b873e7e903d9d66882392c47bee4be47ed",
+      "role": "template"
+    },
+    {
+      "path": "files/IEEEtran.cls",
+      "sha256": "sha256:da751920a317ed318b7b5cd7fa585a6cc7d28502d457856382e9be24b10a3bd7",
+      "role": "class"
+    }
+  ]
+}

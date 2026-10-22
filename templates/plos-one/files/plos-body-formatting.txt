@@ -1,0 +1,344 @@
+ 
+  
+ 
+            MANUSCRIPT BODY FORMATTING GUIDELINES 
+1 
+ 
+Modified April 2021 
+Abstract 1 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 2 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 3 
+interdum. Donec tincidunt porta sem nec hendrerit. Vestibulum nec 4 
+pharetra quam, vitae convallis nunc. Mauris in mattis sapien. Fusce 5 
+sodales vulputate auctor. Nam lacus felis, fermentum sit amet n ulla 6 
+ac, tristique ultrices tellus. Integer rutrum aliquet sapien, e u 7 
+fermentum magna pellentesque vitae. Integer semper viverra mauris 8 
+vel pulvinar. Suspendisse sagittis malesuada urna. Praesent mau ris 9 
+diam, fringilla id fringilla ac, posuere non lorem. Vestibulum mauris 10 
+ante, fringilla quis tortor sit amet, accumsan fermentum quam. Nulla 11 
+dictum consectetur leo. Ut vulput ate ipsum purus, a interdum ni bh 12 
+viverra et. Praesent aliquam sapien vel massa sodales bibendum.  13 
+Nulla interdum accumsan lectus, sed auctor elit accumsan a. 14 
+Suspendisse quis rhoncus nibh. The verum est de illic. 15 
+ 16 
+ 17 
+Introduction 18 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 19 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 20 
+interdum. Donec tincidunt porta sem nec hendrerit. Vestibulum nec 21 
+pharetra quam, vitae convallis nunc.  22 
+Level 1 heading 23 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 24 
+Vestibulum adipiscing urna ut lectus gravida, vitae (Fig 1)  25 
+interdum.  Donec tincidunt porta sem nec hendrerit. Vestibulum nec 26 
+pharetra quam, vitae convallis nunc. Mauris in mattis sapien. Fusce 27 
+sodales vulputate auctor. Nam sit amet nulla lacus  a, Figs 1 a nd 2 28 
+ultrices tellus. Integer rutrum aliquet sapien, eu fermentum ma gna 29 
+pellentesque vitae.  30 
+ 31 
+Fig 1. This is the Fig 1 Title. This is the Fig 1 legend.  32 
+Fig 2. This is the Fig 2 Title. This is the Fig 2 legend. 33 
+ 34 
+Figure Citations 
+ Cite figures as “Fig 1”, 
+“Fig 2”, etc. 
+ Cite figures and tables 
+in order. 
+ Do not cite “Fig 2” 
+before “Fig 1”. 
+ Cite multiple figures as 
+“Figs 1 and 2”, “Figs 1-
+3”, etc. 
+Level 1 Heading 
+ Use Level 1 heading 
+for all major sections 
+(Abstract, Introduction, 
+Materials and 
+methods, Results, 
+Discussion, etc.). 
+ Bold type, 18pt font. 
+ Only use italics and 
+text formatting where 
+needed (e.g. genus 
+and species names, 
+genes, etc.). 
+ Headings should be 
+written in sentence 
+case (capitalize only 
+the first word of the 
+heading, the first word 
+of the subheading, and 
+any proper nouns and 
+genus names). 
+ 
+NOTE: Do not cite 
+figures, tables, 
+supporting information, 
+or references in the 
+Abstract.
+Figure Captions 
+ Each figure caption 
+should appear directly 
+after the paragraph in 
+which they are first cited. 
+ Do not include tables 
+within captions. 
+ Use bold type for the 
+figure titles. 
+File Naming for Figures 
+ Figure files should be saved as “Fig1.tif”, “Fig2.eps”, etc. 
+ Acceptable file formats for fi gures are “.tif”, “.tiff”, and “.eps” 
+ Figures should be uploaded sepa rately as individual files. 
+NOTE: Before submitting, review the full submission guidelines 
+for the journal to which you are submitting: PLOS ONE, PLOS 
+Biology, PLOS Medicine, PLOS Neglected Tropical Diseases, PLOS 
+Computational Biology, PLOS Genetics, PLOS Pathogens 
+ 
+  
+ 
+            MANUSCRIPT BODY FORMATTING GUIDELINES 
+2 
+ 
+Modified April 2021 
+ 35 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 36 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 37 
+interdum. Donec 2p  et 2q  tincidunt porta sem nec hendrerit. 38 
+              
+22 21pp q q                       (1)  39 
+Vestibulum nec pharetra quam, vitae convallis nunc. Mauris 40 
+in mattis sapien. Fusce sodales  vulputate auctor. Nam lacus fe lis, 41 
+fermentum sit amet nulla ac, tristique ultrices tellus. Integer rutrum 42 
+aliquet sapien, eu fermentum mag na pellentesque vitae. Integer 43 
+semper viverra mauris vel pulvinar dolor sit amet en 2() 1pq . 44 
+ 45 
+Level 2 heading 46 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 47 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 48 
+interdum. Donec tincidunt porta  sem nec hendrerit. Omnes tuum 49 
+basi sunt pertinent ad nos. Maur is in mattis sapien. Fusce soda les 50 
+vulputate auctor. Nam lacus felis, fermentum sit amet nulla ac,  51 
+tristique ultrices tellus. Integer rutrum aliquet sapien, eu fermentum 52 
+magna pellentesque vitae. Integ er semper viverra mauris vel 53 
+pulvinar et alst.  54 
+Level 3 heading 55 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 56 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 57 
+interdum. Donec tincidunt porta sem nec hendrerit. Vestibulum nec 58 
+pharetra quam, vitae convallis nunc. Mauris in mattis sapien. Fusce 59 
+sodales vulputate auctor. Numquam iens dare tibi up. 60 
+ 61 
+ 62 
+ 63 
+ 64 
+Display/Numbered Equation 
+ Format display equations in 
+Mathtype or Equation Tools. 
+ Do not use Graphic Objects. 
+Inline Equation 
+ Format in regular text or as 
+an inline equation in 
+Mathtype or Equation Tools. 
+ Do not use Symbol Font. 
+ Do not use Graphic Objects. 
+Level 2 Heading 
+ Use Level 2 headings for 
+sub-sections of major 
+sections. 
+ Bold type, 16pt font. 
+ Only use italics and text 
+formatting where needed. 
+ Use sentence case. 
+Level 3 heading 
+ Use Level 3 headings for 
+sub-sections within Level 
+2 headings. 
+ Bold type, 14pt font. 
+ Only use italics and text 
+formatting where needed. 
+ Use sentence case. 
+NOTE: This document is presented in single-space paragraph 
+format for ease of use. Please submit your manuscript in 
+double-space paragraph format. 
+ 
+  
+ 
+            MANUSCRIPT BODY FORMATTING GUIDELINES 
+3 
+ 
+Modified April 2021 
+Level 1 heading 65 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 66 
+Vestibulum adipiscing urna ut lectus gravida, et bland Table 1   67 
+Donec tincidunt porta sem nec hen drerit. Vestibulum nec pharetr a 68 
+quam, vitae convalli. Fido nemo. 69 
+Table 1. This is the Table 1 Title.  70 
+ C h e m i c a l  
+W 
+Chemical 
+X 
+Chemical 
+Y 
+Chemical 
+Z 
+Chemical 1 Reaction 
+1W 
+Reaction 
+1X 
+Reaction 
+1Y 
+Reaction 
+1Z 
+Chemical 2 Reaction 
+2W 
+Reaction 
+2X 
+Reaction 
+2Y 
+Reaction 
+2Z 
+Chemical 3 Reaction 
+3Wa 
+Reaction 
+3X 
+Reaction 
+3Yb 
+Reaction 
+3Z 
+Chemical 4 Reaction 
+4W 
+Reaction 
+4X 
+Reaction 
+4Y 
+Reaction 
+4Z 
+Chemical 5 Reaction 
+5W 
+Reaction 
+5X 
+Reaction 
+5Y 
+Reaction 
+5Z 
+This is the Table 1 legend. 71 
+aTable footnotes belong here. 72 
+bFootnotes should have corresponding symbols in the table. 73 
+ 74 
+ 75 
+Conclusion 76 
+Lorem ipsum dolor sit amet, consectetur adipiscing [1-5]. 77 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 78 
+interdum. Donec tincidunt porta sem nec hendrerit. Vestibulum nec 79 
+pharetra quam, vitae convallis nunc. Mauris in mattis sapien. Fusce 80 
+sodales vulputate auctor S1 Fig. Dolor sit amet S1 and S2 Tables.  81 
+ 82 
+ 83 
+Reference Citations 
+ Cite references in brackets 
+(for example, “[1]” or “[2-5]” 
+or “[3,7,9]”). 
+ References must be cited 
+in order at first mention. 
+ 
+Tables and Table Citations 
+ Tables should be cited 
+as “Table 1”, “Table 2”, 
+etc. 
+ Cite multiple tables as 
+“Tables 1 and 2”,  
+“Tables 1-3”, etc. 
+ Tables should be 
+included directly after 
+the paragraph in which 
+they are first cited. 
+ Tables must be cell-
+based in Microsoft 
+Word or embedded 
+with Microsoft Excel. 
+ Do not use empty rows 
+to create spacing. 
+ Do not include graphic 
+objects, images, or 
+colored text. 
+Supporting Information Citations 
+ Format Supporting Information Ci tations as “S1 Fig”, “S1 Table”, etc. 
+ Cite multiple files as “S1 and  S2 Figs”, “S1-S3 Figs”, etc. 
+ It is not required to cite each  Supporting Information file. 
+ Supporting information should  be uploaded separately as individual files. 
+ 
+  
+ 
+            MANUSCRIPT BODY FORMATTING GUIDELINES 
+4 
+ 
+Modified April 2021 
+ 84 
+ 85 
+Acknowledgments 86 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 87 
+Vestibulum adipiscing urna ut l ectus gravida, vitae blandit tor tor 88 
+interdum.  89 
+ 90 
+ 91 
+References 92 
+1. Doe J, Data A, van Stats J, Testperson M, Ribosome D Jr, 93 
+McBio GHT, et al. This is the article title. PLoS ONE. 94 
+2017;12(12):e00000. doi: 10.1371/journal.pone.0000000  95 
+2. Doe J, Data A, van Stats J, Testperson M, Ribosome D Jr, 96 
+McBio GHT, et al. Bunny dynamics in cartoon landscapes. 97 
+PLoS ONE. Forthcoming 2017. 98 
+ 99 
+ 100 
+Supporting information  101 
+S1 Fig. This is the S1 Fig Title. This is the S1 Fig legend.   102 
+S2 Fig. This is the S2 Fig Title. This is the S2 Fig legend.   103 
+S1 Table. This is the S1 Table Title. This is the S1 Table legend.   104 
+S2 Table. This is the S2 Table Title. This is the S2 Table legend.   105 
+S1 File.  This is the S1 File Title. This is the S1 File legend. 106 
+ 107 
+ 108 
+ 109 
+Acknowledgments 
+ Do not include funding or 
+competing interests 
+information in 
+Acknowledgments. 
+Supporting Information 
+Captions 
+ List Supporting 
+Information captions at 
+the end of the 
+manuscript in a section 
+titled “Supporting 
+information”. 
+ Use a Level 1 heading. 
+ Use bold type for the 
+titles. 
+ Supporting Information 
+files do not require full 
+captions; only labels 
+(“S1 Fig”) are fully 
+required. 
+Before submitting, review the full submission guidelines for the journal to which you are 
+submitting: PLOS ONE, PLOS Biology, PLOS Medicine, PLOS Neglected Tropical Diseases, 
+PLOS Computational Biology, PLOS Genetics, PLOS Pathogens 
+References 
+ References should be 
+listed after the main text, 
+before the supporting 
+information. 
+ References with more 
+than six authors should 
+list the first six author 
+names, followed by “et al.” 
+ References should be 
+formatted according to the 
+NLM/ICMJE style: 
+https://www.nlm.nih.gov/b
+sd/uniform_requirements.
+html  
+File Naming for Supporting Information 
+ Supporting Information files sh ould be saved as “S1_Fig.tif”, 
+“S1_File.pdf”, etc. 
+ All file types are supported. 

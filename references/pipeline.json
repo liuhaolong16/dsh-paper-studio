@@ -407,7 +407,8 @@
       "docx-verify": "A",
       "artifact-sync": "A",
       "author-material": "A",
-      "compliance-scan": "A"
+      "compliance-scan": "A",
+      "prereg-claim": "A"
     },
     "verdict_taxonomy": {
       "note": "**判定状态机 + 保证级别轴**（V2.6 · 外部吸收：ARIS `assurance-contract.md`，MIT）。ARIS 把「门为什么没给结论」分得很细，我原先只分四种，**把最危险的一种混进了无害的那种**：`skipped_missing_input`（该跑但缺前提）在 ARIS 里叫 **`BLOCKED`**，其原文定性是『**BLOCKED is more dangerous than NOT_APPLICABLE**』——『应该审却审不了』不等于『没什么可审』，它必须**阻断**；而我原先把缺输入当成不阻断的跳过（这正是 ARIS 文档里记录过的失效模式：beast 档产出草稿质量论文、三道投稿门全被静默跳过）。修法不是直接改默认行为（会破坏现有用法），而是**引入独立的保证级别轴**：`draft`＝现状不变（只有 fail/error 阻断）· `submission`＝**blocked 亦阻断**。另两条同源纪律：① **子门只负责『永远出判定』，不自己阻断**（『Always Emit, Never Block』），阻断决策**只在一处**（聚合层 + 保证级别）；② **NOT_APPLICABLE 必须留痕**（它表示『审过，且确实没有可审的』），而静默跳过不留痕、外部无法区分『查过没有』与『忘了查』。",
@@ -641,7 +642,8 @@
       "artifact-sync": "figures-tables",
       "contract": "*",
       "author-material": "*",
-      "compliance-scan": "*"
+      "compliance-scan": "*",
+      "prereg-claim": "*"
     }
   },
   "stage_kinds": {
@@ -686,7 +688,8 @@
         "journal-contract",
         "docx-verify",
         "artifact-sync",
-        "compliance-scan"
+        "compliance-scan",
+        "prereg-claim"
       ],
       "outputs": [
         "待修项清单（带行号）",
@@ -747,6 +750,7 @@
       ],
       "chain": [
         "subcommand:intake",
+        "manual:作者（写预注册协议 protocol.md + 上传开源仓库，见 precondition）",
         "subcommand:draft",
         "gate:author-material",
         "handoff:paper-writer",
@@ -758,14 +762,15 @@
         "contract",
         "claim-anchor",
         "phrase",
-        "compliance-scan"
+        "compliance-scan",
+        "prereg-claim"
       ],
       "outputs": [
         "正文草稿（零占位符）",
         "证据-断言对照（每条事实的来源）",
         "待作者确认项"
       ],
-      "precondition": "必须有作者材料 / 已验证检索 / 领域常识三者之一；皆无 ⇒ 只给框架 + 检索计划（由 `author-material` 门机械判定，不再只是一句约定）。逐节正文起草交给**外部技能** `paper-writer`（本插件只编排与过门；该技能为 CC-BY-NC-SA，只引路径不搬运内容）。"
+      "precondition": "必须有作者材料 / 已验证检索 / 领域常识三者之一；皆无 ⇒ 只给框架 + 检索计划（由 `author-material` 门机械判定，不再只是一句约定）。逐节正文起草交给**外部技能** `paper-writer`（本插件只编排与过门；该技能为 CC-BY-NC-SA，只引路径不搬运内容）。**预注册协议（L-23）**：实证稿若后续会声称 a-priori / pre-registered 判据，须在起草前由作者写 `protocol.md`（研究问题+证伪条件+阈值+过滤规则+自测）并上传开源仓库——这是「fixed a priori」的可核对证据，不写则后续 `prereg-claim` 门会因「有声称无证据」失败。"
     }
   ],
   "gates": [
@@ -1138,6 +1143,34 @@
         "write"
       ],
       "note": "薄适配器：只 spawn 插件 CLI 的 compliance（判据正文只有一份，在插件仓 references/compliance-checklist.md），原样透出 CLI 输出与退出码；缺输入一律不判通过。"
+    },
+    {
+      "id": "prereg-claim",
+      "label": "预注册声称门（L-23：pre-registered 声称必须有证据，否则改措辞）",
+      "runtime": "python",
+      "entry": "_gate-prereg-claim.py",
+      "rel": "playbook_root",
+      "scope": "draft",
+      "args": [
+        "--draft",
+        "{draft}"
+      ],
+      "required_placeholders": [
+        "{draft}"
+      ],
+      "report_args": [
+        "--json"
+      ],
+      "exit_codes": {
+        "0": "通过（无声称 / 有声称且有证据）",
+        "1": "有 pre-registered 声称但无证据",
+        "2": "前提层失败"
+      },
+      "used_by": [
+        "check",
+        "write"
+      ],
+      "note": "L-23 的真实事故：论文A 全文 11 处声称「pre-registered」却无登记平台/链接/日期，被审稿人一眼点破（「审稿人必问」级）。判据：出现「pre-register」字样（隐含外部登记）⇒ 必须同时有证据标记（osf.io/aspredicted/clinicaltrials/registry/protocol.md/链接）；无证据 ⇒ FAIL，建议改措辞为「fixed a priori + protocol.md 佐证」或补登记。红线：本门绝不替作者补登记链接/日期（伪造时间线比没有预注册更严重）。必失败面在脚本 --selftest 内（「有声称无证据」夹具必须判 fail）。"
     }
   ],
   "handoff": {
@@ -1345,7 +1378,8 @@
     "L-18": null,
     "L-19": null,
     "L-20": null,
-    "L-21": null
+    "L-21": null,
+    "L-23": "gate:prereg-claim"
   },
   "selfchecks": {
     "studio.cjs": "node bin/studio.cjs selftest --json",
@@ -1401,7 +1435,8 @@
     "generate.cjs": "node bin/generate.cjs --selftest",
     "local-engine.cjs": "node bin/local-engine.cjs --selftest",
     "table-trace.cjs": "node bin/table-trace.cjs --selftest",
-    "style-card.cjs": "node bin/style-card.cjs --selftest"
+    "style-card.cjs": "node bin/style-card.cjs --selftest",
+    "journal-template.cjs": "node bin/journal-template.cjs --selftest"
   },
   "agent_facing": [
     "anonymize",

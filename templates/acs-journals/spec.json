@@ -1,0 +1,67 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "acs-journals",
+  "journal": "ACS 期刊（achemso 文档类）",
+  "aliases": [
+    "ACS",
+    "achemso",
+    "American Chemical Society",
+    "JACS"
+  ],
+  "publisher": "American Chemical Society",
+  "kind": "latex-class",
+  "status": "verified",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://mirrors.tuna.tsinghua.edu.cn/CTAN/macros/latex/contrib/achemso.zip",
+      "note": "CTAN 官方包（LPPL 1.3c+）；dtx 第 213 行 LoadClass[12pt,letter]{article}",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "LPPL 1.3c or later",
+    "url": "http://www.latex-project.org/lppl.txt",
+    "redistributable": true
+  },
+  "latex": {
+    "class": "achemso",
+    "required_options": [],
+    "required_option_prefixes": [
+      "journal="
+    ],
+    "base_class": "article",
+    "base_options": [
+      "12pt",
+      "letter"
+    ],
+    "template": "files/achemso-demo.tex",
+    "class_source": "files/achemso.dtx",
+    "note": "ACS 要求 journal=<刊代码>（示例 jacsat）与 manuscript=article；刊代码按目标刊替换，不得省略 journal= 选项"
+  },
+  "docx": null,
+  "colors": {
+    "text": "#000000"
+  },
+  "notes": [
+    "ACS 的 Word 投稿需先收集 ACS Word 模板（本卡只覆盖 LaTeX）。"
+  ],
+  "files": [
+    {
+      "path": "files/achemso-demo.tex",
+      "sha256": "sha256:a67f1ec5da959c57fda32ffd0a5ec59b08a806f10433f5f5756a73a8ef6ea4fd",
+      "role": "template"
+    },
+    {
+      "path": "files/achemso.dtx",
+      "sha256": "sha256:f7c27ddc1b2b768b6b601c1977ed2e0587690b208652f7c213c25826bc3eb9d6",
+      "role": "class-source"
+    },
+    {
+      "path": "files/LICENSE.md",
+      "sha256": "sha256:90dc9ca67e84a01870bc477389035797c2ca1e8fea9e9996fc797bd5c66f92a0",
+      "role": "license"
+    }
+  ]
+}

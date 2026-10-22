@@ -1,0 +1,82 @@
+{
+  "schema": "paper-studio.journal-template-index.v1",
+  "updated": "2026-10-22",
+  "generic": "generic",
+  "templates": [
+    {
+      "id": "generic",
+      "journal": "paper-studio 通用模板（未指定期刊时的回退）",
+      "aliases": [
+        "generic",
+        "通用",
+        "default",
+        "无指定期刊"
+      ],
+      "kind": "docx-template",
+      "status": "fallback",
+      "path": "templates/generic/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": false
+    },
+    {
+      "id": "elsevier-elsarticle",
+      "journal": "Elsevier 期刊（elsarticle 文档类）",
+      "aliases": [
+        "Elsevier",
+        "elsarticle",
+        "Journal of Energy Storage",
+        "JoES",
+        "爱思唯尔"
+      ],
+      "kind": "latex-class",
+      "status": "verified",
+      "path": "templates/elsevier-elsarticle/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
+    },
+    {
+      "id": "ieee-journals",
+      "journal": "IEEE 期刊/会议（IEEEtran 文档类）",
+      "aliases": [
+        "IEEE",
+        "IEEEtran",
+        "IEEE Transactions",
+        "IEEE journal"
+      ],
+      "kind": "latex-class",
+      "status": "verified",
+      "path": "templates/ieee-journals/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
+    },
+    {
+      "id": "acs-journals",
+      "journal": "ACS 期刊（achemso 文档类）",
+      "aliases": [
+        "ACS",
+        "achemso",
+        "American Chemical Society",
+        "JACS"
+      ],
+      "kind": "latex-class",
+      "status": "verified",
+      "path": "templates/acs-journals/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
+    },
+    {
+      "id": "plos-one",
+      "journal": "PLOS ONE",
+      "aliases": [
+        "PLOS",
+        "PLoS ONE",
+        "PLOS ONE"
+      ],
+      "kind": "guidelines",
+      "status": "verified-partial",
+      "path": "templates/plos-one/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
+    }
+  ]
+}

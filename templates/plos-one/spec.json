@@ -1,0 +1,68 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "plos-one",
+  "journal": "PLOS ONE",
+  "aliases": [
+    "PLOS",
+    "PLoS ONE",
+    "PLOS ONE"
+  ],
+  "publisher": "PLOS",
+  "kind": "guidelines",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://journals.plos.org/plosone/s/submission-guidelines",
+      "note": "投稿指南页（HTTP 200；模板/格式 PDF 链接来源）",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://journals.plos.org/plosone/s/file?id=9cba/PLOS%20Manuscript%20Body%20Formatting%20Guidelines.pdf",
+      "note": "正文格式指南 PDF（4 页）；标题层级 18/16/14pt 加粗、行号、句首大写、不得彩色文字",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "PLOS 指南（站点内容，仅本地参考，不再分发）",
+    "redistributable": false
+  },
+  "docx": {
+    "headings": {
+      "h1_pt": 18,
+      "h2_pt": 16,
+      "h3_pt": 14,
+      "bold": true,
+      "case": "sentence"
+    },
+    "requirements": [
+      "continuous line numbers",
+      "page numbers",
+      "no colored text",
+      "cite figures as 'Fig 1'"
+    ],
+    "body_font": null,
+    "note": "本 PDF 未规定正文字体/字号；需从主投稿指南补齐后才能严格判 Word 成品"
+  },
+  "colors": {
+    "text": "#000000",
+    "note": "禁止彩色文字"
+  },
+  "notes": [
+    "status=verified-partial：标题层级有证据，正文正文字体/字号尚未取证。",
+    "补齐前不得声称已满足 PLOS 全部格式要求。"
+  ],
+  "files": [
+    {
+      "path": "files/plos-body-formatting.pdf",
+      "sha256": "sha256:9790279b49143233c4275a3bb8d83b0dba17179264f6393c9a9ea2055f01e38d",
+      "role": "guideline"
+    },
+    {
+      "path": "files/plos-body-formatting.txt",
+      "sha256": "sha256:4d8667d69b44c357955b051789374160e20baeaab0d8351a95d37d407fa5173c",
+      "role": "guideline-text"
+    }
+  ]
+}

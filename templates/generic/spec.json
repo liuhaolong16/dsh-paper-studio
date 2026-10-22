@@ -1,0 +1,74 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "generic",
+  "journal": "paper-studio 通用模板（未指定期刊时的回退）",
+  "aliases": [
+    "generic",
+    "通用",
+    "default",
+    "无指定期刊"
+  ],
+  "publisher": "本仓自产",
+  "kind": "docx-template",
+  "status": "fallback",
+  "strict": false,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "internal:profiles/desktop/make_essay_docx.py",
+      "note": "A4 21×29.7cm；上下 2.54cm、左右 3.17cm；正文 Times New Roman + 宋体 12pt、1.5 倍行距；标题黑体 16pt 加粗居中；副题楷体 10.5pt；参考文献 GB/T 7714",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "MIT（本仓自产）",
+    "redistributable": true
+  },
+  "docx": {
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.54,
+      "bottom": 2.54,
+      "left": 3.17,
+      "right": 3.17
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": "宋体",
+      "size_pt": 12
+    },
+    "line_spacing": 1.5,
+    "styles": {
+      "Title": {
+        "eastAsia": "黑体",
+        "ascii": "Times New Roman",
+        "size_pt": 16,
+        "bold": true,
+        "align": "center"
+      },
+      "Meta": {
+        "eastAsia": "楷体",
+        "size_pt": 10.5
+      },
+      "Heading1": {
+        "eastAsia": "黑体",
+        "size_pt": 14,
+        "bold": true
+      }
+    }
+  },
+  "colors": {
+    "text": "#000000",
+    "rule": "正文不得使用彩色文字（状态色仅用于表格/图注强调）"
+  },
+  "notes": [
+    "这是回退模板，不是任何期刊的官方格式。",
+    "期刊一旦指定：必须改用该期刊条目；没有条目 ⇒ 先收集模板并入知识库，不得直接套本卡。",
+    "字号/行距/页边距均来自本仓既有 Word 生成脚本，可机检。"
+  ],
+  "files": []
+}
