@@ -2617,3 +2617,13 @@ ode bin/<tool>.cjs 调用。
 - 首跑：**10/10 通过**（generic、Elsevier、IEEE、ACS、PLOS、MDPI、HAUT、HJNU、T&F、Frontiers）。
 - 意义：以后改 spec 或换模板文件，一条命令就能发现“文档写的和文件里的不一致”。
 - 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.73.0 — 2026-10-22
+
+**新增 `--check-batch`：一次机检整个稿件目录，交付前扫一遍。**
+
+- `node bin/journal-template.cjs --check-batch <目录> --journal <刊>`：目录内每个 `.docx` 按该刊 spec 检查，逐文件 PASS/FAIL，末行汇总 `N/M 通过`；任一失败 exit 1。
+- 实测：`run/fixtures` 对 `generic` = **0/2**（两份稿都是 Letter + 11pt）；先 `--apply` 修到临时目录后再跑 = **2/2 通过**。
+- 用途：投稿包交付前、批量改格式后、换刊重排后的一次性验收。
+- 读数：journal-template 12/12 · verify 10/10 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

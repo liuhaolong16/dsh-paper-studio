@@ -524,6 +524,29 @@ function cmdApply(index, docx, journal, out) {
   }
 }
 
+function cmdCheckBatch(index, dir, journal) {
+  const entry = resolveJournal(index, journal);
+  if (!entry) { console.log(`缺模板：${journal} 不在知识库（NO_TEMPLATE）`); return 1; }
+  const spec = loadSpec(entry);
+  if (!spec.docx) { console.log(`该刊没有 Word 参数（kind=${spec.kind}）⇒ 不能批量检查 Word`); return 1; }
+  if (!dir || !fs.existsSync(dir)) { console.log(`前提层失败：目录不存在 ${dir}`); return 2; }
+  const files = fs.readdirSync(dir).filter((f) => /\.docx$/i.test(f)).sort();
+  if (!files.length) { console.log(`目录里没有 .docx：${dir}`); return 2; }
+  let bad = 0;
+  for (const f of files) {
+    const p = path.join(dir, f);
+    let issues = [];
+    try { issues = compareDocx(docxFacts(p), spec); }
+    catch (e) { issues = [{ code: 'E_READ', field: 'file', expected: '可读 docx', actual: e.message }]; }
+    if (issues.length) {
+      bad++;
+      console.log(`FAIL  ${f}  ${issues.length} 项：${issues.slice(0, 3).map((i) => i.code).join(', ')}${issues.length > 3 ? ' …' : ''}`);
+    } else console.log(`PASS  ${f}`);
+  }
+  console.log(`\nbatch: ${files.length - bad}/${files.length} 通过（${entry.journal}）`);
+  return bad === 0 ? 0 : 1;
+}
+
 function cmdVerify(index) {
   const rows = [];
   let failed = 0;
@@ -576,6 +599,12 @@ function main(argv) {
       process.exitCode = cmdResolve(index, journal, opt('--format'));
       return;
     }
+    if (args.includes('--check-batch')) {
+      const dir = args[args.indexOf('--check-batch') + 1];
+      if (!dir || dir.startsWith('--') || !journal) { console.log('用法：--check-batch <目录> --journal <名>'); process.exitCode = 2; return; }
+      process.exitCode = cmdCheckBatch(index, dir, journal);
+      return;
+    }
     if (args.includes('--verify')) { process.exitCode = cmdVerify(index); return; }
     if (args.includes('--build')) {
       const md = args[args.indexOf('--build') + 1];
@@ -612,7 +641,7 @@ function main(argv) {
       process.exitCode = cmdCheckTex(index, file, journal);
       return;
     }
-    console.log('用法：--list | --verify | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
+    console.log('用法：--list | --verify | --check-batch <目录> --journal <名> | --resolve --journal <名> [--format docx|latex] | --preflight --journal <名> [--format docx|latex] | --build <稿.md> --journal <名> --out <out.docx> | --apply <in.docx> --journal <名> --out <out.docx> | --scaffold --journal <名> --out <文件> | --check <docx> --journal <名> | --check-tex <tex> --journal <名> | --selftest');
     process.exitCode = 2;
   } catch (e) {
     console.error('失败：' + e.message);
