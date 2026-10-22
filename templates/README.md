@@ -66,6 +66,7 @@ templates/
 node bin/journal-template.cjs --list
 node bin/journal-template.cjs --resolve --journal "Journal of Energy Storage" --format latex
 node bin/journal-template.cjs --preflight --journal MDPI --format docx
+node bin/journal-template.cjs --status
 node bin/journal-template.cjs --new --id <id> --journal "<刊名>" --url <官方页>
 node bin/journal-template.cjs --verify
 node bin/journal-template.cjs --check 稿.docx --journal MDPI --report 检查报告.md

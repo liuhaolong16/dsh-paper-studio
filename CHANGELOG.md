@@ -2695,3 +2695,13 @@ ode bin/<tool>.cjs 调用。
 - 实测：造一个 Normal=12pt 但某 run 直接 9pt 的 docx → 判定通过 + 1 条 WARN；正常 fixture 无 WARN。
 - 同时修正 `--check` 里“只有 LaTeX 类模板”的硬编码文案，按 kind 区分。
 - 读数：journal-template 12/12 · verify 14/14 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.80.0 — 2026-10-22
+
+**新增 `--status`：一眼看清知识库覆盖与缺口。**
+
+- `node bin/journal-template.cjs --status`：总条数、按类型（docx-template / latex-class / latex+docx / guidelines）、按状态（verified / verified-partial / fallback）、可用 Word 参数条目、可用 LaTeX 条目、待收集条目、已知缺口。
+- 首跑读数：**14 条**；docx-template=8 · latex-class=2 · latex+docx=1 · guidelines=3；verified=6 · verified-partial=7 · fallback=1；待收集 0。
+- 缺口明示：ACS / Wiley 的 Word 模板（Cloudflare/403）；HAUT / HJNU（CNKI 投稿系统内，需登录）。
+- 读数：journal-template 12/12 · verify 14/14 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

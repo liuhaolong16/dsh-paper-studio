@@ -596,6 +596,24 @@ function cmdCheckBatch(index, dir, journal) {
   return bad === 0 ? 0 : 1;
 }
 
+function cmdStatus(index) {
+  const all = index.templates || [];
+  const by = (fn) => all.reduce((m, e) => { const k = fn(e); m[k] = (m[k] || 0) + 1; return m; }, {});
+  const kind = by((e) => e.kind);
+  const status = by((e) => e.status);
+  const word = all.filter((e) => { try { return !!loadSpec(e).docx; } catch (x) { return false; } });
+  const latex = all.filter((e) => { try { return !!loadSpec(e).latex; } catch (x) { return false; } });
+  const pending = all.filter((e) => e.status === 'unverified' || e.kind === 'pending');
+  console.log(`知识库：${all.length} 条`);
+  console.log('  按类型：' + Object.entries(kind).map(([k, v]) => `${k}=${v}`).join(' · '));
+  console.log('  按状态：' + Object.entries(status).map(([k, v]) => `${k}=${v}`).join(' · '));
+  console.log(`  可用 Word 参数：${word.length} 条 → ${word.map((e) => e.id).join(', ')}`);
+  console.log(`  可用 LaTeX：${latex.length} 条 → ${latex.map((e) => e.id).join(', ')}`);
+  console.log(`  待收集：${pending.length} 条${pending.length ? ' → ' + pending.map((e) => e.id).join(', ') : ''}`);
+  console.log('  已知缺口：ACS / Wiley 的 Word 模板（官网被 Cloudflare/403 挡）；HAUT / HJNU（模板在 CNKI 投稿系统内，需登录）。');
+  return 0;
+}
+
 function cmdVerify(index) {
   const rows = [];
   let failed = 0;
@@ -693,6 +711,7 @@ function main(argv) {
       process.exitCode = cmdCheckBatch(index, dir, journal);
       return;
     }
+    if (args.includes('--status')) { process.exitCode = cmdStatus(index); return; }
     if (args.includes('--verify')) { process.exitCode = cmdVerify(index); return; }
     if (args.includes('--build')) {
       const md = args[args.indexOf('--build') + 1];
