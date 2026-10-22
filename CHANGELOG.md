@@ -2705,3 +2705,12 @@ ode bin/<tool>.cjs 调用。
 - 首跑读数：**14 条**；docx-template=8 · latex-class=2 · latex+docx=1 · guidelines=3；verified=6 · verified-partial=7 · fallback=1；待收集 0。
 - 缺口明示：ACS / Wiley 的 Word 模板（Cloudflare/403）；HAUT / HJNU（CNKI 投稿系统内，需登录）。
 - 读数：journal-template 12/12 · verify 14/14 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.81.0 — 2026-10-22
+
+**`--status` 区分“有官方模板文件”与“只有格式参数”，覆盖口径不再虚高。**
+
+- 之前把 `plos-one` 这类只有 docx 参数、没有模板文件的条目也算进“可用 Word 参数”，读起来像 10 条可用；实际能 `--scaffold`/`--apply` 套模板的只有 8 条。
+- 现在分四栏：有官方 Word 模板文件（8）· 只有 Word 格式参数（2：generic、plos-one）· 有 LaTeX 模板（3）· 仅指南无模板（2：cn-haut、cn-hjnu）。
+- 读数：journal-template 12/12 · verify 14/14 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
