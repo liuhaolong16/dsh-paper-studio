@@ -172,6 +172,20 @@
       "path": "templates/elsevier-methodsx/spec.json",
       "verified_at": "2026-10-22",
       "strict": true
+    },
+    {
+      "id": "cn-ctbu",
+      "journal": "重庆工商大学学报（自然科学版）",
+      "aliases": [
+        "重庆工商大学学报",
+        "重庆工商大学学报自然科学版",
+        "CTBU"
+      ],
+      "kind": "docx-template",
+      "status": "verified-partial",
+      "path": "templates/cn-ctbu/spec.json",
+      "verified_at": "2026-10-22",
+      "strict": true
     }
   ]
 }

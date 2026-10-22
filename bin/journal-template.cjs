@@ -173,7 +173,7 @@ function docxFacts(file) {
 
 const EPS = { cm: 0.06, pt: 0.15, line: 0.05 };
 
-function compareDocx(facts, spec) {
+function compareDocx(facts, spec, opts = {}) {
   const d = spec.docx || {};
   const issues = [];
   const push = (code, field, expected, actual) => issues.push({ code, field, expected, actual });
@@ -213,6 +213,7 @@ function compareDocx(facts, spec) {
   const allowed = new Set(['000000', 'AUTO']);
   if (spec.colors && spec.colors.text) allowed.add(String(spec.colors.text).replace('#', '').toUpperCase());
   for (const color of (spec.colors && spec.colors.allowed) || []) allowed.add(String(color).replace('#', '').toUpperCase());
+  for (const color of opts.extraAllowed || []) allowed.add(String(color).replace('#', '').toUpperCase());
   for (const color of facts.colors || []) {
     const value = String(color).toUpperCase();
     if (value === 'AUTO') continue;
@@ -595,7 +596,7 @@ function cmdVerify(index) {
       const p = path.resolve(path.dirname(specPathOf(entry)), spec.docx.template_file);
       if (!fs.existsSync(p)) issues.push('Word 模板缺失 ' + spec.docx.template_file);
       else {
-        try { issues.push(...compareDocx(docxFacts(p), spec).map((i) => `模板自检 ${i.code} ${i.field}`)); }
+        try { issues.push(...compareDocx(docxFacts(p), spec, { extraAllowed: spec.template_colors || [] }).map((i) => `模板自检 ${i.code} ${i.field}`)); }
         catch (e) { issues.push('Word 模板读不出：' + e.message); }
       }
     }

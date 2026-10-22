@@ -2649,3 +2649,14 @@ ode bin/<tool>.cjs 调用。
 - 报告含：期刊与 spec 路径、判定（通过/未通过 N 项）、实测值（页面/页边距/默认字体/行距）、不符合项表格（代码/字段/期望/实际）。
 - 实测 `manuscript_zh.docx` vs generic：报告 3 项不符（Letter 纸、11pt），与命令行输出一致。
 - 读数：journal-template 12/12 · verify 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.76.0 — 2026-10-22
+
+**第一个真正的中文期刊 Word 模板入库：重庆工商大学学报（自然科学版）。**
+
+- 来源：期刊官网下载端点（`journal.ctbu.edu.cn/zr/download_upload_file.aspx?...投稿写作模板[2024-10-24].docx`，200，217162 bytes）。
+- 实测：A4 / 上下 2.24cm、左右 2.17cm / 中文宋体 + 西文 Times New Roman；模板内红（FF0000）/绿（00B050）为填写说明。
+- 新增 spec 字段 `template_colors`：只用于 `--verify` 的模板自检（允许模板自带说明色），**稿件 `--check` 仍严格禁止彩色正文**。
+- `--verify` 12/12 → **13/13 通过**。
+- 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

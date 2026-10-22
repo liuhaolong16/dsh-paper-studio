@@ -1,0 +1,67 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "cn-ctbu",
+  "journal": "重庆工商大学学报（自然科学版）",
+  "aliases": [
+    "重庆工商大学学报",
+    "重庆工商大学学报自然科学版",
+    "CTBU"
+  ],
+  "publisher": "重庆工商大学",
+  "kind": "docx-template",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://journal.ctbu.edu.cn/zr/download_upload_file.aspx?file_name=/uploadfile/cqgszr/20241025/《重庆工商大学学报（自然科学版）》投稿写作模板[2024-10-24].docx",
+      "note": "官网下载端点实测 200，217162 bytes",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "期刊官网公开投稿模板（仅本地参考，不再分发）",
+    "redistributable": false
+  },
+  "docx": {
+    "template_file": "files/ctbu-natural-science-template.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.24,
+      "bottom": 2.24,
+      "left": 2.17,
+      "right": 2.17
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": "宋体",
+      "size_pt": null
+    },
+    "line_spacing": null,
+    "styleMap": {},
+    "note": "正文字号/行距未在样式层声明；模板内的红/绿字为填写说明"
+  },
+  "colors": {
+    "text": "#000000",
+    "note": "模板内 FF0000 红 / 00B050 绿为填写说明色，正式稿必须删掉"
+  },
+  "template_colors": [
+    "FF0000",
+    "00B050"
+  ],
+  "files": [
+    {
+      "path": "files/ctbu-natural-science-template.docx",
+      "sha256": "sha256:584024990ef95785439a5c81865d76743b7fbdf20debb837d886248fd5b89ad6",
+      "role": "word-template"
+    }
+  ],
+  "notes": [
+    "中文刊 Word 模板：A4 / 上下 2.24cm、左右 2.17cm / 中文宋体 + 西文 Times New Roman。",
+    "模板自带红/绿说明文字；成稿前必须删除彩色说明，--check 会把彩色正文判为违规。"
+  ]
+}

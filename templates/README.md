@@ -49,6 +49,7 @@ templates/
 | `elsevier-methodsx` | MethodsX | docx-template | verified-partial | Elsevier 官方 Word 模板：A4 / 四边 1.27cm / Times New Roman 11pt / 行距 1.15 |
 | `frontiers` | Frontiers | docx-template | verified | 官方 Word 模板：Letter / 上下 2.01、左 2.26、右 2.08cm / Times New Roman 12pt / 单倍行距 / Title 16pt 加粗 |
 | `taylor-francis` | Taylor & Francis | docx-template | verified | 官方 Word 模板（.dotx）：A4 / 四边 2.5cm（左右 3.0）/ Times New Roman 12pt / 双倍行距 / 标题14pt 加粗 / 摘要11pt |
+| `cn-ctbu` | 重庆工商大学学报（自然科学版） | docx-template | verified-partial | 官方 Word 模板：A4 / 上下2.24 左右2.17cm / 中文宋体+西文 Times New Roman；模板内红/绿为填写说明 |
 | `cn-haut` | 河南工业大学学报（自然科学版） | guidelines | verified-partial | 官网投稿须知：中文摘要300字、英文≥400词、GB/T 7714—2015、三线表；**无模板文件** |
 | `cn-hjnu` | 汉江师范学院学报 | guidelines | verified-partial | 官网来稿须知：全文≤8500字、摘要200字、GB/T 7714—2015、三线表；模板在 CNKI 投稿系统内 |
 
