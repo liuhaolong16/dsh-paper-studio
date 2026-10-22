@@ -2544,3 +2544,14 @@ ode bin/<tool>.cjs 调用。
 - `ieee-journals` 升级为 `latex+docx` / verified；`--preflight --journal IEEE --format docx` PASS，`compareDocx` 0 问题。
 - 注意：该下载需浏览器会话（curl 直连 418），直链记录在 spec.sources 里。
 - 读数：journal-template 11/11 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.66.0 — 2026-10-22
+
+**Taylor & Francis 官方 Word 模板入库（第 3 个真正的 Word 模板）。**
+
+- 来源：T&F Author Services 的 Formatting and templates 页；页面 Template 链接指向 `authstaging.wpengine.com/.../TF_Template_Word_Windows_2016.zip`（zip 内 `.dotx`，25178 bytes）。
+- 实测：A4 / 四边 2.5cm（左右 3.0）/ Times New Roman 12pt / 双倍行距 / 文章标题 14pt 加粗 / 作者 14pt / 摘要 11pt / 标题 1、2 加粗。
+- `taylor-francis` 条目：`--preflight` PASS，`compareDocx` 0 问题；`--scaffold` 可复制 .dotx 起稿。
+- 注意：官方链接指向 staging 域名（站点配置遗留），已在 sources 如实记录。
+- 读数：journal-template 11/11 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

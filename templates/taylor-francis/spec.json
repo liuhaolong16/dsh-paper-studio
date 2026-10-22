@@ -1,0 +1,81 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "taylor-francis",
+  "journal": "Taylor & Francis 期刊（官方 Word 模板）",
+  "aliases": [
+    "Taylor & Francis",
+    "T&F",
+    "TandF",
+    "taylor and francis"
+  ],
+  "publisher": "Taylor & Francis",
+  "kind": "docx-template",
+  "status": "verified",
+  "strict": true,
+  "verified_at": "2026-10-22",
+  "sources": [
+    {
+      "url": "https://authorservices.taylorandfrancis.com/publishing-your-research/writing-your-paper/formatting-and-templates/",
+      "note": "官方 Formatting and templates 页；Template 链接指向 staging 域名的 zip",
+      "fetched_at": "2026-10-22"
+    },
+    {
+      "url": "https://authstaging.wpengine.com/wp-content/uploads/2020/12/TF_Template_Word_Windows_2016.zip",
+      "note": "官方页面给出的下载地址（zip 内为 .dotx，25178 bytes）",
+      "fetched_at": "2026-10-22"
+    }
+  ],
+  "license": {
+    "name": "Taylor & Francis 官方作者模板（站点条款；仅投稿使用，再分发前核对）",
+    "redistributable": "unknown"
+  },
+  "docx": {
+    "template_file": "files/TF_Template_Word_Windows_2016.dotx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.5,
+      "bottom": 2.5,
+      "left": 3.0,
+      "right": 3.0
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": "Times New Roman",
+      "size_pt": 12
+    },
+    "line_spacing": 2.0,
+    "styles": {
+      "Title": {
+        "size_pt": 14,
+        "bold": true
+      },
+      "Abstract": {
+        "size_pt": 11
+      },
+      "Heading1": {
+        "bold": true
+      },
+      "Heading2": {
+        "bold": true
+      }
+    },
+    "styleMap": {
+      "Title": "Articletitle",
+      "Abstract": "Abstract",
+      "Heading1": "Heading1",
+      "Heading2": "Heading2"
+    },
+    "note": "模板为 .dotx（OOXML template）；另存为 .docx 写作。行距 2.0（双倍）"
+  },
+  "colors": {
+    "text": "#000000",
+    "note": "模板无彩色样式"
+  },
+  "notes": [
+    "官方 Template 链接指向 authstaging.wpengine.com（站点配置遗留）；文件来自官方页面，但域名非最终发布域，已在 sources 记录。"
+  ]
+}
