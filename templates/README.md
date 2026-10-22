@@ -41,7 +41,7 @@ templates/
 |---|---|---|---|---|
 | `generic` | 未指定期刊时的回退 | docx-template | fallback | 本仓 Word 生成脚本（A4 / 2.54-3.17cm / 宋体+Times 12pt / 1.5 倍行距） |
 | `elsevier-elsarticle` | Elsevier 期刊（含 JoES） | latex-class | verified | CTAN 官方包；模板首行 `[preprint,12pt]`；类默认 a4paper |
-| `ieee-journals` | IEEE 期刊/会议 | latex-class | verified | CTAN 官方包；`[journal]{IEEEtran}`，letter / 双栏 / 10pt |
+| `ieee-journals` | IEEE 期刊/会议 | latex+docx | verified | CTAN 官方包（`[journal]{IEEEtran}`）+ **IEEE Transactions Word 模板**（Letter / 上下1.778 左右1.651cm / Times New Roman / Title24、Abstract9、References8） |
 | `acs-journals` | ACS 期刊 | latex-class | verified | CTAN 官方包；`[journal=<code>,manuscript=article]{achemso}`，基类 article 12pt/letter |
 | `plos-one` | PLOS ONE | guidelines | verified-partial | PLOS 正文格式 PDF：标题 18/16/14pt 加粗、行号、禁彩色；正文正文字体字号未取证 |
 | `mdpi-journals` | MDPI（Materials 官方模板） | docx-template | verified | .dot（实为 OOXML）：A4 / 上2.5 下1.6 左右1.27cm / Palatino Linotype / 1.1667 行距 / 标题18pt、一级12pt、参考文献9pt；`styleMap` 绑定 `MDPI12title`/`MDPI21heading1`/`MDPI81references` |

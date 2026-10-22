@@ -69,7 +69,7 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 
 ## 新增能力（v3.60.0）
 
-- **期刊模板知识库**：`node bin/journal-template.cjs --resolve --journal "<刊名>"`（指定刊严格按 `templates/<id>/spec.json`；未指定用 `generic`；库里没有 ⇒ `NO_TEMPLATE` 先收集）。`--scaffold` 按官方模板生成初稿，`--check 稿.docx` / `--check-tex 稿.tex` 机检页面/页边距/字体/字号/行距/颜色/命名样式/文档类；自检 11/11。已收 Elsevier、IEEE、ACS（LaTeX）、PLOS（指南）、MDPI（Word 模板）与河南工业大学学报、汉江师范学院学报（中文须知，partial）；其余 Word 模板与两刊模板文件待补。
+- **期刊模板知识库**：`node bin/journal-template.cjs --resolve --journal "<刊名>"`（指定刊严格按 `templates/<id>/spec.json`；未指定用 `generic`；库里没有 ⇒ `NO_TEMPLATE` 先收集）。`--scaffold` 按官方模板生成初稿，`--check 稿.docx` / `--check-tex 稿.tex` 机检页面/页边距/字体/字号/行距/颜色/命名样式/文档类；自检 11/11。已收 Elsevier、IEEE（LaTeX + Word）、ACS（LaTeX）、PLOS（指南）、MDPI（Word）与河南工业大学学报、汉江师范学院学报（中文须知，partial）；其余 Word 模板与两刊模板文件待补。
 - **综述表格引用溯源**：`node bin/table-trace.cjs <manifest.json>`（四层证据链：fulltext → structured → table-metadata → table-citations；数值格必有出处、来源需 DOI/页码/原文片段；自检 8/8）。资产在 `references/survey-table/`。
 - **UI 风格约束**：`node bin/style-card.cjs --card | --prompt | --check <路径>`（默认卡 `assets/ui-style/style-card.paper-editorial.json`；卡外色/圆角阴影/彩色单边一律报红；自检 4/4）。
 

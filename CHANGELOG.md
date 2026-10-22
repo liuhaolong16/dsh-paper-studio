@@ -2533,3 +2533,14 @@ ode bin/<tool>.cjs 调用。
 - `node bin/journal-template.cjs --preflight --journal <名> [--format docx|latex]` → PASS 打印 spec 路径与关键格式；`NO_TEMPLATE` / `NO_DOCX_TEMPLATE` / `NO_LATEX_TEMPLATE` 直接 BLOCK（退出 1）。
 - IEEE 模板采集 API 已定位并写入 `templates/ieee-journals/spec.json` 的 `collection_api`：publication-titles（1 万+ 刊）与 article_types（返回 Word zip 的 templateMeta）；下载直链未定位（404/418），仍需走向导 Download Template。
 - 读数：journal-template 11/11 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.65.0 — 2026-10-22
+
+**IEEE Transactions 官方 Word 模板入库：LaTeX 与 Word 两条线都可用。**
+
+- 通过 Template Selector 的 API 直下（`/api/ieee-template-selector/template/106/download`，200198 bytes zip），解出 `Transactions-template-and-instructions...docx` 存入 `templates/ieee-journals/files/`。
+- 实测格式：Letter（21.59×27.94cm）/ 上下 1.778cm、左右 1.651cm / Times New Roman / Title 24pt、Abstract 9pt 加粗、References 8pt、图注 8pt。
+- `ieee-journals` 升级为 `latex+docx` / verified；`--preflight --journal IEEE --format docx` PASS，`compareDocx` 0 问题。
+- 注意：该下载需浏览器会话（curl 直连 418），直链记录在 spec.sources 里。
+- 读数：journal-template 11/11 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

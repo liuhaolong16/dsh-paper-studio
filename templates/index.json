@@ -43,7 +43,7 @@
         "IEEE Transactions",
         "IEEE journal"
       ],
-      "kind": "latex-class",
+      "kind": "latex+docx",
       "status": "verified",
       "path": "templates/ieee-journals/spec.json",
       "verified_at": "2026-10-22",
