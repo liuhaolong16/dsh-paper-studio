@@ -2683,3 +2683,15 @@ ode bin/<tool>.cjs 调用。
 - `cn-sjtu` 标 `verified-partial`（字号未在样式层声明）；`template_colors` 放行模板内红字，稿件 `--check` 仍禁彩色。
 - `--verify` 13/13 → **14/14 通过**。
 - 读数：journal-template 12/12 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.79.0 — 2026-10-22
+
+**`--check` 新增 WARN：正文里手工设的异常字号/中文字体会被点名，但不改变通过判定。**
+
+- `docxFacts.direct` 从 `word/document.xml` 提取直接设置的字号（`w:sz`）、中文/西文字体（`w:rFonts`）。
+- `--check` 在结果后追加 WARN，例如：`WARN 正文存在直接设置的字号 9pt（模板正文 12pt）—— 直接格式不会被 --apply 自动清除，需人工核对`；WARN 不影响退出码。
+- Markdown 报告新增「提示（不计入判定）」小节。
+- 实测：造一个 Normal=12pt 但某 run 直接 9pt 的 docx → 判定通过 + 1 条 WARN；正常 fixture 无 WARN。
+- 同时修正 `--check` 里“只有 LaTeX 类模板”的硬编码文案，按 kind 区分。
+- 读数：journal-template 12/12 · verify 14/14 · studio 254/254 · audit 6/6 · package-audit 11/11 · license-audit PASS。

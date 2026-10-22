@@ -148,6 +148,9 @@ function docxFacts(file) {
 
   const sizeHalf = attr(normalSz || defSz, 'w:val');
   const line = attr(normalSpacing, 'w:line');
+  const directSizes = [...new Set([...doc.matchAll(/<w:sz\b[^>]*w:val="(\d+)"/g)].map((m) => Number(m[1]) / 2))].sort((a, b) => a - b);
+  const directEast = [...new Set([...doc.matchAll(/<w:rFonts\b[^>]*w:eastAsia="([^"]+)"/g)].map((m) => m[1]))];
+  const directAscii = [...new Set([...doc.matchAll(/<w:rFonts\b[^>]*w:ascii="([^"]+)"/g)].map((m) => m[1]))];
 
   return {
     page: widthTw && heightTw ? { width_cm: twipsToCm(widthTw), height_cm: twipsToCm(heightTw) } : null,
@@ -165,6 +168,7 @@ function docxFacts(file) {
     line_spacing: line ? Number(line) / 240 : null,
     colors: Array.from(new Set(colors)),
     styleColors: Array.from(new Set(styleColors)),
+    direct: { sizes_pt: directSizes, eastAsia: directEast, ascii: directAscii },
     styles: styleFacts,
   };
 }
@@ -300,7 +304,7 @@ function cmdResolve(index, journal, format) {
   return 0;
 }
 
-function writeReport(out, title, facts, issues, entry) {
+function writeReport(out, title, facts, issues, entry, warnings = []) {
   const L = [];
   L.push('# ' + title, '');
   L.push('- 期刊：' + entry.journal + '（' + entry.id + '）');
@@ -320,6 +324,10 @@ function writeReport(out, title, facts, issues, entry) {
     for (const i of issues) L.push(`| ${i.code} | ${i.field} | ${i.expected} | ${i.actual} |`);
   }
   L.push('');
+  L.push('## 提示（不计入判定）', '');
+  if (!warnings.length) L.push('（无）');
+  else for (const w of warnings) L.push('- ' + w);
+  L.push('');
   fs.writeFileSync(out, L.join('\n'), 'utf8');
   return out;
 }
@@ -332,7 +340,8 @@ function cmdCheck(index, docx, journal, reportOut) {
   }
   const spec = loadSpec(entry);
   if (!spec.docx) {
-    console.log(`该刊只登记了 LaTeX 类模板（${spec.kind}）⇒ 不能按 Word 检查，需先收集 Word 模板（NO_DOCX_TEMPLATE）`);
+    const what = spec.latex ? 'LaTeX 模板' : '格式指南';
+    console.log(`该刊只有${what}（kind=${spec.kind}）⇒ 不能按 Word 检查，需先收集 Word 模板（NO_DOCX_TEMPLATE）`);
     return 1;
   }
   if (!fs.existsSync(docx)) {
@@ -341,16 +350,26 @@ function cmdCheck(index, docx, journal, reportOut) {
   }
   const facts = docxFacts(docx);
   const issues = compareDocx(facts, spec);
+  const df = spec.docx.default_font || {};
+  const warnings = [];
+  if (df.size_pt && (facts.direct.sizes_pt || []).some((s) => Math.abs(s - df.size_pt) > EPS.pt)) {
+    warnings.push(`正文存在直接设置的字号 ${(facts.direct.sizes_pt || []).join('/')}pt（模板正文 ${df.size_pt}pt）—— 直接格式不会被 --apply 自动清除，需人工核对`);
+  }
+  if (df.eastAsia && (facts.direct.eastAsia || []).some((f) => f !== df.eastAsia)) {
+    warnings.push(`正文存在直接设置的中文字体 ${(facts.direct.eastAsia || []).join('/')}（模板正文 ${df.eastAsia}）`);
+  }
   if (reportOut) {
-    writeReport(reportOut, '期刊格式检查报告 · ' + path.basename(docx), facts, issues, entry);
+    writeReport(reportOut, '期刊格式检查报告 · ' + path.basename(docx), facts, issues, entry, warnings);
     console.log(`报告：${reportOut}`);
   }
   if (issues.length === 0) {
     console.log(`通过：${docx} 符合 ${entry.journal}（${entry.id}）`);
+    for (const w of warnings) console.log(`  WARN ${w}`);
     return 0;
   }
   console.log(`未通过：${docx} vs ${entry.journal}（${issues.length} 项）`);
   for (const i of issues) console.log(`  [${i.code}] ${i.field}: 期望 ${i.expected}，实际 ${i.actual}`);
+  for (const w of warnings) console.log(`  WARN ${w}`);
   return 1;
 }
 
