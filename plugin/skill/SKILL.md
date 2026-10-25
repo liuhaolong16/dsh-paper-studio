@@ -149,10 +149,11 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 - 以上 `talk` / `reviewers` / 严重度分诊的**规则与流程吸收自第三方技能包 `lifecycle-skills`（Apache-2.0）**，实现为本仓自有 Node 纯函数，**未复制其代码**；来源见 `references/external-adoptions.md`。
 <!-- AUTO:agent-facing:start 本段由 `bin/sync-skill-table.cjs` 生成；不要手改（改了会被跨面文档锁抓） -->
 
-## 真源 agent_facing 命令总表（34 个 · 自动同步自 references/pipeline.json）
+## 真源 agent_facing 命令总表（35 个 · 自动同步自 references/pipeline.json）
 
 > 根 `SKILL.md` 写每条的用法（命令侧权威）；本表保证**对话侧文档不漏任何一个命令** —— 插件自检的跨面文档锁核的就是这一份。
 
+- `longform`：（根文档未写一行说明 —— 请补根文档）
 - `anonymize`：**双盲投稿匿名化**：抹作者/单位/邮箱/ORCID/电话/基金号/致谢整节，**逐条记 original→replacement 进清单**（清单用于复核与还原，不写进正文）；自引表述与仓库链接**只提醒不擅改**；既无名单又无作者行 ⇒ 明确「未检查」退 1；**文档属性(docx/PDF 元数据)与图内水印不在覆盖范围**（如实标注）
 - `model`：**面板凭据的 CLI 通道**（与面板写同一份本机存储；`set` 用 `--key` 或 `--from-file`）
 - `refs`：**按 CSL 样式格式化参考文献**（零 key、离线）：样式名支持 `gb-t-7714-2025-numeric`（中文刊顺序编码制）/ `gb-t-7714-2025-author-date` / `vancouver`；样式文件在 `assets/csl/`（第三方，CC-BY-SA 3.0，见同目录 PROVENANCE.md），**sha256 锁**在 `references/csl-lock.json` —— `refs --check` 核样式是否被无声替换；取不到样式/引擎一律报错并算未通过
@@ -192,7 +193,7 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 
 <!-- AUTO:skill-modules:start 由 bin/sync-skill-modules.cjs 生成；勿手改 -->
 
-## 能力模块索引（按需要单独加载 · 7 个模块）
+## 能力模块索引（按需要单独加载 · 8 个模块）
 
 > 发现器可按"何时用"只加载其中一个模块，不必吞下整包文档。每个模块的命令并集 = 真源 `agent_facing`（机器核对，见 `bin/sync-skill-modules.cjs --check`）。
 
@@ -205,5 +206,6 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 | [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时 | 1 |
 | [`skills/paper-presenting/SKILL.md`](skills/paper-presenting/SKILL.md) | 论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时 | 1 |
 | [`skills/paper-process/SKILL.md`](skills/paper-process/SKILL.md) | 要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时 | 9 |
+| [`skills/paper-longform/SKILL.md`](skills/paper-longform/SKILL.md) | 要从零写一篇长文（学术/公众号/报告/书评/政策），需要多角色分工、批判-审计-终审回环，而不是只润色一段文字时 | 1 |
 
 <!-- AUTO:skill-modules:end -->

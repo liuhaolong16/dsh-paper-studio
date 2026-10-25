@@ -771,6 +771,39 @@
         "待作者确认项"
       ],
       "precondition": "必须有作者材料 / 已验证检索 / 领域常识三者之一；皆无 ⇒ 只给框架 + 检索计划（由 `author-material` 门机械判定，不再只是一句约定）。逐节正文起草交给**外部技能** `paper-writer`（本插件只编排与过门；该技能为 CC-BY-NC-SA，只引路径不搬运内容）。**预注册协议（L-23）**：实证稿若后续会声称 a-priori / pre-registered 判据，须在起草前由作者写 `protocol.md`（研究问题+证伪条件+阈值+过滤规则+自测）并上传开源仓库——这是「fixed a priori」的可核对证据，不写则后续 `prereg-claim` 门会因「有声称无证据」失败。**期刊模板开工约定**：指定刊先跑 `journal-template --preflight`，用 `--scaffold`/`--build` 起稿，交付前 `--check`；未指定刊走 generic；缺模板先 `--new` 收集（详见 `references/writer-integration.md`）。"
+    },
+    {
+      "id": "longform",
+      "label": "多角色长文（定题→检索→分析→大纲→写作→批判→审计→终审）",
+      "tier": "T2",
+      "keywords": [
+        "长文",
+        "深度稿",
+        "公众号",
+        "书评",
+        "政策解读",
+        "研究报告",
+        "多角色",
+        "流水线"
+      ],
+      "chain": [
+        "subcommand:intake",
+        "subcommand:longform",
+        "manual:作者（Phase 0 定题 / Phase 2 大纲 / Phase 5 终审 三次确认）",
+        "report:run-gates",
+        "report:collect-findings"
+      ],
+      "gates": [
+        "phrase",
+        "claim-anchor",
+        "worknote-leak"
+      ],
+      "outputs": [
+        "长文终稿",
+        "角色交付物（文献/数据/案例/分析/初稿/批判/审计/终检）",
+        "机检报告"
+      ],
+      "precondition": "用 `node bin/studio.cjs longform --plan --genre <文类> --topic \"<题目>\" --out <目录>` 建任务包；角色交付物与终稿齐备后跑 `longform --check`。文类：academic / wechat / report / book-review / policy。"
     }
   ],
   "gates": [
@@ -1448,9 +1481,11 @@
     "local-engine.cjs": "node bin/local-engine.cjs --selftest",
     "table-trace.cjs": "node bin/table-trace.cjs --selftest",
     "style-card.cjs": "node bin/style-card.cjs --selftest",
-    "journal-template.cjs": "node bin/journal-template.cjs --selftest"
+    "journal-template.cjs": "node bin/journal-template.cjs --selftest",
+    "longform.cjs": "node bin/longform.cjs --selftest"
   },
   "agent_facing": [
+    "longform",
     "anonymize",
     "model",
     "refs",
@@ -1790,6 +1825,34 @@
         "lessons",
         "handoff",
         "cost"
+      ]
+    },
+    {
+      "id": "paper-longform",
+      "title": "多角色长文（9 角色 路 人在环 → 机检交付）",
+      "when": "要从零写一篇长文（学术/公众号/报告/书评/政策），需要多角色分工、批判-审计-终审回环，而不是只润色一段文字时",
+      "not_for": "已有成稿的格式套版与投稿门（paper-gates）· 单段润色（paper-writing）",
+      "commands": [
+        "longform"
+      ],
+      "assets": [
+        "references/longform.json",
+        "references/writer-integration.md",
+        "bin/longform.cjs"
+      ],
+      "boundaries": [
+        "只判流程状态与可机械检项（字数/结构/引用/声明/AI 痕迹）；语义质量仍由人与角色交付物负责",
+        "角色 prompt 只是任务书，不代替作者判断"
+      ],
+      "triggers": [
+        "长文",
+        "深度稿",
+        "公众号",
+        "书评",
+        "政策解读",
+        "研究报告",
+        "多角色",
+        "流水线"
       ]
     }
   ],

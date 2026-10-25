@@ -73,6 +73,25 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 - **综述表格引用溯源**：`node bin/table-trace.cjs <manifest.json>`（四层证据链：fulltext → structured → table-metadata → table-citations；数值格必有出处、来源需 DOI/页码/原文片段；自检 8/8）。资产在 `references/survey-table/`。
 - **UI 风格约束**：`node bin/style-card.cjs --card | --prompt | --check <路径>`（默认卡 `assets/ui-style/style-card.paper-editorial.json`；卡外色/圆角阴影/彩色单边一律报红；自检 4/4）。
 
+## 多角色长文流水线（v3.83.0）
+
+吸收论衡式角色分工，但把判据落在本仓、可机检、可失败：
+
+```powershell
+# 1) 建任务包（9 角色 / 6 阶段 / 3 次人在环）
+node bin/studio.cjs longform --plan --genre academic --topic "题目" --out 长文/
+# 2) 推进阶段；角色标 done 时必须已有交付物且达到最少字数
+node bin/studio.cjs longform --state --dir 长文/ --set phase=1
+node bin/studio.cjs longform --state --dir 长文/ --set role=T1=done
+# 3) 终稿写入 90-终稿.md 后机检
+node bin/studio.cjs longform --check --dir 长文/
+```
+
+- 文类：`academic`（学术）/ `wechat`（公众号）/ `report`（研究报告）/ `book-review`（书评）/ `policy`（政策解读），各有字数区间、结构项、引用下限与声明要求（`references/longform.json`）。
+- 机检：角色交付物是否齐、终稿字数/结构、引用标记数、声明段、AI 痕迹词阈值；任一不符即退出 1。
+- 状态机：拒绝跳阶段/回退/无交付物标 done；`--selftest` **11/11**（含必失败面）。
+- 与期刊模板链兼容：长文终稿仍可进 `journal-template --check`（指定刊时）。
+
 ## 依赖与边界
 
 - **运行时**：Node.js ≥ 20。联网/检索能力由宿主或你的其它技能提供，本仓**不要求任何付费或需登录的 API**。

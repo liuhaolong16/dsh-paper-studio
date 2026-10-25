@@ -42,6 +42,7 @@ node bin/studio.cjs hygiene                                :: 残留件门（备
 node bin/studio.cjs claims                                 :: 文档数字一致性门（文档写的 N/N 必须与实跑一致）
 node bin/studio.cjs coverage                               :: 自检覆盖门（bin/*.cjs 含自检者须在真源 selfchecks 登记）
 node bin/studio.cjs verify <成品件> [--anchors …]                :: 工件复核（重算输入哈希 ⇒ FRESH / STALE；与 report 同源，惰性加载 gate-runner）
+node bin/studio.cjs longform --plan|--state|--check|--selftest     :: 多角色长文流水线（9 角色 · 6 阶段 · 人在环 3 次；文类 academic/wechat/report/book-review/policy）
 node bin/studio.cjs compliance <投稿包目录>                  :: 合规门（投稿前过：硬项=稿件+Cover Letter；软项=图件/参考文献/契约/声明段；取不到即失败）（含**硬检查「包卫生」**：内部产物/陈旧/临时文件不得进包，与契约门 `package_hygiene` 同规则）
 node bin/studio.cjs credit <稿件或声明文件>                    :: CRediT 官方 14 角色核对（非官方写法＝失败；缺 CRediT 段＝未通过；依据 references/credit-roles.json）
 node bin/studio.cjs formats [--detect <你的.tex>]   :: 投稿格式模板表（CTAN/GitHub 一手核实）+ 检测 .tex 用的类文件是否命中官方模板
@@ -312,7 +313,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 
 <!-- AUTO:skill-modules:start 由 bin/sync-skill-modules.cjs 生成；勿手改 -->
 
-## 能力模块索引（按需要单独加载 · 7 个模块）
+## 能力模块索引（按需要单独加载 · 8 个模块）
 
 > 发现器可按"何时用"只加载其中一个模块，不必吞下整包文档。每个模块的命令并集 = 真源 `agent_facing`（机器核对，见 `bin/sync-skill-modules.cjs --check`）。
 
@@ -325,5 +326,6 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 | [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时 | 1 |
 | [`skills/paper-presenting/SKILL.md`](skills/paper-presenting/SKILL.md) | 论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时 | 1 |
 | [`skills/paper-process/SKILL.md`](skills/paper-process/SKILL.md) | 要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时 | 9 |
+| [`skills/paper-longform/SKILL.md`](skills/paper-longform/SKILL.md) | 要从零写一篇长文（学术/公众号/报告/书评/政策），需要多角色分工、批判-审计-终审回环，而不是只润色一段文字时 | 1 |
 
 <!-- AUTO:skill-modules:end -->

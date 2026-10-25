@@ -2725,3 +2725,16 @@ ode bin/<tool>.cjs 调用。
 - `references/lessons-from-first-draft.md` 补 L-23 / L-24（格式硬伤合集：缺作者、编号乱序、摘要不自含、量化不可核算），L-22 标已挂门。
 - **写作侧接入**：新增 `references/writer-integration.md`（开工前 preflight → 起稿 scaffold/build/apply → 交付前 check/report 的完整约定）；`handoff.contracts` 的 `paper-writer` 交接新增 `journal_template_id` / `journal_template_spec` / `journal_template_status`（closed set：verified / verified-partial / fallback / none）；`task_types[write].precondition` 写入“期刊模板开工约定”；外部 `paper-writer` SKILL.md 增加 “Before drafting: journal template gate” 段；`skills/paper-writing/SKILL.md` 由 `sync-skill-modules` 重新生成（7 模块 / 34 命令一致）。
 - 读数：studio 254/254 · gate-runner 54/54 · journal-template 12/12 · verify 14/14 · audit 6/6 · package-audit 11/11 · license-audit PASS。
+
+
+## 3.83.0 — 2026-10-25
+
+**吸收论衡的长文流水线强项：新增 `longform`（9 角色 / 6 阶段 / 3 次人在环 / 5 文类 / 机检 11 项）。**
+
+- 角色：T1 文献 · T2 数据 · T3 案例 · T4 分析 · T5 写作 · T6 批判 · T7 审计 · T8 终检 · T9 审稿；每个角色有交付物、最少字数与提示词（`references/longform.json` 单一真源）。
+- 阶段：0 定题 👤 → 1 检索 → 1.5 分析 → 2 大纲 👤 → 3 写作 → 3.5 批判 → 4 审计 → 4.5 审稿 → 5 终审 👤。
+- 状态机：`--state` 拒绝跳阶段/回退；角色标 `done` 必须交付物存在且达到最少字数（fail-closed）。
+- 文类预算：academic / wechat / report / book-review / policy，各自的字数区间、结构项、引用下限、声明要求。
+- 机检：`--check` 逐项判角色交付物、终稿字数与结构、引用标记、声明段、AI 痕迹阈值；失败输出逐条 `[FAIL]`，退出 1。
+- 兼容性：**13 道门与既有 34 条命令不变**；新增第 8 个模块 `paper-longform`、第 35 条命令 `longform`；`route` 关键词可路由到 longform（T2）。
+- 自检：longform **11/11**（含 4 个必失败面）· studio **254/254** · gate-runner **54/54** · journal-template 12/12 · verify 14/14 · audit 6/6 · package-audit 11/11 · license PASS；历史验证文档补 `<!-- claims: snapshot -->` 标记，claims 门通过。

@@ -764,6 +764,7 @@ const SUBCOMMANDS = [
   'claims',
   'coverage',
   'compliance',
+  'longform',
 ];
 const STAGE_RULES = [
   { rx: /^subcommand:([a-z0-9-]+)$/, need: (m) => SUBCOMMANDS.includes(m[1]), why: (m) => `子命令 ${m[1]} 未实现` },
@@ -7180,6 +7181,10 @@ function main(argv) {
       console.log('  compliance <投稿包目录> ⇒ 合规门（硬项：稿件 + Cover Letter；软项：图件/参考文献/契约/声明段；取不到即失败）');
       console.log('  report --task "<描述>" --draft <稿.md> [--docx <成品.docx>] [--anchors/--manifest/--contract]  ⇒ 带行号的待修项清单');
       return 0;
+    }
+    if (cmd === 'longform') {
+      const r = spawnSync(process.execPath, [path.join(__dirname, 'longform.cjs'), ...argv.slice(1)], { stdio: 'inherit' });
+      return r.status == null ? 1 : r.status;
     }
     const pipeline = readPipeline();
     if (cmd === 'route') {

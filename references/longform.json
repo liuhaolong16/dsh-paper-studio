@@ -1,0 +1,41 @@
+{
+  "schema": "paper-studio.longform.v1",
+  "note": "论衡式多角色长文流水线的单一直源：阶段、角色、文类预算、机检阈值。语义判据不在这里（那是人的事），这里只放可机械执行的。",
+  "phases": [
+    { "id": "0", "name": "定题", "human": true, "why": "题目/目标读者/文类由人定，模型不得代选" },
+    { "id": "1", "name": "并行检索", "human": false, "why": "文献/数据/案例三路可并行" },
+    { "id": "1.5", "name": "分析", "human": false, "why": "把检索结果压成主张与证据对照" },
+    { "id": "2", "name": "大纲", "human": true, "why": "结构必须人确认后再写" },
+    { "id": "3", "name": "写作", "human": false, "why": "按大纲成稿" },
+    { "id": "3.5", "name": "批判", "human": false, "why": "独立角色挑逻辑与证据问题" },
+    { "id": "4", "name": "审计", "human": false, "why": "机检 + 引用/数字/声明审计" },
+    { "id": "4.5", "name": "审稿", "human": false, "why": "按文类启用（学术三类必选）" },
+    { "id": "5", "name": "终审", "human": true, "why": "交付前由人拍板" }
+  ],
+  "roles": [
+    { "id": "T1", "name": "文献", "file": "01-文献.md", "min_chars": 300, "prompt": "检索并列出可核对的文献：每条含作者/年份/题名/DOI 或 URL；只写查到的，不补造。" },
+    { "id": "T2", "name": "数据", "file": "02-数据.md", "min_chars": 200, "prompt": "列出数据来源、口径、时间窗与可复算方式；取不到的数字标 not-retrieved。" },
+    { "id": "T3", "name": "案例", "file": "03-案例.md", "min_chars": 200, "prompt": "列出案例/事实，逐条标来源；不写无法核对的细节。" },
+    { "id": "T4", "name": "分析", "file": "04-分析.md", "min_chars": 300, "prompt": "把证据压成主张-证据对照表，标出反例与不确定处。" },
+    { "id": "T5", "name": "写作", "file": "10-初稿.md", "min_chars": 500, "prompt": "按已确认大纲写作；每个事实句可追到 T1/T2/T3 的条目。" },
+    { "id": "T6", "name": "批判", "file": "11-批判.md", "min_chars": 200, "prompt": "只挑问题：逻辑跳跃、证据不足、过度断言、与大纲偏离；逐条给位置与修法。" },
+    { "id": "T7", "name": "审计", "file": "12-审计.md", "min_chars": 200, "prompt": "跑机检并把失败项逐条列出（引用/数字/声明/字数/AI 痕迹）。" },
+    { "id": "T8", "name": "终检", "file": "13-终检.md", "min_chars": 150, "prompt": "逐项核对交付物是否齐、是否与终稿一致；缺一项即不通过。" },
+    { "id": "T9", "name": "审稿", "file": "14-审稿.md", "min_chars": 200, "prompt": "按目标读者/文类给审稿意见；学术三类必选，其余文类可不启用。" }
+  ],
+  "genres": {
+    "academic": { "label": "学术论文", "min_units": 3000, "max_units": 12000, "citations_min": 10, "declarations": true, "structure": ["摘要", "关键词", "引言", "方法", "结果", "讨论", "参考文献"] },
+    "wechat": { "label": "公众号长文", "min_units": 1500, "max_units": 6000, "citations_min": 0, "declarations": false, "structure": [] },
+    "report": { "label": "研究报告", "min_units": 3000, "max_units": 15000, "citations_min": 3, "declarations": false, "structure": ["摘要", "背景", "方法", "发现", "建议"] },
+    "book-review": { "label": "书评", "min_units": 800, "max_units": 3000, "citations_min": 1, "declarations": false, "structure": [] },
+    "policy": { "label": "政策解读", "min_units": 2000, "max_units": 8000, "citations_min": 2, "declarations": false, "structure": ["背景", "问题", "分析", "建议"] }
+  },
+  "checks": {
+    "final_file": "90-终稿.md",
+    "task_file": "00-任务包.md",
+    "ai_trace_patterns": ["综上所述", "值得注意的是", "在当今", "随着社会的不断发展", "总而言之", "毋庸置疑", "赋能", "抓手", "首先，", "其次，", "最后，"],
+    "ai_trace_fail_at": 3,
+    "declaration_patterns": ["(Competing interests|Conflict of interest|利益冲突)", "(Data availability|数据可用性|数据可用)"],
+    "citation_re": "\\[[0-9]{1,3}\\]"
+  }
+}
