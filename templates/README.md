@@ -45,6 +45,7 @@ templates/
 | `acs-journals` | ACS 期刊 | latex-class | verified | CTAN 官方包；`[journal=<code>,manuscript=article]{achemso}`，基类 article 12pt/letter |
 | `plos-one` | PLOS ONE | guidelines | verified-partial | PLOS 正文格式 PDF：标题 18/16/14pt 加粗、行号、禁彩色；正文正文字体字号未取证 |
 | `mdpi-journals` | MDPI（Materials 官方模板） | docx-template | verified | .dot（实为 OOXML）：A4 / 上2.5 下1.6 左右1.27cm / Palatino Linotype / 1.1667 行距 / 标题18pt、一级12pt、参考文献9pt；`styleMap` 绑定 `MDPI12title`/`MDPI21heading1`/`MDPI81references` |
+| `elsevier-word-generic` | Elsevier 普通论文（派生 Word，非官方） | docx-template | fallback | A4 / 2.5cm / Times New Roman 12pt / 1.5 行距；**派生版式**，Elsevier 无官方 Word 模板 |
 | `elsevier-data-in-brief` | Data in Brief | docx-template | verified-partial | Elsevier 官方 Word 模板：A4 / 四边 2.54cm / 11pt / Heading1 16pt 加粗；正文字体未在样式层声明 |
 | `elsevier-methodsx` | MethodsX | docx-template | verified-partial | Elsevier 官方 Word 模板：A4 / 四边 1.27cm / Times New Roman 11pt / 行距 1.15 |
 | `frontiers` | Frontiers | docx-template | verified | 官方 Word 模板：Letter / 上下 2.01、左 2.26、右 2.08cm / Times New Roman 12pt / 单倍行距 / Title 16pt 加粗 |

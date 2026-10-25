@@ -1,6 +1,6 @@
 {
   "schema": "paper-studio.journal-template-index.v1",
-  "updated": "2026-10-22",
+  "updated": "2026-10-26",
   "generic": "generic",
   "templates": [
     {
@@ -200,6 +200,20 @@
       "path": "templates/cn-sjtu/spec.json",
       "verified_at": "2026-10-22",
       "strict": true
+    },
+    {
+      "id": "elsevier-word-generic",
+      "journal": "Elsevier 普通论文（派生 Word 版式，非官方）",
+      "aliases": [
+        "Elsevier Word",
+        "Elsevier 通用 Word",
+        "Elsevier 普通论文 Word"
+      ],
+      "kind": "docx-template",
+      "status": "fallback",
+      "path": "templates/elsevier-word-generic/spec.json",
+      "verified_at": "2026-10-26",
+      "strict": false
     }
   ]
 }

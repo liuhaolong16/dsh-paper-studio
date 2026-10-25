@@ -803,7 +803,7 @@
         "角色交付物（文献/数据/案例/分析/初稿/批判/审计/终检）",
         "机检报告"
       ],
-      "precondition": "用 `node bin/studio.cjs longform --plan --genre <文类> --topic \"<题目>\" --out <目录>` 建任务包；角色交付物与终稿齐备后跑 `longform --check`。文类：academic / wechat / report / book-review / policy。"
+      "precondition": "用 `node bin/studio.cjs longform --plan --genre <文类> --topic \"<题目>\" --out <目录>` 建任务包；角色交付物与终稿齐备后跑 `longform --check`；已有稿挑错用 `longform --review --draft <稿> --out <目录> --rounds N`，再 `--review-check`。文类：academic / wechat / report / book-review / policy。"
     }
   ],
   "gates": [

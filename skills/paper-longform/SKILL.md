@@ -19,7 +19,7 @@ description: |
 
 | 命令 | 说明 |
 |---|---|
-| `longform` | 多角色长文流水线（9 角色 · 6 阶段 · 人在环 3 次；文类 academic/wechat/report/book-review/policy） |
+| `longform` | 多角色长文流水线（11 角色 · 11 阶段 · 人在环 3 次 · 审稿回环；文类 academic/wechat/report/book-review/policy） |
 
 ## 相关真源与资产
 

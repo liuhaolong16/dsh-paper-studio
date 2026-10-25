@@ -2738,3 +2738,14 @@ ode bin/<tool>.cjs 调用。
 - 机检：`--check` 逐项判角色交付物、终稿字数与结构、引用标记、声明段、AI 痕迹阈值；失败输出逐条 `[FAIL]`，退出 1。
 - 兼容性：**13 道门与既有 34 条命令不变**；新增第 8 个模块 `paper-longform`、第 35 条命令 `longform`；`route` 关键词可路由到 longform（T2）。
 - 自检：longform **11/11**（含 4 个必失败面）· studio **254/254** · gate-runner **54/54** · journal-template 12/12 · verify 14/14 · audit 6/6 · package-audit 11/11 · license PASS；历史验证文档补 `<!-- claims: snapshot -->` 标记，claims 门通过。
+
+
+## 3.84.0 — 2026-10-26
+
+**补齐三块短板：审稿回环、配图/演示/选题、Elsevier 普通论文的 Word 版式。**
+
+- **审稿回环**：`longform --review --draft <稿.md> --out <目录> --rounds N` 按轮派 T6 批判 / T7 审计 / T9 审稿，要求 `15-修订说明-rN.md` 对批判里每个 `[P<n>]` 逐条回应（已修/不修/保留）；`--review-check` 机械核验轮次文件、问题覆盖与终稿存在。
+- **配图 / 演示 / 选题**：角色扩到 11 个（新增 T10 配图、T11 演示）；Phase 0 强制 `选题评估.md`（≥3 候选）；机检新增配图规格（图N + 来源 + dpi，≥2 条）、演示页数（≥8 页）与总时长。
+- **Elsevier 普通论文 Word 版式**：新增 `elsevier-word-generic`（A4 / 2.5cm / Times New Roman 12pt / 1.5 行距 / Title 16 / H1 14），`status=fallback`、`official=false`——**明确标注为派生版式，不是 Elsevier 官方模板**（官方只给 LaTeX elsarticle）；知识库 15 条，`--verify` 15/15。
+- 兼容性：13 道门与既有命令不变；`longform` 仍是第 35 条命令，模块数仍 8。
+- 读数：longform **16/16** · studio 254/254 · sync 8 模块/35 命令 · gate-runner 54/54 · journal-template 12/12 · verify 15/15 · audit 6/6 · package-audit 11/11 · license PASS。

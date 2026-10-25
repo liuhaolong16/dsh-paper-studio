@@ -1,0 +1,81 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "elsevier-word-generic",
+  "journal": "Elsevier 普通论文（派生 Word 版式，非官方）",
+  "aliases": [
+    "Elsevier Word",
+    "Elsevier 通用 Word",
+    "Elsevier 普通论文 Word"
+  ],
+  "publisher": "Elsevier",
+  "kind": "docx-template",
+  "status": "fallback",
+  "strict": false,
+  "verified_at": "2026-10-26",
+  "official": false,
+  "sources": [
+    {
+      "url": "https://www.sciencedirect.com/journal/journal-of-energy-storage/publish/guide-for-authors",
+      "note": "Guide for Authors 实读：只规定结构/篇幅，未规定 Word 字体字号（2026-10-26）",
+      "fetched_at": "2026-10-26"
+    }
+  ],
+  "license": {
+    "name": "本项目派生模板（非 Elsevier 官方文件）",
+    "redistributable": true
+  },
+  "docx": {
+    "template_file": "files/elsevier-word-derived.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 2.5,
+      "bottom": 2.5,
+      "left": 2.5,
+      "right": 2.5
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "size_pt": 12
+    },
+    "line_spacing": 1.5,
+    "styleMap": {
+      "Title": "Title",
+      "Heading1": "Heading1",
+      "Heading2": "Heading2"
+    },
+    "styles": {
+      "Title": {
+        "size_pt": 16,
+        "bold": true
+      },
+      "Heading1": {
+        "size_pt": 14,
+        "bold": true
+      },
+      "Heading2": {
+        "size_pt": 12,
+        "bold": true
+      }
+    },
+    "note": "派生版式：Elsevier 无官方 Word 模板；此文件由本项目按 elsarticle 类常用版式生成，仅用于 Word 起稿，不得声称官方"
+  },
+  "colors": {
+    "text": "#000000"
+  },
+  "files": [
+    {
+      "path": "files/elsevier-word-derived.docx",
+      "sha256": "sha256:27045116c4de50cc8f3008b95b292ed587038cf03898108308759294f3550896",
+      "role": "word-template"
+    }
+  ],
+  "notes": [
+    "非官方：Elsevier 普通研究论文只提供 LaTeX elsarticle，没有统一 Word 模板。",
+    "本模板是派生版式（A4 / 2.5cm / Times New Roman 12pt / 1.5 行距），status=fallback；不要把它当官方模板对外声称。",
+    "如需官方版式，请改用 elsevier-elsarticle（LaTeX）。"
+  ]
+}
