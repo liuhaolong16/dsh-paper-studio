@@ -1,0 +1,26 @@
+{
+  "schema": "paper-studio.venue-candidates.v1",
+  "domain": "AI Agent / LLM systems",
+  "target": "SCI 二至三区（计算机科学/人工智能）",
+  "note": "候选池是人工判断的 AI Agent 相关刊；分区/IF 由 venue-select.cjs 从 LetPub 公开页实时取，不在本文件写死。",
+  "candidates": [
+    { "name": "IEEE Transactions on Knowledge and Data Engineering", "fit": "Agent 的知识表示、数据管理、检索与推理；偏工程与系统" },
+    { "name": "IEEE Transactions on Neural Networks and Learning Systems", "fit": "学习型 Agent、强化学习、序列决策；理论与实验并重" },
+    { "name": "IEEE Transactions on Cybernetics", "fit": "多智能体协同、控制与优化；偏方法" },
+    { "name": "IEEE Transactions on Systems, Man, and Cybernetics: Systems", "fit": "复杂系统/人机协同 Agent；偏系统与工程" },
+    { "name": "Knowledge-Based Systems", "fit": "知识驱动 Agent、推理、决策支持；审稿周期相对友好" },
+    { "name": "Expert Systems with Applications", "fit": "应用型 Agent/专家系统；重落地与实验" },
+    { "name": "Information Sciences", "fit": "信息融合、不确定推理、Agent 决策" },
+    { "name": "Applied Soft Computing", "fit": "软计算/进化优化驱动的 Agent；应用面广" },
+    { "name": "Engineering Applications of Artificial Intelligence", "fit": "工程落地型 AI Agent；重场景与可复现实验" },
+    { "name": "Neural Networks", "fit": "Agent 的神经网络基础、表示学习、记忆机制" },
+    { "name": "Artificial Intelligence", "fit": "AI 基础理论/规划/多智能体；门槛高，适合强理论稿" },
+    { "name": "Journal of Artificial Intelligence Research", "fit": "AI 基础研究、Agent 规划与推理；理论/实验均可" },
+    { "name": "Autonomous Agents and Multi-Agent Systems", "fit": "多智能体系统、协商、协作；与 Agent 方向最贴" },
+    { "name": "ACM Transactions on Intelligent Systems and Technology", "fit": "智能系统/Agent 应用；偏系统与交叉" },
+    { "name": "IEEE Transactions on Emerging Topics in Computational Intelligence", "fit": "新兴计算智能 Agent；适合新方法/新场景" },
+    { "name": "Complex & Intelligent Systems", "fit": "复杂系统与智能体；开放获取，审稿相对快" },
+    { "name": "Cognitive Computation", "fit": "认知/记忆/推理型 Agent；偏认知建模" },
+    { "name": "International Journal of Intelligent Systems", "fit": "智能系统/Agent 应用；覆盖面广" }
+  ]
+}

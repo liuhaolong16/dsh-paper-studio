@@ -2795,3 +2795,13 @@ ode bin/<tool>.cjs 调用。
 - ai-workbench `doctor` 增加 `probe`（env / dir-min / file-min）：`paper.aris` 会红在「VOLC_ARK_KEY 未设置（entry 存在≠可调用）」。
 - 新增 `bin/bilingual.cjs`（术语锁定 + 图表/引用/数字一致性，selftest 4/4）与 `bin/dup-loop.cjs`（改前/改后重测 + 标记丢失检查，selftest 4/4）。
 - BACKLOG 新增 P-12…P-17；P-14/P-15 关闭，P-12/P-13/P-16/P-17 待办/等人决策。
+
+
+## 3.89.0 — 2026-11-01
+
+**补齐中文文献与分区选刊两腿（用户 SCI 二至三区闭环的最后两个 P1）。**
+
+- `bin/zh-lit.cjs`：OpenAlex `language:zh` + `type:article` 中文题录检索（题名/年份/来源/DOI/摘要），CC0 元数据；selftest 4/4；实查「人工智能 智能体」命中 42636 条。**不是 CNKI/万方/维普全文库**，覆盖不全已在回执里写明。
+- `bin/venue-select.cjs`：LetPub 公开页 POST 查询，解析 ISSN / 中科院分区 / IF；候选池 `references/venue-candidates.json`（18 本 AI Agent 相关刊，含匹配理由）；selftest 4/4；实查 KBS 1区 IF8、AA-MAS 3区 IF2.4、IEEE TKDE 2区 IF11.6。
+- 两个新工具进 `pipeline.selfchecks`；BACKLOG P-12/P-13 关闭；`paper-landscape.md` 缺口表同步。
+- 合规边界：只读公开页面/公开 API，不登录、不绕付费墙、不下载盗版全文；分区以页面当日为准，不保证录用。

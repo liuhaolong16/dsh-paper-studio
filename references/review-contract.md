@@ -13,6 +13,7 @@
 | 凭证 | provider 要求 `VOLC_ARK_KEY`；**User 作用域有值，当前宿主进程无此变量** | `[Environment]::GetEnvironmentVariable(...,'User')` vs `$env:VOLC_ARK_KEY` |
 | DEEPSEEK_API_KEY | **进程 / User / Machine 三处都未设置** | 同上；Harness Models 页是否另有配置未在本文核 |
 | ARIS 桥 | `codex-exec` MCP `serverInfo 1.0.0`，`tools/list` 返回 `codex` / `codex-reply` | 2026-11-01 直接起 `server.py` 做 initialize + tools/list |
+| ARIS web 会话 | 技能菜单可见（`auto-review-loop` / `research-pipeline` 等）；**发送即 AUTH 失败**（默认模型 DeepSeek-V4-Pro，无 DEEPSEEK_API_KEY），threadId 未能验证 | 2026-11-01 起 web profile（63999）实测 |
 
 ## 2. ARIS 的契约（包内 README）
 

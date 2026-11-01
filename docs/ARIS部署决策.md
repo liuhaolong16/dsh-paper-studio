@@ -1,4 +1,4 @@
-﻿# ARIS 部署决策记录
+# ARIS 部署决策记录
 
 > 2026-11-01 实读；只记录「为什么这样装/不装」与可复跑证据。
 
@@ -16,7 +16,8 @@
 | 技能数 | 87 个目录（包描述写 82） | `Get-ChildItem ...\skills -Directory` |
 | 桥握手 | `initialize` + `tools/list` PASS；工具 `codex` / `codex-reply` | 2026-11-01 直接起 `mcp-servers/codex-exec/server.py` |
 | 审稿人调用 | **未通过**：宿主进程无 `VOLC_ARK_KEY` → 报 Missing environment variable；补 key 后 4 分钟未返回 | `references/review-contract.md` |
-| `/` 菜单 | **未在 web 新会话实测**（本会话是 desktop，看不到 web 菜单） | 待办 P-16 |
+| `/` 菜单 | **已实测**：web profile 63999 的 `/` 列表出现 ARIS 技能（auto-review-loop / research-pipeline / research-lit 等） | 2026-11-01 截图/快照 |
+| web 会话执行 | **失败在模型鉴权**：发送即 `AUTH`（默认 DeepSeek-V4-Pro 无 `DEEPSEEK_API_KEY`）；未进入任何工具调用 | 2026-11-01 |
 | `threadId` 多轮 | **未验证**（同上，且首轮未拿到 threadId） | 待办 P-16 |
 
 ## 回滚
@@ -28,3 +29,8 @@
 ## 不在本文件范围
 
 - 不讨论把 ARIS 技能「搬进」paper-studio：两套技能语料不同源，搬会漂移；只在 `paper-landscape.md` 做索引与选路。
+## 副本漂移检查（2026-11-01）
+
+- 对比 `E:\DevTools\ARIS-dsh\skills`（全量 clone）与 `C:\Users\ASUS\.dsh\profiles\web\node_modules\dsh-aris\skills`（插件包/生效源）：
+  - 文件数：347 vs 347；仅 A 有 0；仅 B 有 0；内容不同 0。
+  - 结论：当前两份逐字节一致；生效源仍以插件包为准，clone 只作参考。

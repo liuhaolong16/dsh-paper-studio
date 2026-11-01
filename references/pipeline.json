@@ -1485,7 +1485,9 @@
     "longform.cjs": "node bin/longform.cjs --selftest",
     "backlog-check.cjs": "node bin/backlog-check.cjs --selftest",
     "bilingual.cjs": "node bin/bilingual.cjs --selftest",
-    "dup-loop.cjs": "node bin/dup-loop.cjs --selftest"
+    "dup-loop.cjs": "node bin/dup-loop.cjs --selftest",
+    "zh-lit.cjs": "node bin/zh-lit.cjs --selftest",
+    "venue-select.cjs": "node bin/venue-select.cjs --selftest"
   },
   "agent_facing": [
     "longform",
