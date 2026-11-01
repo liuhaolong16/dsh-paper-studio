@@ -2761,3 +2761,14 @@ ode bin/<tool>.cjs 调用。
 - 新方法文档 `references/innovation-check.md`（含风险红黄绿分级与机器可检项）。
 - 自检扩到 **19/19**（新增：缺 kill 判据、检索记录不足、选中红色候选三个必失败面）。
 - 兼容性：命令仍 35 条、模块 8 个、13 道门不变；只扩展 longform 子参数与选题校验。
+
+
+## 3.86.0 — 2026-11-01
+
+**清欠：长文交付接期刊检查、分支证据接 OpenAlex 实测、欠账表落盘。**
+
+- `longform --deliver --dir <目录> --journal <刊> [--out <docx>]`：先跑内容机检（角色/字数/结构/引用/配图/演示/AI 痕迹），通过后调 `journal-template --build` 套版、`--check` 检查，产出 docx 与 `期刊检查.md`；任一步失败退出 1。学术长文的「写→套→检」闭环。
+- `longform --graph-check --dir <目录>`：解析选题表里的「分支证据：OpenAlex cites|cited_by <DOI|W> -> n=… 日期=…」，实际请求 OpenAlex 比对 n（容差 10%），不符退出 1；网络失败退出 2。实测 10.1038/nature12373 声明 1958 / 实测 1955 PASS。
+- 欠账真源 `docs/BACKLOG.md` + `bin/backlog-check.cjs` 格式门（表头/5 列/编号唯一/状态合法/已关闭必须有证据；selftest 6/6）。P-01/P-02/P-06 关闭。
+- 兼容性：命令仍 35 条、模块 8 个、13 道门不变；新增两个 longform 子参数与一个自检脚本。
+- 读数：longform **24/24** · studio 254/254 · sync 8 模块/35 命令 · verify 15/15 · audit 6/6 · package 11/11 · license PASS · backlog 6/6。

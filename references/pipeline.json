@@ -803,7 +803,7 @@
         "角色交付物（文献/数据/案例/分析/初稿/批判/审计/终检）",
         "机检报告"
       ],
-      "precondition": "用 `node bin/studio.cjs longform --plan --genre <文类> --topic \"<题目>\" --out <目录>` 建任务包；角色交付物与终稿齐备后跑 `longform --check`；选题先跑 `longform --topic-audit`（缺检索证据/无 kill 判据即失败）；已有稿挑错用 `longform --review --draft <稿> --out <目录> --rounds N`，再 `--review-check`。文类：academic / wechat / report / book-review / policy。"
+      "precondition": "用 `node bin/studio.cjs longform --plan --genre <文类> --topic \"<题目>\" --out <目录>` 建任务包；角色交付物与终稿齐备后跑 `longform --check`；选题先跑 `longform --topic-audit`（缺检索证据/无 kill 判据即失败）与 `--graph-check`（分支证据接 OpenAlex 实测）；交付用 `longform --deliver --journal <刊>` 自动套版并检查；已有稿挑错用 `longform --review --draft <稿> --out <目录> --rounds N`，再 `--review-check`。文类：academic / wechat / report / book-review / policy。"
     }
   ],
   "gates": [
@@ -1482,7 +1482,8 @@
     "table-trace.cjs": "node bin/table-trace.cjs --selftest",
     "style-card.cjs": "node bin/style-card.cjs --selftest",
     "journal-template.cjs": "node bin/journal-template.cjs --selftest",
-    "longform.cjs": "node bin/longform.cjs --selftest"
+    "longform.cjs": "node bin/longform.cjs --selftest",
+    "backlog-check.cjs": "node bin/backlog-check.cjs --selftest"
   },
   "agent_facing": [
     "longform",

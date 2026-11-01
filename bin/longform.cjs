@@ -15,6 +15,7 @@
  */
 'use strict';
 const fs = require('fs');
+const { spawnSync } = require('child_process');
 const os = require('os');
 const path = require('path');
 
@@ -39,6 +40,83 @@ function requiredRoles(spec, genre) {
     if (r.id === 'T11') return !!g.slides;
     return true;
   });
+}
+
+function cmdDeliver(spec, argv) {
+  const dir = flag(argv, '--dir');
+  const journal = flag(argv, '--journal');
+  const out = flag(argv, '--out');
+  if (!dir) { console.log('前提层失败：缺 --dir <目录>'); return 2; }
+  if (!journal) { console.log('前提层失败：缺 --journal <刊名或 id>'); return 2; }
+  let st;
+  try { st = JSON.parse(fs.readFileSync(path.join(dir, 'longform-state.json'), 'utf8')); }
+  catch (e) { console.log('前提层失败：读不到 longform-state.json'); return 2; }
+  if (st.genre !== 'academic') { console.log('前提层失败：只有 academic 长文需要期刊套版'); return 2; }
+  const rc = cmdCheck(spec, ['--check', '--dir', dir]);
+  if (rc !== 0) { console.log('内容机检未过，拒绝套版（先修 --check 的失败项）'); return 1; }
+  const md = path.join(dir, spec.checks.final_file);
+  const docx = out || path.join(dir, '90-终稿.docx');
+  const jt = path.join(ROOT, 'bin', 'journal-template.cjs');
+  const r1 = spawnSync(process.execPath, [jt, '--build', md, '--journal', journal, '--out', docx], { encoding: 'utf8' });
+  if (r1.stdout) process.stdout.write(r1.stdout);
+  if (r1.stderr) process.stderr.write(r1.stderr);
+  if (r1.status !== 0) { console.log('套版失败：journal-template --build 退出 ' + r1.status); return 1; }
+  const report = path.join(dir, '期刊检查.md');
+  const r2 = spawnSync(process.execPath, [jt, '--check', docx, '--journal', journal, '--report', report], { encoding: 'utf8' });
+  if (r2.stdout) process.stdout.write(r2.stdout);
+  if (r2.stderr) process.stderr.write(r2.stderr);
+  console.log('交付：' + docx + ' · 报告：' + report);
+  return r2.status == null ? 1 : r2.status;
+}
+
+function parseGraphClaims(text) {
+  const re = new RegExp(checkTopicGraphRe(), 'g');
+  const out = [];
+  let m;
+  while ((m = re.exec(text)) !== null) out.push({ direction: m[1], id: m[2], n: Number(m[3]), date: m[4] });
+  return out;
+}
+function checkTopicGraphRe() {
+  return '分支证据：\\s*OpenAlex\\s+(cites|cited_by)\\s+(\\S+)\\s*->\\s*n=(\\d+)\\s*日期=(\\S+)';
+}
+function graphMatches(declared, actual) {
+  const tol = Math.max(3, Math.ceil(declared * 0.1));
+  return Math.abs(actual - declared) <= tol;
+}
+function httpJson(url) {
+  const r = spawnSync('curl', ['-s', '-m', '30', url], { encoding: 'utf8' });
+  if (r.status !== 0 || !r.stdout) return null;
+  try { return JSON.parse(r.stdout); } catch (e) { return null; }
+}
+function cmdGraphCheck(spec, argv) {
+  const dir = flag(argv, '--dir');
+  if (!dir) { console.log('前提层失败：缺 --dir <目录>'); return 2; }
+  const text = readIf(path.join(dir, spec.checks.topic_file));
+  if (text == null) { console.log('前提层失败：缺 ' + spec.checks.topic_file); return 2; }
+  const seen = new Set();
+  const claims = parseGraphClaims(text).filter((c) => { const k = c.direction + '|' + c.id + '|' + c.n; if (seen.has(k)) return false; seen.add(k); return true; });
+  if (!claims.length) { console.log('未发现「分支证据：OpenAlex cites|cited_by <DOI|W-id> -> n=<数> 日期=<日期>」行'); return 1; }
+  const fails = [];
+  for (const c of claims) {
+    const id = String(c.id).replace(/^https?:\/\/doi\.org\//, '');
+    const u = /^W\d+$/.test(id) ? `https://api.openalex.org/works/${id}` : `https://api.openalex.org/works/https://doi.org/${id}`;
+    const j = httpJson(u);
+    if (!j || !j.id) { console.log('前提层失败：OpenAlex 取不到 ' + c.id); return 2; }
+    let actual;
+    if (c.direction === 'cites') {
+      const j2 = httpJson(`https://api.openalex.org/works?filter=cites:${String(j.id).split('/').pop()}&per-page=1`);
+      if (!j2 || !j2.meta) { console.log('前提层失败：OpenAlex cites 查询失败 ' + c.id); return 2; }
+      actual = j2.meta.count;
+    } else {
+      actual = (j.referenced_works || []).length;
+    }
+    const ok = graphMatches(c.n, actual);
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${c.direction} ${c.id} 声明 n=${c.n} / 实测 n=${actual}（日期 ${c.date}）`);
+    if (!ok) fails.push(`${c.direction} ${c.id} 声明 ${c.n} 与实测 ${actual} 不符（容差 10%）`);
+  }
+  if (fails.length) { console.log('分支证据核验未通过：'); for (const f of fails) console.log('  [FAIL] ' + f); return 1; }
+  console.log('通过：分支证据与 OpenAlex 实测一致');
+  return 0;
 }
 
 function checkTopic(text, spec) {
@@ -309,6 +387,8 @@ function run(spec, argv) {
   if (cmd === '--state') return cmdState(spec, argv);
   if (cmd === '--check') return cmdCheck(spec, argv);
   if (cmd === '--topic-audit') return cmdTopicAudit(spec, argv);
+  if (cmd === '--deliver') return cmdDeliver(spec, argv);
+  if (cmd === '--graph-check') return cmdGraphCheck(spec, argv);
   if (cmd === '--review') return cmdReviewPlan(spec, argv);
   if (cmd === '--review-check') return cmdReviewCheck(spec, argv);
   return 2;
@@ -402,6 +482,18 @@ function cmdSelftest() {
   writeRole(d10, spec.checks.topic_file, topicSheet().replace('## 候选3：方向3\n- 风险等级：绿', '## 候选3：方向3\n- 风险等级：红'));
   ck('选中红色候选必须失败', run(spec, ['--check', '--dir', d10]) === 1);
 
+  const d11 = path.join(base, 'p11');
+  run(spec, ['--plan', '--genre', 'academic', '--topic', '交付', '--out', d11]);
+  fillRoles(spec, d11, 'academic');
+  writeRole(d11, '90-终稿.md', acadFinal(12));
+  ck('deliver 无刊名必须失败', run(spec, ['--deliver', '--dir', d11]) === 2);
+  const rcD = run(spec, ['--deliver', '--dir', d11, '--journal', 'Elsevier Word']);
+  ck('deliver 自动套版并检查通过', rcD === 0 && fs.existsSync(path.join(d11, '90-终稿.docx')));
+
+  ck('graph 解析：单条 claims 可解析', parseGraphClaims('分支证据：OpenAlex cites 10.1234/x -> n=2 日期=2026-11-01').length === 1);
+  ck('graph 比对：容差内通过、超出失败', graphMatches(5, 5) === true && graphMatches(20, 2) === false);
+  ck('graph-check 无证据行必须失败', run(spec, ['--graph-check', '--dir', d11]) === 1);
+
   fs.rmSync(base, { recursive: true, force: true });
   console.log(`\nlongform 自检：${pass}/${total} 通过`);
   return pass === total ? 0 : 1;
@@ -411,7 +503,7 @@ function main(argv) {
   const cmd = argv[0];
   try {
     if (!cmd || argv.includes('--help')) {
-      console.log('用法：--plan --genre <文类> --topic "<题目>" --out <目录> | --state --dir <目录> [--set phase=<id>|role=<T#>=done|pending] | --check --dir <目录> | --topic-audit --dir <目录> | --review --draft <稿.md> --out <目录> [--rounds N] | --review-check --dir <目录> | --selftest');
+      console.log('用法：--plan --genre <文类> --topic "<题目>" --out <目录> | --state --dir <目录> [--set phase=<id>|role=<T#>=done|pending] | --check --dir <目录> | --topic-audit --dir <目录> | --deliver --dir <目录> --journal <刊名> [--out <docx>] | --graph-check --dir <目录> | --review --draft <稿.md> --out <目录> [--rounds N] | --review-check --dir <目录> | --selftest');
       return cmd ? 0 : 2;
     }
     if (cmd === '--selftest') return cmdSelftest();
@@ -424,4 +516,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { cmdPlan, cmdState, cmdCheck, cmdReviewPlan, cmdReviewCheck, cmdTopicAudit, cmdSelftest, countUnits, requiredRoles, checkTopic };
+module.exports = { cmdPlan, cmdState, cmdCheck, cmdReviewPlan, cmdReviewCheck, cmdTopicAudit, cmdDeliver, cmdGraphCheck, cmdSelftest, countUnits, requiredRoles, checkTopic };

@@ -271,7 +271,8 @@
         "空白",
         "未发表",
         "尚未报道"
-      ]
+      ],
+      "graph_claim_re": "分支证据：\\s*OpenAlex\\s+(cites|cited_by)\\s+(\\S+)\\s*->\\s*n=(\\d+)\\s*日期=(\\S+)"
     }
   },
   "review": {

@@ -73,7 +73,7 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 - **综述表格引用溯源**：`node bin/table-trace.cjs <manifest.json>`（四层证据链：fulltext → structured → table-metadata → table-citations；数值格必有出处、来源需 DOI/页码/原文片段；自检 8/8）。资产在 `references/survey-table/`。
 - **UI 风格约束**：`node bin/style-card.cjs --card | --prompt | --check <路径>`（默认卡 `assets/ui-style/style-card.paper-editorial.json`；卡外色/圆角阴影/彩色单边一律报红；自检 4/4）。
 
-## 多角色长文流水线（v3.85.0）
+## 多角色长文流水线（v3.86.0）
 
 吸收论衡式角色分工，但把判据落在本仓、可机检、可失败：
 
@@ -82,6 +82,9 @@ node bin\studio.cjs selftest     :: 编排层 53 项
 node bin/studio.cjs longform --plan --genre academic --topic "题目" --out 长文/
 # 1.5) 选题体检（创新点值不值得做；缺检索证据不放行）
 node bin/studio.cjs longform --topic-audit --dir 长文/
+node bin/studio.cjs longform --graph-check --dir 长文/   # 分支证据接 OpenAlex 实测
+# 4.5) 学术稿交付：自动套刊并跑期刊检查
+node bin/studio.cjs longform --deliver --dir 长文/ --journal "Elsevier Word"
 # 2) 推进阶段；角色标 done 时必须已有交付物且达到最少字数
 node bin/studio.cjs longform --state --dir 长文/ --set phase=1
 node bin/studio.cjs longform --state --dir 长文/ --set role=T1=done
@@ -97,7 +100,8 @@ node bin/studio.cjs longform --review-check --dir 审稿/
 - 选题：Phase 0 强制 `选题评估.md`（≥3 个候选，人选）。
 - 机检：角色交付物、终稿字数/结构、引用标记、声明段、配图规格（图N + 来源 + dpi）、演示页数与总时长、AI 痕迹阈值；任一不符退出 1。
 - 审稿回环：`--review` 按轮生成 T6/T7/T9 任务；`--review-check` 要求每轮批判的 `[P<n>]` 全部在修订说明中有回应与处置（已修/不修/保留）。
-- 选题体检：`--topic-audit` 检查候选数（≥3）、风险等级（选中不得为红）、检索记录（≥3 条，含数据库/检索式/日期）、重合文献证据、引用图谱分支、可行性与 kill 判据；方法见 `references/innovation-check.md`（B 站 BV1N9xv65EGf 蒸馏）。
+- 选题体检：`--topic-audit` 检查候选数（≥3）、风险等级（选中不得为红）、检索记录（≥3 条，含数据库/检索式/日期）、重合文献证据、引用图谱分支、可行性与 kill 判据；`--graph-check` 把「分支证据：OpenAlex cites|cited_by <DOI|W> -> n=… 日期=…」拿去 OpenAlex 实测（容差 10%）。方法见 `references/innovation-check.md`（B 站 BV1N9xv65EGf 蒸馏）。
+- 交付：`--deliver` 先跑内容机检，再调 `journal-template --build` 套版、`--check` 检查，产出 docx + `期刊检查.md`；任何一步失败退出 1。
 - 状态机：拒绝跳阶段/回退/无交付物标 done；`--selftest` **11/11**（含必失败面）。
 - 与期刊模板链兼容：长文终稿仍可进 `journal-template --check`（指定刊时）。
 
