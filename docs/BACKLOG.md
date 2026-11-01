@@ -10,7 +10,7 @@
 | P-02 | 已关闭 | 选题「空白分支」接真实引用图数据 | `--graph-check` 用 OpenAlex 实测 n 与声明 n 比对（容差 10%），不符退出 1 | 10.1038/nature12373 声明 1958 / 实测 1955 PASS；`--graph-check` |
 | P-03 | 待办 | ACS 官方 Word 模板 | `templates/acs-journals` 含官方 docx 且 `--verify` PASS | 2026-10-22 取证：pubs.acs.org / pubsapp 均 403；触发条件=拿到官方文件 |
 | P-04 | 待办 | Wiley 官方 Word 模板 | 同上，`templates/wiley-*` | 2026-10-22：onlinelibrary 卡 Cloudflare；触发条件=浏览器会话可过验证 |
-| P-05 | 待办 | HAUT 中文刊模板 | `templates/cn-haut` 有 docx 且 `--verify` PASS | 2026-10-22：官网只有须知；2026-11-01 未找到其 CNKI 腾云门户模板 |
+| P-05 | 待办 | HAUT 中文刊模板 | `templates/cn-haut` 有 docx 且 `--verify` PASS | 2026-11-02：取得官方《投稿须知》docx（cbimg.cnki.net/Editor/2022/0303/zzls/2c67c984-...docx）与模板页 zzls.cbpt.cnki.net/EditorB3N/PromptPageInfo.aspx?c=3&t=v；该 docx 是须知不是空白模板，需从模板页登录下载 |
 | P-11 | 已关闭 | HJNU 中文刊模板 | 人文社科/自科两套 docx 且 `--verify` PASS | v3.87.0：hjsyxb.cbpt.cnki.net 官网模板页，verify 16/16；build+check PASS |
 | P-06 | 已关闭 | 双远端推送 | gitee / github 均显示最新 main | v3.86.0 已 `git push gitee main` + `git push github main`（均 exit 0） |
 | P-07 | 等人决策 | 外部 `paper-writer/SKILL.md` 接入段的归属 | 该目录成为 git 仓库或并入已有仓库并提交 | `E:\DeepSeek\skills\paper-writer` 经查不是 git 仓库；需用户定是否建仓 |
@@ -22,4 +22,4 @@
 | P-14 | 已关闭 | 中英双语初稿 + 术语锁定 | `bin/bilingual.cjs --selftest` 4/4；术语两侧都出现、图表/引用/数字不漂移 | v3.88.0：`bin/bilingual.cjs --selftest` 4/4（正控+两条必失败+空术语表） |
 | P-15 | 已关闭 | 降重闭环（改前→改后→重测） | `bin/dup-loop.cjs --selftest` 4/4；改后重合下降且数字/图表/引用不丢 | v3.88.0：`bin/dup-loop.cjs --selftest` 4/4（改后同文必 FAIL、丢标记必 WARN、SKIP 不算通过） |
 | P-16 | 已关闭 | ARIS web 菜单与 threadId 实跑 | web 新会话 `/` 菜单见 ARIS 技能；`mcp__codex__codex` 返回 threadId 且 `codex-reply` 可续 | 2026-11-01：web 63999 `/` 菜单见 ARIS 技能；桥 `tools/call codex` 返回 threadId `01a197bc-f681-75c2-b56c-271a7b259891`，`codex-reply` 返回 SECOND（本地补丁见 ARIS部署决策）；web 模型 AUTH 归 P-17 |
-| P-17 | 进行中 | ARIS 审稿人凭证/effort | `codex exec` 30s 内返回；`model_reasoning_effort` 显式设置并可复跑 | 2026-11-02：桥已自加载 User `VOLC_ARK_KEY`；`model_reasoning_effort="xhigh"` 已设且 codex 返回 OK；web 用 `.credentials` 的 DEEPSEEK key 仍 401（key 失效/无权限），web 会话 AUTH 未解 |
+| P-17 | 进行中 | ARIS 审稿人凭证/effort | `codex exec` 30s 内返回；`model_reasoning_effort` 显式设置并可复跑 | 2026-11-02：桥已自加载 User `VOLC_ARK_KEY`；`model_reasoning_effort="xhigh"` 已设且 codex 返回 OK；web 用 `.credentials` 的 DEEPSEEK key 仍 **401**（`api.deepseek.com/models`），web 会话 AUTH 未解，需有效 key |
