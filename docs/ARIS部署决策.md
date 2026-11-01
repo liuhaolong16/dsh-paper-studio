@@ -18,6 +18,8 @@
 | 审稿人调用 | **未通过**：宿主进程无 `VOLC_ARK_KEY` → 报 Missing environment variable；补 key 后 4 分钟未返回 | `references/review-contract.md` |
 | `/` 菜单 | **已实测**：web profile 63999 的 `/` 列表出现 ARIS 技能（auto-review-loop / research-pipeline / research-lit 等） | 2026-11-01 截图/快照 |
 | web 会话执行 | **失败在模型鉴权**：发送即 `AUTH`（默认 DeepSeek-V4-Pro 无 `DEEPSEEK_API_KEY`）；未进入任何工具调用 | 2026-11-01 |
+| 直连 codex | **threadId 可续**：禁用 Tulpa 后 `codex exec --json` 返回 `thread_id=01a1979e…`，`exec resume` 返回 `SECOND` | 2026-11-01 |
+| 桥 tools/call codex | **未闭环**：>4 分钟未返回（全局禁用 Tulpa 仍如此） | 2026-11-01 |
 | `threadId` 多轮 | **未验证**（同上，且首轮未拿到 threadId） | 待办 P-16 |
 
 ## 回滚

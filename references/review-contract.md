@@ -25,6 +25,8 @@ ARIS 要求审稿人满足两条：**非 DeepSeek 家族** + **xhigh 档**；`~/
    → exit 1；`ERROR: Missing environment variable: VOLC_ARK_KEY`；同时警告 `Model metadata for glm-5-2-260617 not found`。
 2. **临时注入 User 作用域 key 后再跑**：同一命令启动后 **>4 分钟无返回**，被人工终止；没有拿到 threadId。
 3. **桥本身可用**：`initialize` 与 `tools/list` 都成功（见上表），说明「桥起不来」不是当前问题；问题在**审稿人执行侧**（凭证 / provider 响应 / 模型元数据）。
+4. **直连 codex 已证明 threadId 可续**：临时注入 `VOLC_ARK_KEY` 后 `codex exec --skip-git-repo-check --json -c mcp_servers.tulpa.enabled=false "Reply exactly: OK"` 返回 `thread_id=01a1979e-a513-7962-ae08-c6fafe95cdab` 与 `OK`；`codex exec resume <该 id> ... "Reply exactly: SECOND"` 返回同一 thread_id 与 `SECOND`。
+5. **桥调用仍未闭环**：同一 prompt 经 `codex-exec` 的 `tools/call codex` **>4 分钟未返回**（即使全局禁用 Tulpa 仍如此）；因此 `mcp__codex__codex` 的 threadId 还不能算验证通过。
 
 ## 4. 结论与决策 B
 

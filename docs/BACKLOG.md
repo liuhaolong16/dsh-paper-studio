@@ -21,5 +21,5 @@
 | P-13 | 已关闭 | SCI 分区/选刊专项 | 输入 AI Agent 方向 + 目标二至三区，输出候选刊 + 分区 + 匹配理由 | v3.89.0：`bin/venue-select.cjs`（LetPub 公开页，selftest 4/4；实查 KBS 1区 IF8 / AA-MAS 3区 IF2.4 / IEEE TKDE 2区 IF11.6）；以页面当日为准 |
 | P-14 | 已关闭 | 中英双语初稿 + 术语锁定 | `bin/bilingual.cjs --selftest` 4/4；术语两侧都出现、图表/引用/数字不漂移 | v3.88.0：`bin/bilingual.cjs --selftest` 4/4（正控+两条必失败+空术语表） |
 | P-15 | 已关闭 | 降重闭环（改前→改后→重测） | `bin/dup-loop.cjs --selftest` 4/4；改后重合下降且数字/图表/引用不丢 | v3.88.0：`bin/dup-loop.cjs --selftest` 4/4（改后同文必 FAIL、丢标记必 WARN、SKIP 不算通过） |
-| P-16 | 待办 | ARIS web 菜单与 threadId 实跑 | web 新会话 `/` 菜单见 ARIS 技能；`mcp__codex__codex` 返回 threadId 且 `codex-reply` 可续 | 2026-11-01：菜单已实测（web 63999）；发送即 AUTH（默认 DeepSeek-V4-Pro 无 DEEPSEEK_API_KEY），threadId 未验；见 review-contract |
+| P-16 | 待办 | ARIS web 菜单与 threadId 实跑 | web 新会话 `/` 菜单见 ARIS 技能；`mcp__codex__codex` 返回 threadId 且 `codex-reply` 可续 | 2026-11-01：菜单已实测；web 会话 AUTH（无 DEEPSEEK_API_KEY）；直连 codex 已证 threadId 01a1979e… 可 resume；桥 tools/call >4min 未返回 |
 | P-17 | 进行中 | ARIS 审稿人凭证/effort | `codex exec` 30s 内返回；`model_reasoning_effort` 显式设置并可复跑 | 宿主无 `VOLC_ARK_KEY`；补 key 后 4 分钟未返回；effort=none；见 review-contract |
