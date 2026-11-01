@@ -2809,3 +2809,12 @@ ode bin/<tool>.cjs 调用。
 ## 3.89.1 — 2026-11-01
 
 **ARIS 桥闭环（本地补丁）**：`codex-exec` 原版在 `turn.completed` 后 codex 进程不退出，MCP 调用挂到超时；补丁在 turn 完成时 `taskkill /T` 结束进程树（备份 `server.py.bak-20261101`）。补丁后 `tools/call codex` 返回 threadId `01a197bc-f681-75c2-b56c-271a7b259891`，`codex-reply` 返回 `SECOND`；BACKLOG P-16 关闭，P-17（宿主 key/effort）仍待办。
+
+## 3.90.0 — 2026-11-02
+
+**四个新工具接进 studio 统一入口；ARIS 桥补丁可重放。**
+
+- `studio bilingual / dup-loop / zh-lit / venue` 四个子命令，转发到对应 bin；`SUBCOMMANDS` 48 条，SKILL.md 用法同步，studio 254/254、audit 6/6。
+- 新增 `bin/aris-patch.cjs`：幂等检查/重打 ARIS 桥两个补丁（turn 完成后 taskkill 进程树 + 从 User 环境补 VOLC_ARK_KEY），`--check/--apply/--selftest`，selftest 4/4；插件升级后跑 `node bin/aris-patch.cjs --apply` 即可。
+- `~/.codex/config.toml` 显式设 `model_reasoning_effort="xhigh"`，codex 实测 OK；web 模型 key（`.credentials`）仍 401，P-17 保留。
+- registry 115 条（新增 `env.paper-aris-patch`）。

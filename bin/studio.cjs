@@ -747,6 +747,10 @@ const SUBCOMMANDS = [
   'talk',
   'reviewers',
   'polish',
+  'bilingual',
+  'dup-loop',
+  'zh-lit',
+  'venue',
   'profile',
   'schemacheck',
   'revise',
@@ -7639,6 +7643,14 @@ if (cmd === 'form') {
       // V3：润色机械保障层（LaTeX 保真守卫 + 改动账本 + 中英通道检查）—— 补齐市面收敛出的 P0 缺口
       return require('./polish.cjs').main(argv.slice(1));
     }
+    const runTool = (file) => {
+      const r = spawnSync(process.execPath, [path.join(__dirname, file), ...argv.slice(1)], { stdio: 'inherit' });
+      return r.status == null ? 1 : r.status;
+    };
+    if (cmd === 'bilingual') return runTool('bilingual.cjs');
+    if (cmd === 'dup-loop') return runTool('dup-loop.cjs');
+    if (cmd === 'zh-lit') return runTool('zh-lit.cjs');
+    if (cmd === 'venue') return runTool('venue-select.cjs');
     if (cmd === 'profile') {
       // V3：研究风格档案（结构化 + 点路径读写 + brief 开工注入；凭证类字段一律拒收）
       return require('./profile.cjs').main(argv.slice(1));

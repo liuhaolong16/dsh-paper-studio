@@ -19,7 +19,9 @@
 | `/` 菜单 | **已实测**：web profile 63999 的 `/` 列表出现 ARIS 技能（auto-review-loop / research-pipeline / research-lit 等） | 2026-11-01 截图/快照 |
 | web 会话执行 | **失败在模型鉴权**：发送即 `AUTH`（默认 DeepSeek-V4-Pro 无 `DEEPSEEK_API_KEY`）；未进入任何工具调用 | 2026-11-01 |
 | 直连 codex | **threadId 可续**：禁用 Tulpa 后 `codex exec --json` 返回 `thread_id=01a1979e…`，`exec resume` 返回 `SECOND` | 2026-11-01 |
-| 桥 tools/call codex | **已闭环**：给 bridge 打本地补丁（turn.completed 后 taskkill /T 进程树），`codex` 返回 threadId `01a197bc-f681-75c2-b56c-271a7b259891`，`codex-reply` 返回 `SECOND` | 2026-11-01 |
+| 桥 tools/call codex | **已闭环**：bridge 打两个本地补丁（turn.completed 后 taskkill /T 进程树 + 从 User 环境补 VOLC_ARK_KEY），`codex` 返回 threadId `01a197bc…`，`codex-reply` 返回 `SECOND` | 2026-11-01 |
+| 审稿 effort | `model_reasoning_effort="xhigh"` 已写入 `~/.codex/config.toml`，`codex exec` 返回 OK（备份 `config.toml.bak-effort-20261102`） | 2026-11-02 |
+| web 模型鉴权 | 用 `.credentials.yaml` 的 `DEEPSEEK_API_KEY` 启动 web，`api.deepseek.com/models` 仍 **401**；发送即 AUTH。key 失效/无权限，需换有效 key | 2026-11-02 |
 | `threadId` 多轮 | **未验证**（同上，且首轮未拿到 threadId） | 待办 P-16 |
 
 ## 回滚

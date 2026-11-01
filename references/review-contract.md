@@ -9,7 +9,7 @@
 | Codex CLI | `codex-cli 0.160.0` | `codex --version` |
 | provider | `volc`（Volcengine Ark，`https://ark.cn-beijing.volces.com/api/v3`，`wire_api="responses"`） | `~/.codex/config.toml` |
 | model | `glm-5-2-260617` | 同上 |
-| reasoning effort | **未设置**（运行时打印 `reasoning effort: none`） | `codex exec` 启动头 |
+| reasoning effort | `xhigh`（2026-11-02 写入 config，`codex exec` 返回 OK；备份 `config.toml.bak-effort-20261102`） | `codex exec` 启动头 / 实测 |
 | 凭证 | provider 要求 `VOLC_ARK_KEY`；**User 作用域有值，当前宿主进程无此变量** | `[Environment]::GetEnvironmentVariable(...,'User')` vs `$env:VOLC_ARK_KEY` |
 | DEEPSEEK_API_KEY | **进程 / User / Machine 三处都未设置** | 同上；Harness Models 页是否另有配置未在本文核 |
 | ARIS 桥 | `codex-exec` MCP `serverInfo 1.0.0`，`tools/list` 返回 `codex` / `codex-reply` | 2026-11-01 直接起 `server.py` 做 initialize + tools/list |
@@ -17,7 +17,7 @@
 
 ## 2. ARIS 的契约（包内 README）
 
-ARIS 要求审稿人满足两条：**非 DeepSeek 家族** + **xhigh 档**；`~/.codex/config.toml` 就是审稿人姿态契约。当前 GLM 是非 DeepSeek 家族（这条满足），但 effort 是 `none`（不满足）。
+ARIS 要求审稿人满足两条：**非 DeepSeek 家族** + **xhigh 档**；`~/.codex/config.toml` 就是审稿人姿态契约。当前 GLM 是非 DeepSeek 家族（这条满足）；effort 已于 2026-11-02 设为 `xhigh`（这条也满足）。
 
 ## 3. 实测失败（不是推断）
 
@@ -33,7 +33,7 @@ ARIS 要求审稿人满足两条：**非 DeepSeek 家族** + **xhigh 档**；`~/
 **当前不能把 ARIS 审稿当主审。** 原因不是「GLM 文风不够狠」，而是：
 - 宿主进程缺 `VOLC_ARK_KEY`，桥一调用就报错；
 - 补 key 后 `codex exec` 仍未在 4 分钟内返回，未拿到 threadId，无法证明 `codex-reply` 多轮可续；
-- effort 未设置，即使调用成功也不满足 ARIS 的 xhigh 契约。
+- ~~effort 未设置~~：2026-11-02 已设 xhigh，这条已关闭。
 
 **决策 B（默认方案 2 + 兜底）**：
 - 默认：保留 `glm-5-2`，但必须显式设置 `model_reasoning_effort`（先试 `xhigh`，provider 拒绝再降到 `high`），并在每次审稿记录里标注「同族/跨族」与 effort；

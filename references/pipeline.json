@@ -1487,7 +1487,8 @@
     "bilingual.cjs": "node bin/bilingual.cjs --selftest",
     "dup-loop.cjs": "node bin/dup-loop.cjs --selftest",
     "zh-lit.cjs": "node bin/zh-lit.cjs --selftest",
-    "venue-select.cjs": "node bin/venue-select.cjs --selftest"
+    "venue-select.cjs": "node bin/venue-select.cjs --selftest",
+    "aris-patch.cjs": "node bin/aris-patch.cjs --selftest"
   },
   "agent_facing": [
     "longform",

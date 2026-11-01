@@ -77,6 +77,10 @@ node bin/studio.cjs draft --out "<你的稿件目录>" --name "论文名" --jour
 node bin/studio.cjs lessons                            :: 初稿经验库 L-1…L-18（每条带出处与"能不能机检"）
 node bin/studio.cjs coach brief --root "<工作目录>"     :: **开工教练**：教训 × 强制级别（已挂门＝enforced / advisory）× 用过次数 ⇒ 取 top-N（`coach use <id>` 记使用）
 node bin/studio.cjs stylecheck --file "<稿.md>"         :: 写作质量机检（HARD＝低信息化开头；SOFT＝填充词/hedge/模糊词/贡献句/摘要无数字）
+node bin/studio.cjs bilingual --zh "<中稿.md>" --en "<英稿.md>" [--glossary <术语.json>]  :: 双语一致性门（术语两侧锁定 + 图表/引用/数字不漂移；selftest 4/4）
+node bin/studio.cjs dup-loop --before <改前> --after <改后> --corpus <语料目录>   :: 降重闭环（重合率下降 + 数字/图表/引用不丢；selftest 4/4）
+node bin/studio.cjs zh-lit --query "人工智能 智能体" [--limit 10] [--year-from 2020] :: 中文题录检索（OpenAlex language:zh，非 CNKI 全文）
+node bin/studio.cjs venue --tiers 2,3 [--journals "KBS,AA-MAS"]                  :: 分区选刊（LetPub 中科院分区/IF + 匹配理由）
 node bin/studio.cjs polish guard --before a.tex --after b.tex   :: **LaTeX 保真守卫**（数学与命令必须原样；抓新引入的未转义特殊字符；`\item`/破折号 warn）
 node bin/studio.cjs polish ledger add --file l.jsonl --kind wording --reason "为什么这么改" --before "旧" --after "新"   :: 改动账本（**缺 kind/reason 拒收**）
 node bin/studio.cjs polish check --channel cn2en --file "<稿.md>"   :: 通道检查（中→英不得残留中文；英→中/Word 不得残留 LaTeX）
