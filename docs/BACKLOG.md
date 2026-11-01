@@ -15,7 +15,6 @@
 | P-06 | 已关闭 | 双远端推送 | gitee / github 均显示最新 main | v3.86.0 已 `git push gitee main` + `git push github main`（均 exit 0） |
 | P-07 | 等人决策 | 外部 `paper-writer/SKILL.md` 接入段的归属 | 该目录成为 git 仓库或并入已有仓库并提交 | `E:\DeepSeek\skills\paper-writer` 经查不是 git 仓库；需用户定是否建仓 |
 | P-08 | 已关闭 | 跑团面板「类别选择」固定（工作区1 跑团线） | workbench 的跑团设置 iframe 内类别栏滚动后仍贴顶（top=0），无重复顶栏 | trpg-package 本地 commit `53588442`；Chrome 实测：可见 header=0、tabs 滚动前 70→滚动 500 后 0 |
-| P-10 | 待办 | 跑团仓提交推送 | gitee `main` 含 `53588442` | 2026-11-01 `git push gitee main` → `pre-receive hook declined`；需仓库权限/用户推送 |
 | P-09 | 待办 | npm 发布 3.50.1 → 3.88.0 | `npm view dsh-paper-studio version` 返回 3.88.0 | 2026-11-01：`npm whoami` → E401（未登录）；`npm publish --dry-run` 正常；需 `npm login` 或 Automation Token |
 | P-12 | 已关闭 | 中文文献检索腿 | 中文关键词返回 ≥10 条可核验题录/摘要 | v3.89.0：`bin/zh-lit.cjs`（OpenAlex language:zh + type:article，selftest 4/4；实查「人工智能 智能体」命中 42636 条）；**不是 CNKI 全文库**，覆盖不全 |
 | P-13 | 已关闭 | SCI 分区/选刊专项 | 输入 AI Agent 方向 + 目标二至三区，输出候选刊 + 分区 + 匹配理由 | v3.89.0：`bin/venue-select.cjs`（LetPub 公开页，selftest 4/4；实查 KBS 1区 IF8 / AA-MAS 3区 IF2.4 / IEEE TKDE 2区 IF11.6）；以页面当日为准 |
