@@ -1,0 +1,19 @@
+{
+  "schema": "paper-studio.glossary.v1",
+  "domain": "AI Agent / LLM systems",
+  "note": "中英双语初稿的锁定术语；新增术语先在这里登记，再写两侧正文。只锁术语本身，不替代领域审校。",
+  "terms": [
+    { "zh": "智能体", "en": "agent" },
+    { "zh": "大语言模型", "en": "large language model" },
+    { "zh": "工具调用", "en": "tool call" },
+    { "zh": "多智能体系统", "en": "multi-agent system" },
+    { "zh": "记忆机制", "en": "memory mechanism" },
+    { "zh": "检索增强生成", "en": "retrieval-augmented generation" },
+    { "zh": "思维链", "en": "chain of thought" },
+    { "zh": "强化学习", "en": "reinforcement learning" },
+    { "zh": "基准测试", "en": "benchmark" },
+    { "zh": "消融实验", "en": "ablation study" },
+    { "zh": "提示工程", "en": "prompt engineering" },
+    { "zh": "任务完成率", "en": "task completion rate" }
+  ]
+}

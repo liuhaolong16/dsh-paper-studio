@@ -16,4 +16,10 @@
 | P-07 | 等人决策 | 外部 `paper-writer/SKILL.md` 接入段的归属 | 该目录成为 git 仓库或并入已有仓库并提交 | `E:\DeepSeek\skills\paper-writer` 经查不是 git 仓库；需用户定是否建仓 |
 | P-08 | 已关闭 | 跑团面板「类别选择」固定（工作区1 跑团线） | workbench 的跑团设置 iframe 内类别栏滚动后仍贴顶（top=0），无重复顶栏 | trpg-package 本地 commit `53588442`；Chrome 实测：可见 header=0、tabs 滚动前 70→滚动 500 后 0 |
 | P-10 | 待办 | 跑团仓提交推送 | gitee `main` 含 `53588442` | 2026-11-01 `git push gitee main` → `pre-receive hook declined`；需仓库权限/用户推送 |
-| P-09 | 待办 | npm 发布 3.50.1 → 3.86.0 | `npm view dsh-paper-studio version` 返回 3.86.0 | 2026-11-01：`npm whoami` → E401（未登录）；`npm publish --dry-run` 正常（228 文件 / 2.9MB）；需 `npm login` 或 Automation Token |
+| P-09 | 待办 | npm 发布 3.50.1 → 3.88.0 | `npm view dsh-paper-studio version` 返回 3.88.0 | 2026-11-01：`npm whoami` → E401（未登录）；`npm publish --dry-run` 正常；需 `npm login` 或 Automation Token |
+| P-12 | 待办 | 中文文献检索腿 | 中文关键词返回 ≥10 条可核验题录/摘要，并接入论文流水线 | 2026-11-01：CNKI kns8s 是 SPA 壳；百度学术触发安全验证；需合法公开 API/机构权限（触发条件=拿到可用源） |
+| P-13 | 等人决策 | SCI 分区/选刊专项 | 输入 AI Agent 方向 + 目标二至三区，输出候选刊 + 分区 + 匹配理由 | 缺 JCR/中科院分区数据授权；OpenAlex 只有引用代理，不能冒充分区 |
+| P-14 | 已关闭 | 中英双语初稿 + 术语锁定 | `bin/bilingual.cjs --selftest` 4/4；术语两侧都出现、图表/引用/数字不漂移 | v3.88.0：`bin/bilingual.cjs --selftest` 4/4（正控+两条必失败+空术语表） |
+| P-15 | 已关闭 | 降重闭环（改前→改后→重测） | `bin/dup-loop.cjs --selftest` 4/4；改后重合下降且数字/图表/引用不丢 | v3.88.0：`bin/dup-loop.cjs --selftest` 4/4（改后同文必 FAIL、丢标记必 WARN、SKIP 不算通过） |
+| P-16 | 待办 | ARIS web 菜单与 threadId 实跑 | web 新会话 `/` 菜单见 ARIS 技能；`mcp__codex__codex` 返回 threadId 且 `codex-reply` 可续 | 2026-11-01 只验了桥 initialize/tools/list；web 会话与 threadId 未验；见 references/review-contract.md |
+| P-17 | 进行中 | ARIS 审稿人凭证/effort | `codex exec` 30s 内返回；`model_reasoning_effort` 显式设置并可复跑 | 宿主无 `VOLC_ARK_KEY`；补 key 后 4 分钟未返回；effort=none；见 review-contract |

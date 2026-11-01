@@ -2783,3 +2783,15 @@ ode bin/<tool>.cjs 调用。
 - 因官方文件是 `.doc`、转换后样式表退化，状态标 `verified-partial`；模板内红/蓝/浅蓝说明文字只对模板自检放行。
 - 实测：`--verify` 16/16；`--preflight --journal "汉江师范学院学报"` PASS；`--build` + `--check` 端到端 PASS。
 - 兼容性：命令仍 35 条、模块 8 个、13 道门不变；`cn-hjnu` 由 guidelines 升级为 docx-template，新增 `cn-hjnu-ns`。
+
+
+## 3.88.0 — 2026-11-01
+
+**论文体系治理：能力地图 + 审稿契约 + 体检探针 + 两个真缺口工具。**
+
+- `references/paper-landscape.md`：paper-studio / paper.playbook / ARIS / Supervisor 一表全（资产数、入口、profile、状态、适用场景、缺口），并写入 registry（107→110 条）。
+- `references/review-contract.md`：当前审稿人 = codex `glm-5-2` / volc，effort 未设；宿主无 `VOLC_ARK_KEY`，`codex exec` 直接报 Missing environment variable；补 key 后 4 分钟未返回；桥 `initialize/tools/list` 已验。决策 B = 保留 GLM + 显式 effort + manual-review 兜底。
+- `docs/ARIS部署决策.md`：只装 web、不装 desktop；唯一生效源 = web `node_modules/dsh-aris/skills`（87 技能）；回滚步骤。
+- ai-workbench `doctor` 增加 `probe`（env / dir-min / file-min）：`paper.aris` 会红在「VOLC_ARK_KEY 未设置（entry 存在≠可调用）」。
+- 新增 `bin/bilingual.cjs`（术语锁定 + 图表/引用/数字一致性，selftest 4/4）与 `bin/dup-loop.cjs`（改前/改后重测 + 标记丢失检查，selftest 4/4）。
+- BACKLOG 新增 P-12…P-17；P-14/P-15 关闭，P-12/P-13/P-16/P-17 待办/等人决策。

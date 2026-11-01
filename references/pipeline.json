@@ -1483,7 +1483,9 @@
     "style-card.cjs": "node bin/style-card.cjs --selftest",
     "journal-template.cjs": "node bin/journal-template.cjs --selftest",
     "longform.cjs": "node bin/longform.cjs --selftest",
-    "backlog-check.cjs": "node bin/backlog-check.cjs --selftest"
+    "backlog-check.cjs": "node bin/backlog-check.cjs --selftest",
+    "bilingual.cjs": "node bin/bilingual.cjs --selftest",
+    "dup-loop.cjs": "node bin/dup-loop.cjs --selftest"
   },
   "agent_facing": [
     "longform",
