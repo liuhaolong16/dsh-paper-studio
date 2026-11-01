@@ -2805,3 +2805,7 @@ ode bin/<tool>.cjs 调用。
 - `bin/venue-select.cjs`：LetPub 公开页 POST 查询，解析 ISSN / 中科院分区 / IF；候选池 `references/venue-candidates.json`（18 本 AI Agent 相关刊，含匹配理由）；selftest 4/4；实查 KBS 1区 IF8、AA-MAS 3区 IF2.4、IEEE TKDE 2区 IF11.6。
 - 两个新工具进 `pipeline.selfchecks`；BACKLOG P-12/P-13 关闭；`paper-landscape.md` 缺口表同步。
 - 合规边界：只读公开页面/公开 API，不登录、不绕付费墙、不下载盗版全文；分区以页面当日为准，不保证录用。
+
+## 3.89.1 — 2026-11-01
+
+**ARIS 桥闭环（本地补丁）**：`codex-exec` 原版在 `turn.completed` 后 codex 进程不退出，MCP 调用挂到超时；补丁在 turn 完成时 `taskkill /T` 结束进程树（备份 `server.py.bak-20261101`）。补丁后 `tools/call codex` 返回 threadId `01a197bc-f681-75c2-b56c-271a7b259891`，`codex-reply` 返回 `SECOND`；BACKLOG P-16 关闭，P-17（宿主 key/effort）仍待办。

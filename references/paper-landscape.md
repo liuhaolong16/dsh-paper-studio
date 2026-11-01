@@ -8,7 +8,7 @@
 |---|---|---|---|---|---|---|---|
 | `paper.studio` | 自建 paper-studio（编排层） | 35 条 agent_facing 命令 · 13 道门 · 16 条期刊模板 · longform 11 角色 | `node bin/studio.cjs <cmd>`；技能入口 `SKILL.md` | `E:\DeepSeek\skills\paper-studio`；desktop profile（`dsh-paper-studio-v3` link） | **可用**（studio 254/254 · verify 16/16） | 投稿前体检、套刊、长文流水线、引用/数字/声明门 | 本体 |
 | `paper.playbook` | 外部 research-paper-playbook | 138 条检查表 · 14 道门 | `SKILL.md` | `D:\DeepSeek\research-paper-playbook`；desktop | **可用**（14/14） | 方法论、检查表、门定义 | studio 的 `gates/` 与 playbook 同源 |
-| `paper.aris` | 外部 ARIS `dsh-aris` | 87 个技能目录（包描述写 82） | web 会话 `/` 菜单；桥 `mcp__codex__codex` | `C:\Users\ASUS\.dsh\profiles\web\node_modules\dsh-aris`；**仅 web profile** | **部分可用**：菜单已实测可见；桥 initialize/tools/list PASS；web 会话发送即 AUTH（无 DeepSeek key），threadId 未验；codex 执行侧另卡在 VOLC_ARK_KEY | idea→实验→写作→评审→rebuttal→重投全流程；跨模型审稿 | 与 studio 的 review/longform 重叠；ARIS 强在全流程技能，studio 强在机器门与套版 |
+| `paper.aris` | 外部 ARIS `dsh-aris` | 87 个技能目录（包描述写 82） | web 会话 `/` 菜单；桥 `mcp__codex__codex` | `C:\Users\ASUS\.dsh\profiles\web\node_modules\dsh-aris`；**仅 web profile** | **可用（需补丁与凭证）**：web `/` 菜单可见；桥 `codex`/`codex-reply` 已拿 threadId 并续接（本地 taskkill 补丁）；web 模型 AUTH 与宿主 `VOLC_ARK_KEY` 仍是环境前置 | idea→实验→写作→评审→rebuttal→重投全流程；跨模型审稿 | 与 studio 的 review/longform 重叠；ARIS 强在全流程技能，studio 强在机器门与套版 |
 | `paper.supervisor` | 外部 Supervisor-Skills（HKUSTDial） | 12 个技能 | 未装 profile，仅参考副本 | `E:\DevTools\Supervisor-Skills`（非 git 仓库） | **未安装**（参考副本） | paper-writer / paper-polish / pre-submission-reviewer / rebuttal-guidance 等方法论 | 与 studio 的写作/润色/审稿角色互补；不直接调用 |
 | `paper.landscape` | 本文件 | 1 张表 | 本文件 | paper-studio `references/` | 已建（2026-11-01） | 回答「论文插件有什么」 | 索引层 |
 
