@@ -2818,3 +2818,7 @@ ode bin/<tool>.cjs 调用。
 - 新增 `bin/aris-patch.cjs`：幂等检查/重打 ARIS 桥两个补丁（turn 完成后 taskkill 进程树 + 从 User 环境补 VOLC_ARK_KEY），`--check/--apply/--selftest`，selftest 4/4；插件升级后跑 `node bin/aris-patch.cjs --apply` 即可。
 - `~/.codex/config.toml` 显式设 `model_reasoning_effort="xhigh"`，codex 实测 OK；web 模型 key（`.credentials`）仍 401，P-17 保留。
 - registry 115 条（新增 `env.paper-aris-patch`）。
+
+## 3.90.1 — 2026-11-02
+
+**ARIS web 闭环完成**：web 63999 选 account 侧模型（API-key 侧同名条目仍 401），`mcp__codex__codex` 返回 threadId `01a19836-8632-7c60-8b33-0040dbb055ca` + OK，`codex-reply` 返回 SECOND；BACKLOG P-17 关闭。
