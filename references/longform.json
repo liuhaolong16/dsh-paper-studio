@@ -245,7 +245,34 @@
     "topic_min_candidates": 3,
     "visual_entry_re": "图[0-9]+.*(来源|Source).*(dpi|DPI|分辨率|分辨率)",
     "slides_total_re": "总时长|合计.*分钟|[0-9]+\\s*分钟",
-    "slides_min": 8
+    "slides_min": 8,
+    "topic_check": {
+      "required_sections": [
+        "风险等级",
+        "模块拆解",
+        "引用图谱分支",
+        "可行性",
+        "kill 判据"
+      ],
+      "min_queries": 3,
+      "query_fields": [
+        "数据库=",
+        "检索式=",
+        "日期="
+      ],
+      "risk_levels": [
+        "红",
+        "黄",
+        "绿"
+      ],
+      "selected_re": "选题：\\s*候选(\\d+)",
+      "doi_re": "10\\.[0-9]{4,9}/[^\\s)]+",
+      "blank_words": [
+        "空白",
+        "未发表",
+        "尚未报道"
+      ]
+    }
   },
   "review": {
     "rounds_default": 2,

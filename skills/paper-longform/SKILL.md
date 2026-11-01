@@ -19,11 +19,12 @@ description: |
 
 | 命令 | 说明 |
 |---|---|
-| `longform` | 多角色长文流水线（11 角色 · 11 阶段 · 人在环 3 次 · 审稿回环；文类 academic/wechat/report/book-review/policy） |
+| `longform` | 多角色长文流水线（11 角色 · 11 阶段 · 人在环 3 次 · 选题体检 · 审稿回环；文类 academic/wechat/report/book-review/policy） |
 
 ## 相关真源与资产
 
 - `references/longform.json`
+- `references/innovation-check.md`
 - `references/writer-integration.md`
 - `bin/longform.cjs`
 

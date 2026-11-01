@@ -41,6 +41,28 @@ function requiredRoles(spec, genre) {
   });
 }
 
+function checkTopic(text, spec) {
+  const c = spec.checks.topic_check;
+  const fails = [];
+  const cands = (text.match(/^##\s*候选/mg) || []).length;
+  if (cands < spec.checks.topic_min_candidates) fails.push(`选题工作表只有 ${cands} 个候选，少于 ${spec.checks.topic_min_candidates}`);
+  for (const s of c.required_sections) if (!text.includes(s)) fails.push('选题工作表缺「' + s + '」');
+  const q = (text.match(/数据库=/g) || []).length;
+  if (q < c.min_queries) fails.push(`检索记录只有 ${q} 条，少于 ${c.min_queries}（每条要 数据库= / 检索式= / 日期=）`);
+  for (const f of c.query_fields) if (!text.includes(f)) fails.push('检索记录缺字段 ' + f);
+  const sel = new RegExp(c.selected_re).exec(text);
+  if (!sel) fails.push('缺「选题：候选N」（必须明确选中哪个）');
+  else {
+    const idx = Number(sel[1]);
+    const blocks = text.split(/^##\s*候选/m).slice(1);
+    const block = blocks[idx - 1] || '';
+    if (/风险等级：\s*红/.test(block)) fails.push(`选中的候选${idx} 是红色风险，不能直接开题`);
+  }
+  if (new RegExp(c.blank_words.join('|')).test(text) && !text.includes('检索式=')) fails.push('声称空白/未发表但没有检索式记录');
+  if (text.includes('重合文献') && !text.includes('未发现重合') && !new RegExp(c.doi_re).test(text)) fails.push('声称重合但没有 DOI/URL');
+  return fails;
+}
+
 function cmdPlan(spec, argv) {
   const genre = flag(argv, '--genre');
   const topic = flag(argv, '--topic') || '(未命名)';
@@ -59,7 +81,7 @@ function cmdPlan(spec, argv) {
   L.push('## 阶段（人在环节点标 👤）', '');
   for (const p of spec.phases) L.push(`- Phase ${p.id} ${p.name}${p.human ? ' 👤' : ''} — ${p.why}`);
   L.push('', '## Phase 0 选题工作表（必须是人选的，不是模型代选）', '');
-  L.push('新建 `' + spec.checks.topic_file + '`，至少列 3 个候选，每个候选给：读者 / 新意 / 可行性 / 证据可得性 / 风险，并标出最终选择与理由。');
+  L.push('新建 `' + spec.checks.topic_file + '`，至少 3 个候选；每个候选必须写：风险等级（红/黄/绿）、模块拆解、检索记录（数据库= / 检索式= / 日期=，全表 ≥3 条）、重合文献（DOI 或「未发现重合」）、引用图谱分支（主杆 / 空白分支 / 依据）、可行性、kill 判据；末尾写「选题：候选N」。规则见 references/innovation-check.md。');
   L.push('', '## 角色与交付物（互不可替代）', '');
   L.push('| 角色 | 名称 | 交付物 | 最少字数 | 提示词 |');
   L.push('|---|---|---|---|---|');
@@ -142,10 +164,7 @@ function cmdCheck(spec, argv) {
 
   const topicText = readIf(path.join(dir, spec.checks.topic_file));
   if (topicText == null) fails.push('缺选题工作表 ' + spec.checks.topic_file);
-  else {
-    const n = (topicText.match(/候选/g) || []).length;
-    if (n < spec.checks.topic_min_candidates) fails.push(`选题工作表只有 ${n} 个候选，少于 ${spec.checks.topic_min_candidates}`);
-  }
+  else fails.push(...checkTopic(topicText, spec));
 
   for (const r of requiredRoles(spec, st.genre)) {
     const text = readIf(path.join(dir, r.file));
@@ -249,6 +268,26 @@ function cmdReviewCheck(spec, argv) {
   return 1;
 }
 
+function cmdTopicAudit(spec, argv) {
+  const dir = flag(argv, '--dir');
+  if (!dir) { console.log('前提层失败：缺 --dir <目录>'); return 2; }
+  const text = readIf(path.join(dir, spec.checks.topic_file));
+  if (text == null) { console.log('前提层失败：缺 ' + spec.checks.topic_file); return 2; }
+  const fails = checkTopic(text, spec);
+  console.log('选题体检 · ' + path.basename(dir));
+  if (!fails.length) { console.log('通过：候选/风险/检索/分支/可行性/kill 判据齐，选中项非红色'); return 0; }
+  for (const f of fails) console.log('  [FAIL] ' + f);
+  return 1;
+}
+
+function topicSheet() {
+  const row = (i) => `- 数据库=OpenAlex；检索式=("topic ${i}")；日期=2026-11-01；命中=${i}`;
+  let s = '# 选题评估\n\n';
+  for (let i = 1; i <= 3; i++) {
+    s += `## 候选${i}：方向${i}\n- 风险等级：${i === 3 ? '绿' : '黄'}\n- 模块拆解：问题 / 方法 / 指标 / 场景\n- 检索记录：\n${row(i)}\n${row(i + 10)}\n${row(i + 20)}\n- 重合文献：未发现重合\n- 引用图谱分支：主杆=实验室指标；空白分支=工业耐久；依据=2019-2024 分支计数\n- 可行性：数据可得\n- kill 判据：若同类工作已覆盖工业耐久则放弃\n\n`;
+  }
+  return s + '选题：候选3\n';
+}
 function writeRole(dir, name, text) { fs.writeFileSync(path.join(dir, name), text, 'utf8'); }
 function pad(s, n) { let out = s; while (countUnits(out) < n) out += '\n' + s; return out; }
 function fillRoles(spec, dir, genre, opt = {}) {
@@ -259,7 +298,7 @@ function fillRoles(spec, dir, genre, opt = {}) {
     if (r.id === 'T11') body = 'P1. 封面\nP2. 问题\nP3. 方法\nP4. 结果\nP5. 讨论\nP6. 结论\nP7. 附录\nP8. 致谢\n总时长 15 分钟\n' + body;
     writeRole(dir, r.file, body);
   }
-  writeRole(dir, spec.checks.topic_file, '候选1 读者 新意 可行性 证据 风险 评分\n候选2 读者 新意 可行性 证据 风险 评分\n候选3 读者 新意 可行性 证据 风险 评分\n选题：候选1\n');
+  writeRole(dir, spec.checks.topic_file, topicSheet());
 }
 function acadFinal(cites = 12) {
   return ['# 题目', '## 摘要', '摘要正文', '## 关键词', '关键词', '## 引言', '引言', '## 方法', '方法', '## 结果', '结果', '## 讨论', '讨论', '## 参考文献', Array.from({ length: cites }, (_, i) => `[${i + 1}] Ref ${i}`).join(' '), '利益冲突：无', '数据可用性：可请求', '正文补充内容说明 '.repeat(450)].join('\n');
@@ -269,6 +308,7 @@ function run(spec, argv) {
   if (cmd === '--plan') return cmdPlan(spec, argv);
   if (cmd === '--state') return cmdState(spec, argv);
   if (cmd === '--check') return cmdCheck(spec, argv);
+  if (cmd === '--topic-audit') return cmdTopicAudit(spec, argv);
   if (cmd === '--review') return cmdReviewPlan(spec, argv);
   if (cmd === '--review-check') return cmdReviewCheck(spec, argv);
   return 2;
@@ -341,6 +381,27 @@ function cmdSelftest() {
   fs.writeFileSync(path.join(r1, '15-修订说明-r1.md'), pad('[P1] 已修', 260));
   ck('review 未回应问题必须失败', run(spec, ['--review-check', '--dir', r1]) === 1);
 
+  const d8 = path.join(base, 'p8');
+  run(spec, ['--plan', '--genre', 'wechat', '--topic', '缺 kill', '--out', d8]);
+  fillRoles(spec, d8, 'wechat');
+  writeRole(d8, '90-终稿.md', '正文内容补充说明 '.repeat(400));
+  writeRole(d8, spec.checks.topic_file, topicSheet().replace(/kill 判据/g, '备注'));
+  ck('选题缺 kill 判据必须失败', run(spec, ['--check', '--dir', d8]) === 1);
+
+  const d9 = path.join(base, 'p9');
+  run(spec, ['--plan', '--genre', 'wechat', '--topic', '检索不足', '--out', d9]);
+  fillRoles(spec, d9, 'wechat');
+  writeRole(d9, '90-终稿.md', '正文内容补充说明 '.repeat(400));
+  writeRole(d9, spec.checks.topic_file, topicSheet().replace(/^- 数据库=OpenAlex[^\n]*\n/gm, '').replace(/^- 数据库=OpenAlex[^\n]*\n/gm, ''));
+  ck('检索记录不足必须失败', run(spec, ['--check', '--dir', d9]) === 1);
+
+  const d10 = path.join(base, 'p10');
+  run(spec, ['--plan', '--genre', 'wechat', '--topic', '选中红色', '--out', d10]);
+  fillRoles(spec, d10, 'wechat');
+  writeRole(d10, '90-终稿.md', '正文内容补充说明 '.repeat(400));
+  writeRole(d10, spec.checks.topic_file, topicSheet().replace('## 候选3：方向3\n- 风险等级：绿', '## 候选3：方向3\n- 风险等级：红'));
+  ck('选中红色候选必须失败', run(spec, ['--check', '--dir', d10]) === 1);
+
   fs.rmSync(base, { recursive: true, force: true });
   console.log(`\nlongform 自检：${pass}/${total} 通过`);
   return pass === total ? 0 : 1;
@@ -350,7 +411,7 @@ function main(argv) {
   const cmd = argv[0];
   try {
     if (!cmd || argv.includes('--help')) {
-      console.log('用法：--plan --genre <文类> --topic "<题目>" --out <目录> | --state --dir <目录> [--set phase=<id>|role=<T#>=done|pending] | --check --dir <目录> | --review --draft <稿.md> --out <目录> [--rounds N] | --review-check --dir <目录> | --selftest');
+      console.log('用法：--plan --genre <文类> --topic "<题目>" --out <目录> | --state --dir <目录> [--set phase=<id>|role=<T#>=done|pending] | --check --dir <目录> | --topic-audit --dir <目录> | --review --draft <稿.md> --out <目录> [--rounds N] | --review-check --dir <目录> | --selftest');
       return cmd ? 0 : 2;
     }
     if (cmd === '--selftest') return cmdSelftest();
@@ -363,4 +424,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { cmdPlan, cmdState, cmdCheck, cmdReviewPlan, cmdReviewCheck, cmdSelftest, countUnits, requiredRoles };
+module.exports = { cmdPlan, cmdState, cmdCheck, cmdReviewPlan, cmdReviewCheck, cmdTopicAudit, cmdSelftest, countUnits, requiredRoles, checkTopic };

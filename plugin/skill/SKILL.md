@@ -153,7 +153,7 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 
 > 根 `SKILL.md` 写每条的用法（命令侧权威）；本表保证**对话侧文档不漏任何一个命令** —— 插件自检的跨面文档锁核的就是这一份。
 
-- `longform`：多角色长文流水线（11 角色 · 11 阶段 · 人在环 3 次 · 审稿回环；文类 academic/wechat/report/book-review/policy）
+- `longform`：多角色长文流水线（11 角色 · 11 阶段 · 人在环 3 次 · 选题体检 · 审稿回环；文类 academic/wechat/report/book-review/policy）
 - `anonymize`：**双盲投稿匿名化**：抹作者/单位/邮箱/ORCID/电话/基金号/致谢整节，**逐条记 original→replacement 进清单**（清单用于复核与还原，不写进正文）；自引表述与仓库链接**只提醒不擅改**；既无名单又无作者行 ⇒ 明确「未检查」退 1；**文档属性(docx/PDF 元数据)与图内水印不在覆盖范围**（如实标注）
 - `model`：**面板凭据的 CLI 通道**（与面板写同一份本机存储；`set` 用 `--key` 或 `--from-file`）
 - `refs`：**按 CSL 样式格式化参考文献**（零 key、离线）：样式名支持 `gb-t-7714-2025-numeric`（中文刊顺序编码制）/ `gb-t-7714-2025-author-date` / `vancouver`；样式文件在 `assets/csl/`（第三方，CC-BY-SA 3.0，见同目录 PROVENANCE.md），**sha256 锁**在 `references/csl-lock.json` —— `refs --check` 核样式是否被无声替换；取不到样式/引擎一律报错并算未通过

@@ -2749,3 +2749,15 @@ ode bin/<tool>.cjs 调用。
 - **Elsevier 普通论文 Word 版式**：新增 `elsevier-word-generic`（A4 / 2.5cm / Times New Roman 12pt / 1.5 行距 / Title 16 / H1 14），`status=fallback`、`official=false`——**明确标注为派生版式，不是 Elsevier 官方模板**（官方只给 LaTeX elsarticle）；知识库 15 条，`--verify` 15/15。
 - 兼容性：13 道门与既有命令不变；`longform` 仍是第 35 条命令，模块数仍 8。
 - 读数：longform **16/16** · studio 254/254 · sync 8 模块/35 命令 · gate-runner 54/54 · journal-template 12/12 · verify 15/15 · audit 6/6 · package-audit 11/11 · license PASS。
+
+
+## 3.85.0 — 2026-11-01
+
+**新增「选题体检」：把 B 站《如何快速判断你的创新点是否值得做？》（BV1N9xv65EGf）的方法做成可失败判据。**
+
+- 五步法入库：拆模块分别检索 → 多库交叉（≥3 条检索记录）→ 重合必须有 DOI/URL → 看引用图分支方向而非连线密度 → 先写 kill 判据。
+- `longform --topic-audit --dir <目录>`：检查候选 ≥3、每个候选有风险等级/模块拆解/引用图谱分支/可行性/kill 判据；选中项不得为红色；全表检索记录 ≥3 条且含 `数据库= / 检索式= / 日期=`；声称空白必须带检索式；声称重合必须有 DOI 或「未发现重合」。
+- `longform --check` 同步接入该检查：选题不过，长文不放行。
+- 新方法文档 `references/innovation-check.md`（含风险红黄绿分级与机器可检项）。
+- 自检扩到 **19/19**（新增：缺 kill 判据、检索记录不足、选中红色候选三个必失败面）。
+- 兼容性：命令仍 35 条、模块 8 个、13 道门不变；只扩展 longform 子参数与选题校验。
