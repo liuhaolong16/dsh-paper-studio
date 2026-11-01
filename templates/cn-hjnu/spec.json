@@ -1,45 +1,95 @@
 {
   "schema": "paper-studio.journal-template.v1",
   "id": "cn-hjnu",
-  "journal": "汉江师范学院学报",
+  "journal": "汉江师范学院学报（人文社科类）",
   "aliases": [
     "汉江师范学院学报",
-    "HJNU"
+    "HJNU",
+    "汉江师范"
   ],
   "publisher": "汉江师范学院",
-  "kind": "guidelines",
+  "kind": "docx-template",
   "status": "verified-partial",
   "strict": true,
-  "verified_at": "2026-10-22",
+  "verified_at": "2026-11-01",
   "sources": [
     {
-      "url": "https://kyc.hjnu.edu.cn/info/1055/1763.htm",
-      "note": "官方来稿须知原文（2026-10-22 实读）；明确要求参照“论文模板”，但模板在 CNKI 投稿系统内，官网未直接给出文件",
-      "fetched_at": "2026-10-22"
+      "url": "https://hjsyxb.cbpt.cnki.net/portal/journal/portal/client/news/ysgz_011127bd-74c1-48b3-bed7-30349045a7d4",
+      "note": "期刊官网“论文模板”页（2026-11-01 实读）；提供人文社科类与自然科学类两个 .doc 文件",
+      "fetched_at": "2026-11-01"
+    },
+    {
+      "url": "https://hjsyxb.cbpt.cnki.net/portal/journal/portal/client/news/ysgz_0a96be87-490b-49ff-90aa-bee7b5d1b2cc",
+      "note": "投稿须知：要求参照论文模板、Word 上传、全文≤8500字",
+      "fetched_at": "2026-11-01"
     }
   ],
   "license": {
-    "name": "期刊官网来稿须知（仅本地参考，不再分发）",
+    "name": "汉江师范学院学报官方模板（作者投稿用）",
     "redistributable": false
   },
-  "docx": null,
-  "rule_summary": {
-    "length": "全文（含图表、摘要、参考文献）不宜超过 8500 字",
-    "abstract_zh": "200 字以内",
-    "keywords": "3-5 个，分号间隔",
-    "structure": "作者通讯信息—基金项目—作者简介—中文标题—署名与单位—中文摘要—关键词—中图分类号—文献标识码—正文—注释—参考文献—英文标题—署名与单位—英文摘要—英文关键词",
-    "headings": "正文各级标题限 15 字以内",
-    "references": "GB/T 7714—2015，顺序编码制，正文右上标",
-    "tables": "三线表；插图 3M 以上 .jpg 原图"
+  "docx": {
+    "template_file": "files/template.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 3.55,
+      "bottom": 2.53,
+      "left": 2.75,
+      "right": 2.75
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": "宋体",
+      "size_pt": 10.5
+    },
+    "styleMap": {
+      "Title": "Title",
+      "Heading1": "Heading1",
+      "Heading2": "Heading2",
+      "Heading3": "Heading3"
+    },
+    "styles": {
+      "Title": {
+        "size_pt": 22,
+        "bold": false
+      },
+      "Heading1": {
+        "size_pt": 14,
+        "bold": false
+      },
+      "Heading2": {
+        "size_pt": 10.5,
+        "bold": false
+      },
+      "Heading3": {
+        "size_pt": 10.5,
+        "bold": false
+      }
+    },
+    "note": "官方 .doc 经 Word COM 转 docx；已补 Normal 10.5 与 Title/H1/H2/H3 命名样式以便套版；页边距/字号/字体来自官方模板"
   },
-  "notes": [
-    "官方要求“参照本刊论文模板”，但模板只在中国知网投稿系统内；官网未提供文件，Word 投稿前必须从投稿系统取得。"
+  "colors": {
+    "text": "#000000"
+  },
+  "template_colors": [
+    "#FF0000",
+    "#0000FF",
+    "#00B0F0"
   ],
   "files": [
     {
-      "path": "guidelines.md",
-      "role": "guideline",
-      "sha256": "sha256:d5a3ac9be17b9a9da24f275788a74fc6e26aafea5c6e573c4bf891d0e2bfdca4"
+      "path": "files/template.docx",
+      "sha256": "sha256:af6f6ed5aa3977ba1947d8975e83ffa76ad23f7c7d6fd448a23b9304e8fbb541",
+      "role": "word-template"
     }
+  ],
+  "notes": [
+    "官方模板为 .doc（人文社科类链接名为 .doc，自然科学类实际也是 OLE2 .doc）；转换后样式表退化，故标 verified-partial。",
+    "模板内红/蓝/浅蓝文字是编辑部填写说明，仅对模板自检放行；成稿检查仍要求纯黑。",
+    "正文宋体/Times New Roman 五号（10.5pt）；标题黑体二号（22pt）；一级标题黑体四号（14pt）；二级黑体五号；三级楷体五号。"
   ]
 }

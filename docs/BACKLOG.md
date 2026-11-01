@@ -10,7 +10,8 @@
 | P-02 | 已关闭 | 选题「空白分支」接真实引用图数据 | `--graph-check` 用 OpenAlex 实测 n 与声明 n 比对（容差 10%），不符退出 1 | 10.1038/nature12373 声明 1958 / 实测 1955 PASS；`--graph-check` |
 | P-03 | 待办 | ACS 官方 Word 模板 | `templates/acs-journals` 含官方 docx 且 `--verify` PASS | 2026-10-22 取证：pubs.acs.org / pubsapp 均 403；触发条件=拿到官方文件 |
 | P-04 | 待办 | Wiley 官方 Word 模板 | 同上，`templates/wiley-*` | 2026-10-22：onlinelibrary 卡 Cloudflare；触发条件=浏览器会话可过验证 |
-| P-05 | 待办 | HAUT / HJNU 中文刊模板 | 两刊 spec 有 docx 且 `--verify` PASS | 2026-10-22：官网只有须知，模板在 CNKI 投稿系统内（需登录） |
+| P-05 | 待办 | HAUT 中文刊模板 | `templates/cn-haut` 有 docx 且 `--verify` PASS | 2026-10-22：官网只有须知；2026-11-01 未找到其 CNKI 腾云门户模板 |
+| P-11 | 已关闭 | HJNU 中文刊模板 | 人文社科/自科两套 docx 且 `--verify` PASS | v3.87.0：hjsyxb.cbpt.cnki.net 官网模板页，verify 16/16；build+check PASS |
 | P-06 | 已关闭 | 双远端推送 | gitee / github 均显示最新 main | v3.86.0 已 `git push gitee main` + `git push github main`（均 exit 0） |
 | P-07 | 等人决策 | 外部 `paper-writer/SKILL.md` 接入段的归属 | 该目录成为 git 仓库或并入已有仓库并提交 | `E:\DeepSeek\skills\paper-writer` 经查不是 git 仓库；需用户定是否建仓 |
 | P-08 | 已关闭 | 跑团面板「类别选择」固定（工作区1 跑团线） | workbench 的跑团设置 iframe 内类别栏滚动后仍贴顶（top=0），无重复顶栏 | trpg-package 本地 commit `53588442`；Chrome 实测：可见 header=0、tabs 滚动前 70→滚动 500 后 0 |

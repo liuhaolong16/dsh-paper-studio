@@ -2772,3 +2772,14 @@ ode bin/<tool>.cjs 调用。
 - 欠账真源 `docs/BACKLOG.md` + `bin/backlog-check.cjs` 格式门（表头/5 列/编号唯一/状态合法/已关闭必须有证据；selftest 6/6）。P-01/P-02/P-06 关闭。
 - 兼容性：命令仍 35 条、模块 8 个、13 道门不变；新增两个 longform 子参数与一个自检脚本。
 - 读数：longform **24/24** · studio 254/254 · sync 8 模块/35 命令 · verify 15/15 · audit 6/6 · package 11/11 · license PASS · backlog 6/6。
+
+
+## 3.87.0 — 2026-11-01
+
+**新增汉江师范学院学报官方 Word 模板（人文社科类 / 自然科学类），知识库 15 → 16 条。**
+
+- 来源：期刊官网「论文模板」页 `https://hjsyxb.cbpt.cnki.net/portal/journal/portal/client/news/ysgz_011127bd-74c1-48b3-bed7-30349045a7d4`（CNKI 腾云门户，2026-11-01 实读）；提供两个 `.doc`（人文社科类链接名为 `.doc`，自然科学类实际也是 OLE2 `.doc`）。
+- 处理：Word COM 转 `.docx`；补 Normal 10.5pt 与 Title/H1/H2/H3 命名样式以便套版；页边距 上3.55 / 下2.53 / 左右2.75cm，正文宋体+Times New Roman 10.5pt，标题黑体22pt，一级黑体14pt，二级黑体10.5pt，三级楷体10.5pt。
+- 因官方文件是 `.doc`、转换后样式表退化，状态标 `verified-partial`；模板内红/蓝/浅蓝说明文字只对模板自检放行。
+- 实测：`--verify` 16/16；`--preflight --journal "汉江师范学院学报"` PASS；`--build` + `--check` 端到端 PASS。
+- 兼容性：命令仍 35 条、模块 8 个、13 道门不变；`cn-hjnu` 由 guidelines 升级为 docx-template，新增 `cn-hjnu-ns`。

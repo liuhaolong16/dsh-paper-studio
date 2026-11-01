@@ -1,6 +1,6 @@
 {
   "schema": "paper-studio.journal-template-index.v1",
-  "updated": "2026-10-26",
+  "updated": "2026-11-01",
   "generic": "generic",
   "templates": [
     {
@@ -107,19 +107,6 @@
       "strict": true
     },
     {
-      "id": "cn-hjnu",
-      "journal": "汉江师范学院学报",
-      "aliases": [
-        "汉江师范学院学报",
-        "HJNU"
-      ],
-      "kind": "guidelines",
-      "status": "verified-partial",
-      "path": "templates/cn-hjnu/spec.json",
-      "verified_at": "2026-10-22",
-      "strict": true
-    },
-    {
       "id": "taylor-francis",
       "journal": "Taylor & Francis 期刊（官方 Word 模板）",
       "aliases": [
@@ -214,6 +201,33 @@
       "path": "templates/elsevier-word-generic/spec.json",
       "verified_at": "2026-10-26",
       "strict": false
+    },
+    {
+      "id": "cn-hjnu",
+      "journal": "汉江师范学院学报（人文社科类）",
+      "aliases": [
+        "汉江师范学院学报",
+        "HJNU",
+        "汉江师范"
+      ],
+      "kind": "docx-template",
+      "status": "verified-partial",
+      "path": "templates/cn-hjnu/spec.json",
+      "verified_at": "2026-11-01",
+      "strict": true
+    },
+    {
+      "id": "cn-hjnu-ns",
+      "journal": "汉江师范学院学报（自然科学类）",
+      "aliases": [
+        "汉江师范学院学报（自然科学类）",
+        "HJNU 自科"
+      ],
+      "kind": "docx-template",
+      "status": "verified-partial",
+      "path": "templates/cn-hjnu-ns/spec.json",
+      "verified_at": "2026-11-01",
+      "strict": true
     }
   ]
 }

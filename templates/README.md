@@ -53,12 +53,13 @@ templates/
 | `cn-sjtu` | 上海交通大学学报 | docx-template | verified-partial | 官方论文模板（.doc 经 Word 转 .docx）：A4 / 上下2.54 左右3.18cm / 中文宋体+Times New Roman；红字为说明 |
 | `cn-ctbu` | 重庆工商大学学报（自然科学版） | docx-template | verified-partial | 官方 Word 模板：A4 / 上下2.24 左右2.17cm / 中文宋体+西文 Times New Roman；模板内红/绿为填写说明 |
 | `cn-haut` | 河南工业大学学报（自然科学版） | guidelines | verified-partial | 官网投稿须知：中文摘要300字、英文≥400词、GB/T 7714—2015、三线表；**无模板文件** |
-| `cn-hjnu` | 汉江师范学院学报 | guidelines | verified-partial | 官网来稿须知：全文≤8500字、摘要200字、GB/T 7714—2015、三线表；模板在 CNKI 投稿系统内 |
+| `cn-hjnu` | 汉江师范学院学报（人文社科类） | docx-template | verified-partial | 期刊官网“论文模板”页（hjsyxb.cbpt.cnki.net）：官方 .doc 经 Word 转 .docx；A4 / 上3.55 下2.53 左右2.75cm / 宋体+Times 10.5pt / 标题22pt / 一级14pt |
+| `cn-hjnu-ns` | 汉江师范学院学报（自然科学类） | docx-template | verified-partial | 同上，自然科学类模板；页边距/字号同人文社科类 |
 
 ### 已知缺口（下一轮）
 
 - Elsevier / IEEE / ACS / PLOS 的 **Word 模板**尚未收集（当前只有 LaTeX 或指南）；Word 投稿时 `--format docx` 会返回 `NO_DOCX_TEMPLATE`，必须先补。MDPI 的 Word 模板已收。
-- 中文期刊：已收河南工业大学学报、汉江师范学院学报的**官方须知**（guidelines，partial）；两刊的 Word 模板分别在投稿系统/CNKI 内，尚未取得。
+- 中文期刊：汉江师范学院学报的**官方 Word 模板**（人文社科/自然科学两类）已从期刊官网取得（CNKI 腾云门户，官方 .doc 转 docx）；河南工业大学学报仍只有须知，Word 模板未取得。
 - Springer Nature / Wiley / Taylor & Francis / 中文核心刊未收录。
 
 ## 命令

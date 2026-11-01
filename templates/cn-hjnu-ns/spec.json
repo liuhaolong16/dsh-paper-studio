@@ -1,0 +1,94 @@
+{
+  "schema": "paper-studio.journal-template.v1",
+  "id": "cn-hjnu-ns",
+  "journal": "汉江师范学院学报（自然科学类）",
+  "aliases": [
+    "汉江师范学院学报（自然科学类）",
+    "HJNU 自科"
+  ],
+  "publisher": "汉江师范学院",
+  "kind": "docx-template",
+  "status": "verified-partial",
+  "strict": true,
+  "verified_at": "2026-11-01",
+  "sources": [
+    {
+      "url": "https://hjsyxb.cbpt.cnki.net/portal/journal/portal/client/news/ysgz_011127bd-74c1-48b3-bed7-30349045a7d4",
+      "note": "期刊官网“论文模板”页（2026-11-01 实读）；提供人文社科类与自然科学类两个 .doc 文件",
+      "fetched_at": "2026-11-01"
+    },
+    {
+      "url": "https://hjsyxb.cbpt.cnki.net/portal/journal/portal/client/news/ysgz_0a96be87-490b-49ff-90aa-bee7b5d1b2cc",
+      "note": "投稿须知：要求参照论文模板、Word 上传、全文≤8500字",
+      "fetched_at": "2026-11-01"
+    }
+  ],
+  "license": {
+    "name": "汉江师范学院学报官方模板（作者投稿用）",
+    "redistributable": false
+  },
+  "docx": {
+    "template_file": "files/template.docx",
+    "page": {
+      "size": "A4",
+      "width_cm": 21.0,
+      "height_cm": 29.7
+    },
+    "margins_cm": {
+      "top": 3.55,
+      "bottom": 2.53,
+      "left": 2.75,
+      "right": 2.75
+    },
+    "default_font": {
+      "ascii": "Times New Roman",
+      "eastAsia": "宋体",
+      "size_pt": 10.5
+    },
+    "styleMap": {
+      "Title": "Title",
+      "Heading1": "Heading1",
+      "Heading2": "Heading2",
+      "Heading3": "Heading3"
+    },
+    "styles": {
+      "Title": {
+        "size_pt": 22,
+        "bold": false
+      },
+      "Heading1": {
+        "size_pt": 14,
+        "bold": false
+      },
+      "Heading2": {
+        "size_pt": 10.5,
+        "bold": false
+      },
+      "Heading3": {
+        "size_pt": 10.5,
+        "bold": false
+      }
+    },
+    "note": "官方 .doc 经 Word COM 转 docx；已补 Normal 10.5 与 Title/H1/H2/H3 命名样式以便套版；页边距/字号/字体来自官方模板"
+  },
+  "colors": {
+    "text": "#000000"
+  },
+  "template_colors": [
+    "#FF0000",
+    "#0000FF",
+    "#00B0F0"
+  ],
+  "files": [
+    {
+      "path": "files/template.docx",
+      "sha256": "sha256:e3b91249a6a024b9e5d0fc20b5e48d817552f9a0cceb0165a6c0ddcf88f24a37",
+      "role": "word-template"
+    }
+  ],
+  "notes": [
+    "官方模板为 .doc（人文社科类链接名为 .doc，自然科学类实际也是 OLE2 .doc）；转换后样式表退化，故标 verified-partial。",
+    "模板内红/蓝/浅蓝文字是编辑部填写说明，仅对模板自检放行；成稿检查仍要求纯黑。",
+    "正文宋体/Times New Roman 五号（10.5pt）；标题黑体二号（22pt）；一级标题黑体四号（14pt）；二级黑体五号；三级楷体五号。"
+  ]
+}
