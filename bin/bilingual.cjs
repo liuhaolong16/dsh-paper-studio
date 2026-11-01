@@ -34,7 +34,10 @@ function run(zh, en, terms) {
     zh: t.zh, en: t.en,
     zhOk: z.includes(t.zh), enOk: e.includes(t.en),
   }));
-  const missing = rows.filter((r) => !r.zhOk || !r.enOk);
+  /* 术语表是“项目词表”，不是“每篇必须全用”：两侧都没出现 ⇒ 本条跳过；
+     只有一侧出现 ⇒ 才是漂移（中英不一致）。 */
+  const checked = rows.filter((r) => r.zhOk || r.enOk);
+  const missing = checked.filter((r) => r.zhOk !== r.enOk);
   const mz = markers(z), me = markers(e);
   const diff = (a, b) => a.filter((x) => !b.includes(x));
   const drift = {
@@ -44,11 +47,11 @@ function run(zh, en, terms) {
   };
   const driftCount = ['figs', 'refs', 'nums'].reduce((n, k) => n + drift[k].onlyZh.length + drift[k].onlyEn.length, 0);
   const status = missing.length || driftCount ? 'FAIL' : 'PASS';
-  return { status, terms: rows.length, missing, drift, driftCount };
+  return { status, terms: rows.length, checked: checked.length, missing, drift, driftCount };
 }
 function render(r) {
   const L = ['双语一致性：' + r.status];
-  L.push('  术语 ' + r.terms + ' 条 · 缺失 ' + r.missing.length + ' · 结构标记漂移 ' + r.driftCount);
+  L.push('  术语 ' + r.terms + ' 条 · 实际出现 ' + r.checked + ' 条 · 中英不匹配 ' + r.missing.length + ' · 结构标记漂移 ' + r.driftCount);
   for (const m of r.missing) L.push('  ✗ 术语未锁定：' + m.zh + ' / ' + m.en + '（中=' + m.zhOk + ' 英=' + m.enOk + '）');
   for (const k of ['figs', 'refs', 'nums']) {
     const d = r.drift[k];
