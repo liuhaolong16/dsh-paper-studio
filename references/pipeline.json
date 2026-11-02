@@ -1492,7 +1492,8 @@
     "ai-writing-check.cjs": "node bin/ai-writing-check.cjs --selftest",
     "ai-prescreen.cjs": "node bin/ai-prescreen.cjs --selftest",
     "conclusion-check.cjs": "node bin/conclusion-check.cjs --selftest",
-    "paper-reading.cjs": "node bin/paper-reading.cjs --selftest"
+    "paper-reading.cjs": "node bin/paper-reading.cjs --selftest",
+    "specificity-check.cjs": "node bin/specificity-check.cjs --selftest"
   },
   "agent_facing": [
     "longform",
@@ -1530,7 +1531,8 @@
     "coverage",
     "credit",
     "retract-check",
-    "reading"
+    "reading",
+    "specificity"
   ],
   "package_hygiene": {
     "note": "★ v3.2.40：投稿包卫生的**共用规则**（studio `compliance` 与契约门 `package_hygiene` 必须同判）。规则的权威实现是契约门的内置 `HYGIENE_FORBID`；这里镜像同一组正则，gate-runner 的「行为对拍锁」用同一脏包跑两边、要求**同一批违规文件名** ⇒ 任何一侧改了规则都会被当场抓到。",
@@ -1736,7 +1738,8 @@
       "not_for": "投稿件本身的合规体检（paper-gates）· 纯文字润色（paper-writing）",
       "commands": [
         "reviewers",
-        "reading"
+        "reading",
+        "specificity"
       ],
       "extra_commands": [
         "review",

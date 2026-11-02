@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.97.0 —— 2026-11-03
+
+**新增 `specificity`（写作具体化预检）：把“降 AI 率”改写成“把泛化段写具体”。**
+
+- 背景：同一篇论文旧稿/新稿两次知网报告实测（旧 49.5% = 4 398/8 883；新 19.4% = 1 936/9 985）。可观测计分是 **AI 特征值 = 标红字符 ÷ 总字符**；片段是连续标红区；前/中/后 20/60/20 由片段推导；总字符约等于“正文（不含参考文献、作者信息表）+ 数据表/题注”。
+- **政策边界**：`references/pipeline.json` 的 `policy.no_ai_detection_evasion = true`。本工具**不做 AI 检测规避**，不预测知网分数，不提供同义词洗稿、伪造报告或“付费测一次”的命令；它只找“长句 / 模板句 / 无证据”的泛化段，提示补实验细节、具体对比对象、拆句、删模板连接词。
+- 实现：`bin/specificity-check.cjs`。读 Markdown/文本/LaTeX；跳过作者信息表与参考文献；输出正文总字符、泛化段字符与占比、泛化段清单、改写顺序；`--prompt` 打印具体化提示词；`--strict` 超阈值退 1。
+- 参考：`references/specificity-preflight.md`（报告可观测结构 + 旧→新片段对照 + 政策红线 + 边界）。
+- 登记：`SUBCOMMANDS` / `SKILL.md` / `plugin/skill/SKILL.md` / `plugin/dist/plugin.js` `STUDIO_ACTIONS` / `plugin/tools-manifest.json` / `references/pipeline.json` `agent_facing` + `selfchecks` / `skills/paper-reviewing/SKILL.md` / ai-workbench `capability-registry`。
+- 自检：`specificity-check.cjs --selftest` **8/8** · `studio selftest` **254/254** · `plugin selftest` **40/40** · `audit` **6/6** · `coverage` **67/67** · `sync-skill-modules --check` **8 个模块一致（37 条 agent_facing）** · `claims` / `package-audit` / `doctor` / `hygiene` 全过。
+
 ## v3.96.0 —— 2026-11-03
 
 **新增 `reading`（单篇文献精读工作单）：把「让模型总结一下」换成 13 项可核对的结构。**

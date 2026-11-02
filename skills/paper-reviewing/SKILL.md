@@ -21,6 +21,7 @@ description: |
 |---|---|
 | `reviewers` | **聚合评审**：置信加权均值 · champion/detractor · 拖后腿维度 · 决策风险带（含「borderline 无 champion ⇒ 向下判」） |
 | `reading` | **单篇文献精读工作单**（13 个工作项：问题/动机/差异/方法/示例/数据/指标/发现/证据/边界/启发/追问/我的判断；只抽候选原文，不代替阅读；`--prompt` 打印精读提示词） |
+| `specificity` | **写作具体化预检**（长句/模板句/无证据三段判据；估算正文总字符、泛化段占比与清单；**不做 AI 检测规避、不预测知网分数**；`--prompt` 打印具体化提示词） |
 
 **相关 CLI（非 agent_facing，供直接调用）**：`review` · `response` · `cover`
 

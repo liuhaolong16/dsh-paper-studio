@@ -87,6 +87,8 @@ metadata:
   - `action=route` 判任务类型与必过门 · `gates` 列门 · `intake` 登记稿件；**`route` 还输出期刊分类路由**（该读哪份资产 + 存在性 + 边界，缺资产即失败退出）
   - `reading`：单篇文献精读工作单（13 项，只抽候选原文、不代替阅读）；`action=reading` + `args=["--file","paper.md","--out","reading.html"]`
   - `action=reading` + `args=["--file","paper.md","--out","reading.html"]`：单篇文献精读工作单（13 项，只抽候选原文、不代替阅读）
+  - `action=specificity` + `args=["--file","稿.md","--out","spec.md"]`：写作具体化预检（长句/模板句/无证据；**不做 AI 检测规避、不预测知网分数**）
+  - `specificity`：写作具体化预检（只查泛化段，不查检测分数；不做规避）
 - **合规门（v3.2.2 接线）**：`action=compliance` + `args=["<投稿包目录>"]` ⇒ 投稿前过合规与许可清单（在先发表/预印本 · 第三方许可 · 地图政治正确性 · 伦理声明 · 可机检交付）；**硬项缺一即失败，取不到即失败**；依据＝仓库 `references/compliance-checklist.md`（单一真源，工具面不复制判据）。自审三件同样可达：`action=credit`（CRediT 官方 14 角色与非官方写法核对） · `action=retract-check`（引用撤稿检查：撤稿须显式说明，取不到≠通过）· `action=claims`（文档数字一致性）· `action=hygiene`（残留件）· `action=coverage`（自检覆盖）。
   - `draft` / `scaffold` 起新稿 · `genre` 判体裁 · `sections` 出章节骨架（含篇幅预算与必答问题）
 - `draft --out <目录> --form <id> --answers <答案.json> [--section <节id>]` —— **按形态起草**：任务书追加「形态级起草清单」（该形态重点/雷区 + **逐节预算**：学位论文按字、会议按页、课堂演讲按分钟）；**未收齐答案一律退 2**；不传 `--form` 时旧行为不变
@@ -205,7 +207,7 @@ node bin\studio.cjs audit     :: 出厂审查（完整性 + 重复性 + 数字�
 | [`skills/paper-gates/SKILL.md`](skills/paper-gates/SKILL.md) | 稿子基本成形、要做「投稿前体检」，或要核对期刊契约 / 声明件 / 数字一致性 / 可复现材料时；也用于出厂前检查本插件自身是否自洽 | 11 |
 | [`skills/paper-writing/SKILL.md`](skills/paper-writing/SKILL.md) | 要把某段或整篇改到能投、要去 AI 味、要做中英双向转换、要体检图表题注与规格、或要生成双盲匿名版时 | 5 |
 | [`skills/paper-citing/SKILL.md`](skills/paper-citing/SKILL.md) | 要格式化参考文献（GB/T 7714—2025 / Vancouver 等）、要核对「引用是否真实存在」、或要给主张配引用锚点时 | 1 |
-| [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 要模拟审稿人、读一篇论文做精读工作单、把审稿/答辩意见分诊、或写返修回复与投稿信时 | 2 |
+| [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 要模拟审稿人、读一篇论文做精读工作单、把审稿/答辩意见分诊、或写返修回复与投稿信时 | 3 |
 | [`skills/paper-presenting/SKILL.md`](skills/paper-presenting/SKILL.md) | 论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时 | 1 |
 | [`skills/paper-process/SKILL.md`](skills/paper-process/SKILL.md) | 要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时 | 9 |
 | [`skills/paper-longform/SKILL.md`](skills/paper-longform/SKILL.md) | 要从零写一篇长文（学术/公众号/报告/书评/政策），需要多角色分工、批判-审计-终审回环，而不是只润色一段文字时 | 1 |

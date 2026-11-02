@@ -755,6 +755,7 @@ const SUBCOMMANDS = [
   'ai-prescreen',
   'conclusion',
   'reading',
+  'specificity',
   'profile',
   'schemacheck',
   'revise',
@@ -7659,6 +7660,7 @@ if (cmd === 'form') {
     if (cmd === 'ai-prescreen') return runTool('ai-prescreen.cjs');
     if (cmd === 'conclusion') return runTool('conclusion-check.cjs');
     if (cmd === 'reading') return runTool('paper-reading.cjs');
+    if (cmd === 'specificity') return runTool('specificity-check.cjs');
     if (cmd === 'profile') {
       // V3：研究风格档案（结构化 + 点路径读写 + brief 开工注入；凭证类字段一律拒收）
       return require('./profile.cjs').main(argv.slice(1));
