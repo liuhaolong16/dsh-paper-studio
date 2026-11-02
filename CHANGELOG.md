@@ -2822,3 +2822,7 @@ ode bin/<tool>.cjs 调用。
 ## 3.90.1 — 2026-11-02
 
 **ARIS web 闭环完成**：web 63999 选 account 侧模型（API-key 侧同名条目仍 401），`mcp__codex__codex` 返回 threadId `01a19836-8632-7c60-8b33-0040dbb055ca` + OK，`codex-reply` 返回 SECOND；BACKLOG P-17 关闭。
+
+## 3.91.0 — 2026-11-02
+
+**蒸馏 B站《AI写论文，这些问题出现会被一眼拒稿》**：新增 `bin/ai-writing-check.cjs`（`studio ai-writing`），机检两类硬伤——防御性废话（套话/模糊限定/重复扩写）与跳跃性写作（因果/强结论无证据）；selftest 4/4。来源视频 `BV1oZx762Edu`，蒸馏笔记 `references/ai-writing-rejection.md`；BACKLOG P-18 关闭。
