@@ -752,6 +752,7 @@ const SUBCOMMANDS = [
   'zh-lit',
   'venue',
   'ai-writing',
+  'ai-prescreen',
   'profile',
   'schemacheck',
   'revise',
@@ -7653,6 +7654,7 @@ if (cmd === 'form') {
     if (cmd === 'zh-lit') return runTool('zh-lit.cjs');
     if (cmd === 'venue') return runTool('venue-select.cjs');
     if (cmd === 'ai-writing') return runTool('ai-writing-check.cjs');
+    if (cmd === 'ai-prescreen') return runTool('ai-prescreen.cjs');
     if (cmd === 'profile') {
       // V3：研究风格档案（结构化 + 点路径读写 + brief 开工注入；凭证类字段一律拒收）
       return require('./profile.cjs').main(argv.slice(1));

@@ -2826,3 +2826,7 @@ ode bin/<tool>.cjs 调用。
 ## 3.91.0 — 2026-11-02
 
 **蒸馏 B站《AI写论文，这些问题出现会被一眼拒稿》**：新增 `bin/ai-writing-check.cjs`（`studio ai-writing`），机检两类硬伤——防御性废话（套话/模糊限定/重复扩写）与跳跃性写作（因果/强结论无证据）；selftest 4/4。来源视频 `BV1oZx762Edu`，蒸馏笔记 `references/ai-writing-rejection.md`；BACKLOG P-18 关闭。
+
+## 3.92.0 — 2026-11-02
+
+**蒸馏 B站《现在发论文 要首先得到AI的认可》（BV1FCxe6AE4N）**：新增 `bin/ai-prescreen.cjs`（`studio ai-prescreen`），把“AI 审稿 → 标 AI 痕迹（只标不改）→ 三版润色 → AI 披露”串成投稿前预审；复用 ai-writing-check，检查 AI 披露段，输出四步提示词；selftest 4/4。新增 `references/ai-prescreen-workflow.md`；BACKLOG P-19 关闭。

@@ -1489,7 +1489,8 @@
     "zh-lit.cjs": "node bin/zh-lit.cjs --selftest",
     "venue-select.cjs": "node bin/venue-select.cjs --selftest",
     "aris-patch.cjs": "node bin/aris-patch.cjs --selftest",
-    "ai-writing-check.cjs": "node bin/ai-writing-check.cjs --selftest"
+    "ai-writing-check.cjs": "node bin/ai-writing-check.cjs --selftest",
+    "ai-prescreen.cjs": "node bin/ai-prescreen.cjs --selftest"
   },
   "agent_facing": [
     "longform",
