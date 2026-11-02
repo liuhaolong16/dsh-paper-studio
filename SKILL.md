@@ -79,7 +79,8 @@ node bin/studio.cjs coach brief --root "<工作目录>"     :: **开工教练**�
 node bin/studio.cjs stylecheck --file "<稿.md>"         :: 写作质量机检（HARD＝低信息化开头；SOFT＝填充词/hedge/模糊词/贡献句/摘要无数字）
 node bin/studio.cjs conclusion --file "<稿.md>" [--json]  :: SCI 结论五句话结构（问题+判断/意义/关系/局限/下一步；查摘要复读与数字堆砌）
 node bin/studio.cjs ai-prescreen --file "<稿.md>" [--json]  :: 投稿前 AI 预审（废话/跳跃 + AI 披露 + 四步提示词；--prompts）
-node bin/studio.cjs ai-writing --file "<稿.md>" [--json]  :: AI 写作两类硬伤（防御性废话/跳跃性推理；启发式，需人工复核）
+node bin/studio.cjs ai-writing --file "<稿.md>" [--json]  :: AI 写作硬伤 + 四种防御性写作（启发式，需人工复核）
+node bin/studio.cjs ai-writing --prompt  :: 打印视频原“防御性写作”提示词（逐字）
 node bin/studio.cjs bilingual --zh "<中稿.md>" --en "<英稿.md>" [--glossary <术语.json>]  :: 双语一致性门（术语两侧锁定 + 图表/引用/数字不漂移；selftest 4/4）
 node bin/studio.cjs dup-loop --before <改前> --after <改后> --corpus <语料目录>   :: 降重闭环（重合率下降 + 数字/图表/引用不丢；selftest 4/4）
 node bin/studio.cjs zh-lit --query "人工智能 智能体" [--limit 10] [--year-from 2020] :: 中文题录检索（OpenAlex language:zh，非 CNKI 全文）

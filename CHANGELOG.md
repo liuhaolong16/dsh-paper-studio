@@ -2838,3 +2838,7 @@ ode bin/<tool>.cjs 调用。
 ## 3.94.0 — 2026-11-02
 
 **蒸馏 B站《今天组会讲 SCI 的结论怎么写？》（BV1kVxg6eEhU）**：新增 `bin/conclusion-check.cjs`（`studio conclusion`），按五句话检查结论——重申问题+判断 / 意味着什么 / 与别人结论关系 / 局限 / 下一步；另查“结论复读摘要”“结论堆数字”；selftest 5/5。新增 `references/conclusion-five-moves.md`；BACKLOG P-21 关闭。
+
+## 3.95.0 — 2026-11-02
+
+**补齐防御性写作原提示词**：从 BV1Anxq6yE53 约 70s 画面逐字抄录提示词，新增 `ai-writing-check --prompt`；`ai-prescreen --prompts` 嵌入同一段原文；机检补第 4 类“模糊免责”（selftest 7/7），ai-prescreen 5/5；新增 `references/defensive-writing-prompt.md`；BACKLOG P-22 关闭。

@@ -28,6 +28,32 @@ const CONNECTORS = ['因此', '所以', '由此可见', '这表明', '这说明'
 const ABSOLUTE = ['首次', '前所未有', '显著优于', '大幅提升', '显著提高', '完全证明', '充分证明'];
 const EVIDENCE = /(\d+(?:\.\d+)?\s*%?|\[\d+(?:[,\-–]\d+)*\]|图\s*\d+|表\s*\d+|Figure\s*\d+|Table\s*\d+|doi|et al\.?|数据|实验|样本|问卷|访谈|回归|显著[性]?\s*[（(]?p\s*[<>=])/i;
 
+/* 视频画面中的原始提示词（BV1Anxq6yE53，约 70s 处），逐字抄录。
+   用 --prompt 输出，可直接粘给写作模型。 */
+const DEFENSIVE_PROMPT = `你是学术写作编辑，请检查我下面这篇论文，找出其中的防御性写作，逐条给出修改意见。
+一、处理这四类
+1 先扬后抑
+给出结论后，立刻用“但是”“然而”“尽管如此”“需要指出的是”转折弱化。
+2 限定堆叠
+同一句里出现两个以上：可能 / 或许 / 在一定程度上 / 某种程度上 / 倾向于 / 似乎。
+3 模糊免责
+用“有待进一步研究”“值得深入探讨”“具有重要意义”“为后续工作提供了思路”代替具体结论。
+4 扩大局限
+把不属于研究范围的问题写成局限，或把一条局限扩写成多条，导致结论强度被自己压掉。
+二、每条按这个格式输出
+原句 → 问题类型 → 修改建议
+三、判断标准只做
+删掉限定词后，这句话是否成立？
+成立就删，不成立，说明它是有用的边界，保留。
+四、这些不作
+1 样本量、实验条件、适用对象等真实边界
+2 数据本身的不确定性表述
+3 数字、引用、公式，一个字都不许改
+4 不要把结论加强到证据支撑不了的程度
+5 最后给我一个统计
+四类各几处，删改后全文字数变化，以及哪几条是你判断后决定保留的，为什么保留。
+只改语言，不加新内容。不要替我编造新结果，只基于我提供的内容检查。`;
+
 function clean(text) {
   return String(text)
     .replace(/```[\s\S]*?```/g, ' ')
@@ -78,17 +104,21 @@ function analyze(text) {
     }
   }
 
-  /* 三种防御性写作（BV1Anxq6yE53）：
+  /* 四种防御性写作（BV1Anxq6yE53 的提示词）：
      ① 先扬后抑：先夸再“但/然而/并不意味着”，把成果又否定一部分；
      ② 限定堆叠：一句结论叠两个以上“可能/或许/一定程度上”；
-     ③ 扩大局限：把没做过、不归自己管的都塞进“局限”，一条变五条。 */
-  const defensive = { praiseThenNegate: [], hedgeStack: [], expandedLimits: [] };
+     ③ 模糊免责：用“有待进一步研究/值得深入探讨/具有重要意义/为后续工作提供思路”代替具体结论；
+     ④ 扩大局限：把没做过、不归自己管的都塞进“局限”，一条变五条。 */
+  const defensive = { praiseThenNegate: [], hedgeStack: [], fuzzyDisclaimer: [], expandedLimits: [] };
+  const FUZZY = ['有待进一步研究', '值得深入探讨', '具有重要意义', '为后续工作提供了思路', '具有重要价值', '有待验证'];
   ss.forEach((s) => {
     if (/(虽然|尽管|诚然|不可否认)/.test(s) && /(但|然而|不过|并不意味着|不能说明|仍有)/.test(s)) {
       defensive.praiseThenNegate.push(s);
     }
     const hs = HEDGES.filter((w) => s.includes(w));
     if (hs.length >= 2) defensive.hedgeStack.push({ sentence: s, hedges: hs });
+    const fz = FUZZY.filter((w) => s.includes(w));
+    if (fz.length) defensive.fuzzyDisclaimer.push({ sentence: s, phrases: fz });
   });
   const lim = raw.match(/(?:局限|不足|局限性|Limitations?)[^\n]{0,20}\n?([\s\S]{0,2000})/i);
   if (lim) {
@@ -97,7 +127,7 @@ function analyze(text) {
     if (items.length > 3) defensive.expandedLimits = items;
   }
   const dCount = defensive.praiseThenNegate.length + defensive.hedgeStack.length
-    + (defensive.expandedLimits.length > 3 ? 1 : 0);
+    + defensive.fuzzyDisclaimer.length + (defensive.expandedLimits.length > 3 ? 1 : 0);
 
   const status = (jumps.length >= 2 || filler.length + redundant.length >= 5 || hedgeRate > 12 || dCount >= 3)
     ? 'FAIL' : ((jumps.length || filler.length || redundant.length || hedgeRate > 6 || dCount) ? 'WARN' : 'PASS');
@@ -121,11 +151,13 @@ function render(r) {
     const d = r.defensive;
     if (d.praiseThenNegate.length) L.push('  ✗ 先扬后抑 ' + d.praiseThenNegate.length + ' 处（先夸再“但/并不意味着”）：' + d.praiseThenNegate[0].slice(0, 60));
     if (d.hedgeStack.length) L.push('  ✗ 限定堆叠 ' + d.hedgeStack.length + ' 处：' + d.hedgeStack[0].sentence.slice(0, 60));
+    if (d.fuzzyDisclaimer.length) L.push('  ✗ 模糊免责 ' + d.fuzzyDisclaimer.length + ' 处：' + d.fuzzyDisclaimer[0].sentence.slice(0, 60));
     if (d.expandedLimits.length > 3) L.push('  ✗ 扩大局限 ' + d.expandedLimits.length + ' 条（把没做过/不归你管的都算局限）');
   }
-  L.push('  ⇒ 三类防御性写作：先扬后抑 / 限定堆叠 / 扩大局限。');
+  L.push('  ⇒ 四类防御性写作：先扬后抑 / 限定堆叠 / 模糊免责 / 扩大局限。');
   L.push('  ⇒ 两类硬伤：废话太多（不敢下结论）/ 推理跳跃（缺必要步骤）。');
   L.push('  ⇒ 修法：补“自己的数据 / 文献数据 / 作者见解”三类证据；或人工识别后重写。');
+  L.push('  ⇒ 原视频提示词：node bin/ai-writing-check.cjs --prompt');
   L.push('  ⇒ 这是启发式机检，命中需人工复核，不能替代语义审稿。');
   return L.join('\n');
 }
@@ -136,12 +168,14 @@ function selftest() {
   const cleanNoConnector = '表 2 给出 3 组消融结果，去掉记忆模块后准确率下降 4.2 个百分点。';
   const hedgeText = '该方法可能或许在一定程度上有效。';
   const limitText = '## 局限\n本研究未考虑 A 场景；本研究未考虑 B 场景；无法覆盖 C 场景；不适用于 D 场景；仅覆盖 E 场景；缺乏 F 场景。';
+  const fuzzyText = '该机制具有重要意义，有待进一步研究。';
   const checks = [
     ['正控：有证据的“因此”不报跳跃', analyze(cleanText).jumps.length === 0],
     ['必失败：防御性废话被抓', analyze(fillerText).filler.length >= 2],
     ['必失败：无证据强结论被抓', analyze(jumpText).jumps.length >= 2],
     ['正控：纯数据句不误报', analyze(cleanNoConnector).status !== 'FAIL'],
     ['必失败：限定堆叠被抓', analyze(hedgeText).defensive.hedgeStack.length >= 1],
+    ['必失败：模糊免责被抓', analyze(fuzzyText).defensive.fuzzyDisclaimer.length >= 1],
     ['必失败：扩大局限被抓', analyze(limitText).defensive.expandedLimits.length > 3],
   ];
   let ok = 0;
@@ -151,13 +185,14 @@ function selftest() {
 }
 function main(argv) {
   if (argv.includes('--selftest')) return selftest();
+  if (argv.includes('--prompt')) { console.log(DEFENSIVE_PROMPT); return 0; }
   const v = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : ''; };
   const f = v('--file');
-  if (!f) { console.error('前提层失败：需要 --file <稿>'); return 2; }
+  if (!f) { console.error('前提层失败：需要 --file <稿> 或 --prompt'); return 2; }
   if (!fs.existsSync(f)) { console.error('读不到文件：' + f); return 2; }
   const r = analyze(fs.readFileSync(f, 'utf8'));
   console.log(argv.includes('--json') ? JSON.stringify(r, null, 2) : render(r));
   return r.status === 'PASS' ? 0 : 1;
 }
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { analyze, render, selftest };
+module.exports = { analyze, render, selftest, DEFENSIVE_PROMPT };

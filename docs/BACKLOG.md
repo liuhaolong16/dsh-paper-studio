@@ -26,3 +26,4 @@
 | P-19 | 已关闭 | 投稿前 AI 预审闭环 | `bin/ai-prescreen.cjs --selftest` 4/4；`studio ai-prescreen` 可跑 | 2026-11-02 蒸馏 BV1FCxe6AE4N：AI 审稿 → 标 AI 痕迹 → 三版润色 → AI 披露；见 references/ai-prescreen-workflow.md |
 | P-20 | 已关闭 | 三种防御性写作机检 | `bin/ai-writing-check.cjs --selftest` 6/6；`studio ai-writing` 可跑 | 2026-11-02 蒸馏 BV1Anxq6yE53：先扬后抑 / 限定堆叠 / 扩大局限；见 references/ai-writing-rejection.md |
 | P-21 | 已关闭 | SCI 结论五句话机检 | `bin/conclusion-check.cjs --selftest` 5/5；`studio conclusion` 可跑 | 2026-11-02 蒸馏 BV1kVxg6eEhU：问题+判断/意义/关系/局限/下一步；见 references/conclusion-five-moves.md |
+| P-22 | 已关闭 | 防御性写作原提示词入库 | `ai-writing-check --prompt` 可打印原文；`ai-prescreen --prompts` 已嵌入；selftest 7/7、5/5 | 2026-11-02 从 BV1Anxq6yE53 约 70s 画面逐字抄录；见 references/defensive-writing-prompt.md |

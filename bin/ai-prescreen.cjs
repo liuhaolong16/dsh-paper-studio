@@ -46,12 +46,8 @@ B. 带修改标注的版本（标出每处改动与理由）；
 C. 所有改动的汇总清单（原句 → 新句 → 理由）。
 不得新增数据、引用或结论；不得删除限定条件。
 
-## 附：防御性写作自检（BV1Anxq6yE53）
-只标注不改写。检查全文是否有：
-① 先扬后抑（先夸再“但/并不意味着”，把成果又否定一部分）；
-② 限定堆叠（一句结论叠两个以上“可能/或许/一定程度上”）；
-③ 扩大局限（把没做过、不归你管的都写成局限，一条变五条）。
-每条给：原句 → 类型 → 建议；高痕迹句由作者自己改。
+## 附：防御性写作检查（视频原提示词，逐字）
+${aw.DEFENSIVE_PROMPT}
 
 ## 第 4 步：生成 AI 使用披露
 根据上面的修改记录，生成一段可直接放进论文的 AI 使用披露，必须包含：
@@ -66,6 +62,7 @@ function analyze(text) {
   if (a.filler.length) flags.push('空话套话 ' + a.filler.length + ' 处');
   if (a.redundant.length) flags.push('重复扩写 ' + a.redundant.length + ' 处');
   if (a.jumps.length) flags.push('跳跃/无证据结论 ' + a.jumps.length + ' 处');
+  if (a.defensive && a.defensive.fuzzyDisclaimer.length) flags.push('模糊免责 ' + a.defensive.fuzzyDisclaimer.length + ' 处');
   if (!hasDisclosure) flags.push('缺 AI 使用披露');
   const status = a.status === 'FAIL' ? 'FAIL' : ((a.status === 'WARN' || !hasDisclosure) ? 'WARN' : 'PASS');
   return { status, hasDisclosure, flags, base: a };
@@ -90,6 +87,7 @@ function selftest() {
     ['必失败：缺披露被抓', badR.hasDisclosure === false],
     ['必失败：废话/跳跃被抓', badR.flags.some((x) => x.includes('空话')) || badR.flags.some((x) => x.includes('跳跃'))],
     ['四步提示词齐全', ['第 1 步', '第 2 步', '第 3 步', '第 4 步'].every((x) => PROMPTS.includes(x))],
+    ['原视频提示词已嵌入（含“模糊免责”）', PROMPTS.includes(aw.DEFENSIVE_PROMPT) && PROMPTS.includes('模糊免责')],
   ];
   let ok = 0;
   for (const [n, p] of checks) { console.log((p ? 'PASS ' : 'FAIL ') + n); if (p) ok += 1; }
