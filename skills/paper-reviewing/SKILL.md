@@ -1,25 +1,26 @@
 ---
 name: paper-reviewing
 description: |
-  审稿与返修（模拟评审 · 意见分诊 · 回复与投稿信）。投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时
+  审稿、精读与返修（模拟评审 · 单篇精读 · 意见分诊 · 回复与投稿信）。要模拟审稿人、读一篇论文做精读工作单、把审稿/答辩意见分诊、或写返修回复与投稿信时
   **不用于**：投稿件本身的合规体检（paper-gates）· 纯文字润色（paper-writing）。
-  Triggers on: 模拟审稿 · 审稿意见 · 返修 · 回复审稿人 · 投稿信 · reviewer · rebuttal · response to reviewers · cover letter。
+  Triggers on: 模拟审稿 · 审稿意见 · 返修 · 回复审稿人 · 投稿信 · reviewer · rebuttal · response to reviewers · cover letter · 文献精读 · 单篇文献。
   真源：`references/pipeline.json` 的 `skill_modules.paper-reviewing`；本文件由 `bin/sync-skill-modules.cjs` 生成，**勿手改**。
 ---
 
-# 审稿与返修（模拟评审 · 意见分诊 · 回复与投稿信）
+# 审稿、精读与返修（模拟评审 · 单篇精读 · 意见分诊 · 回复与投稿信）
 
 <!-- AUTO:skill-module:start 由 bin/sync-skill-modules.cjs 生成 -->
 
 ## 何时用
 
-投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时
+要模拟审稿人、读一篇论文做精读工作单、把审稿/答辩意见分诊、或写返修回复与投稿信时
 
 ## 这个模块管什么（命令面）
 
 | 命令 | 说明 |
 |---|---|
 | `reviewers` | **聚合评审**：置信加权均值 · champion/detractor · 拖后腿维度 · 决策风险带（含「borderline 无 champion ⇒ 向下判」） |
+| `reading` | **单篇文献精读工作单**（13 个工作项：问题/动机/差异/方法/示例/数据/指标/发现/证据/边界/启发/追问/我的判断；只抽候选原文，不代替阅读；`--prompt` 打印精读提示词） |
 
 **相关 CLI（非 agent_facing，供直接调用）**：`review` · `response` · `cover`
 

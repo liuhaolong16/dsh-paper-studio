@@ -3,6 +3,17 @@
 
 # 变更记录
 
+## v3.96.0 —— 2026-11-03
+
+**新增 `reading`（单篇文献精读工作单）：把「让模型总结一下」换成 13 项可核对的结构。**
+
+- 来源：B站《大模型无效读文献》（BV1mJ4w6HE2B，约 3 分钟）。核心判断：直接让模型总结只会压缩摘要/引言；有效读法要按「问题—动机—差异—方法—示例—数据—指标—发现—证据—边界—启发—追问—我的判断」逐项读。
+- 实现：`bin/paper-reading.cjs`。**不调用模型**，只从 Markdown/文本/LaTeX 抽候选句（带行号）、检查章节、生成 Markdown 或独立 HTML 工作单；`--prompt` 打印严格精读提示词；`--strict` 时缺项退 1。
+- 关键边界：候选原文 ≠ 已读懂；工具不判断论文对错，不替代 `doubao-paper-close-reading` 的深度语义精读。
+- 登记：`SUBCOMMANDS` / `SKILL.md` / `plugin/skill/SKILL.md` / `plugin/dist/plugin.js` `STUDIO_ACTIONS` / `plugin/tools-manifest.json` / `references/pipeline.json` `agent_facing` + `selfchecks` / `skills/paper-reviewing/SKILL.md` / ai-workbench `capability-registry`。
+- 自检：`paper-reading.cjs --selftest` **7/7** · `studio selftest` **254/254** · `plugin selftest` **40/40** · `audit` **6/6** · `coverage` **66/66**。
+- 顺带修复：`paper_studio` 的 action 枚举补齐 CLI 已有但工具面漏接的 8 个命令（bilingual / dup-loop / zh-lit / venue / ai-writing / ai-prescreen / conclusion / longform），漂移锁 40/40。
+
 ## v3.50.2 —— 2026-10-18
 
 **发布闭环：`3.50.1` 只是传播延迟，`latest` 已自动指到它；真实安装验证通过。**

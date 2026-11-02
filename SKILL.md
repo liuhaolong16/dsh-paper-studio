@@ -6,7 +6,8 @@ description: |
   paper-polish 润色），并逐门执行、汇总待修项（带行号）。
   当你（用户）说「给这篇稿子做投稿前体检」「跑一遍投稿前的门」「帮我把这段润色到能投」
   「这稿还差什么」时使用；也用于查流水线、查必过门。
-  **不用于**：起草与润色的**正文方法论本体**（那走 paper-writer / paper-polish）· 论文精读（走 doubao-paper-close-reading）·
+  也用于单篇文献精读工作单（只抽候选原文与结构，不代替阅读判断；深度语义精读仍走 doubao-paper-close-reading）。
+  **不用于**：起草与润色的**正文方法论本体**（那走 paper-writer / paper-polish）· 深度语义精读（走 doubao-paper-close-reading）·
   研究评价（走 doubao-academic-evaluator）· 规避 AI 检测类操作（本技能明确不做，见「红线」）。
 metadata:
   version: "2.4.0"
@@ -78,6 +79,7 @@ node bin/studio.cjs lessons                            :: 初稿经验库 L-1…
 node bin/studio.cjs coach brief --root "<工作目录>"     :: **开工教练**：教训 × 强制级别（已挂门＝enforced / advisory）× 用过次数 ⇒ 取 top-N（`coach use <id>` 记使用）
 node bin/studio.cjs stylecheck --file "<稿.md>"         :: 写作质量机检（HARD＝低信息化开头；SOFT＝填充词/hedge/模糊词/贡献句/摘要无数字）
 node bin/studio.cjs conclusion --file "<稿.md>" [--json]  :: SCI 结论五句话结构（问题+判断/意义/关系/局限/下一步；查摘要复读与数字堆砌）
+node bin/studio.cjs reading --file "<paper.md|txt|tex>" [--out <工作单.md|.html>] [--json] [--strict]  :: **单篇文献精读工作单**（13 个工作项：问题/动机/差异/方法/示例/数据/指标/发现/证据/边界/启发/追问/我的判断；只抽候选原文，不代替阅读；`--prompt` 打印精读提示词）
 node bin/studio.cjs ai-prescreen --file "<稿.md>" [--json]  :: 投稿前 AI 预审（废话/跳跃 + AI 披露 + 四步提示词；--prompts）
 node bin/studio.cjs ai-writing --file "<稿.md>" [--json]  :: AI 写作硬伤 + 四种防御性写作（启发式，需人工复核）
 node bin/studio.cjs ai-writing --prompt  :: 打印视频原“防御性写作”提示词（逐字）
@@ -331,7 +333,7 @@ node bin/studio.cjs report --type write --draft 草稿.md --declaration 材料�
 | [`skills/paper-gates/SKILL.md`](skills/paper-gates/SKILL.md) | 稿子基本成形、要做「投稿前体检」，或要核对期刊契约 / 声明件 / 数字一致性 / 可复现材料时；也用于出厂前检查本插件自身是否自洽 | 11 |
 | [`skills/paper-writing/SKILL.md`](skills/paper-writing/SKILL.md) | 要把某段或整篇改到能投、要去 AI 味、要做中英双向转换、要体检图表题注与规格、或要生成双盲匿名版时 | 5 |
 | [`skills/paper-citing/SKILL.md`](skills/paper-citing/SKILL.md) | 要格式化参考文献（GB/T 7714—2025 / Vancouver 等）、要核对「引用是否真实存在」、或要给主张配引用锚点时 | 1 |
-| [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 投稿前想先「挨一轮审」，或审稿意见回来了要分诊与逐条回复，或要写投稿信（cover letter）时 | 1 |
+| [`skills/paper-reviewing/SKILL.md`](skills/paper-reviewing/SKILL.md) | 要模拟审稿人、读一篇论文做精读工作单、把审稿/答辩意见分诊、或写返修回复与投稿信时 | 2 |
 | [`skills/paper-presenting/SKILL.md`](skills/paper-presenting/SKILL.md) | 论文要变成报告 / 答辩 / 课堂演讲（汇报时长已定），要做幻灯片预算、写口播稿、或检查已有幻灯片是否超时超载时 | 1 |
 | [`skills/paper-process/SKILL.md`](skills/paper-process/SKILL.md) | 要跨会话续跑（done 不等于 accepted 的状态机）、要查或记教训与方法、要做阶段交接、要算本会话成本、或要配置模型通道与自检时 | 9 |
 | [`skills/paper-longform/SKILL.md`](skills/paper-longform/SKILL.md) | 要从零写一篇长文（学术/公众号/报告/书评/政策），需要多角色分工、批判-审计-终审回环，而不是只润色一段文字时 | 1 |

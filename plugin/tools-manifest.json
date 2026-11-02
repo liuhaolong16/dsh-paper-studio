@@ -31,7 +31,16 @@
             "handoff",
             "crosscheck",
             "docx",
-            "selftest"
+            "selftest",
+            "reading",
+            "bilingual",
+            "dup-loop",
+            "zh-lit",
+            "venue",
+            "ai-writing",
+            "ai-prescreen",
+            "conclusion",
+            "longform"
           ],
           "description": "要执行的动作；modes 返回模式菜单，intent 判意图（需 text），其余桥接到 CLI 同名子命令"
         },
