@@ -2834,3 +2834,7 @@ ode bin/<tool>.cjs 调用。
 ## 3.93.0 — 2026-11-02
 
 **蒸馏 B站《AI 的防御性写作表现有这 3 种》（BV1Anxq6yE53）**：`ai-writing-check` 新增三种防御性写作机检——先扬后抑、限定堆叠、扩大局限；selftest 4/4→6/6。`ai-prescreen --prompts` 增加“防御性写作自检”提示；`references/ai-writing-rejection.md` 补该视频要点；BACKLOG P-20 关闭。
+
+## 3.94.0 — 2026-11-02
+
+**蒸馏 B站《今天组会讲 SCI 的结论怎么写？》（BV1kVxg6eEhU）**：新增 `bin/conclusion-check.cjs`（`studio conclusion`），按五句话检查结论——重申问题+判断 / 意味着什么 / 与别人结论关系 / 局限 / 下一步；另查“结论复读摘要”“结论堆数字”；selftest 5/5。新增 `references/conclusion-five-moves.md`；BACKLOG P-21 关闭。

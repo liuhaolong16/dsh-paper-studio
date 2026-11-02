@@ -1490,7 +1490,8 @@
     "venue-select.cjs": "node bin/venue-select.cjs --selftest",
     "aris-patch.cjs": "node bin/aris-patch.cjs --selftest",
     "ai-writing-check.cjs": "node bin/ai-writing-check.cjs --selftest",
-    "ai-prescreen.cjs": "node bin/ai-prescreen.cjs --selftest"
+    "ai-prescreen.cjs": "node bin/ai-prescreen.cjs --selftest",
+    "conclusion-check.cjs": "node bin/conclusion-check.cjs --selftest"
   },
   "agent_facing": [
     "longform",
