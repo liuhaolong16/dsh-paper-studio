@@ -24,3 +24,4 @@
 | P-17 | 已关闭 | ARIS 审稿人凭证/effort | `codex exec` 30s 内返回；`model_reasoning_effort` 显式设置并可复跑 | 2026-11-02：桥自加载 User `VOLC_ARK_KEY`；xhigh 已设且 codex 返回 OK；web 选 account 侧模型后会话可用：`mcp__codex__codex` 返回 threadId `01a19836-8632-7c60-8b33-0040dbb055ca` + OK，`codex-reply` 返回 SECOND；API-key 侧同名条目仍 401，选 account 条目即可 |
 | P-18 | 已关闭 | AI 写作两类硬伤机检 | `bin/ai-writing-check.cjs --selftest` 4/4；`studio ai-writing` 可跑 | 2026-11-02 蒸馏 BV1oZx762Edu：防御性废话 + 跳跃性推理；selftest 4/4；见 references/ai-writing-rejection.md |
 | P-19 | 已关闭 | 投稿前 AI 预审闭环 | `bin/ai-prescreen.cjs --selftest` 4/4；`studio ai-prescreen` 可跑 | 2026-11-02 蒸馏 BV1FCxe6AE4N：AI 审稿 → 标 AI 痕迹 → 三版润色 → AI 披露；见 references/ai-prescreen-workflow.md |
+| P-20 | 已关闭 | 三种防御性写作机检 | `bin/ai-writing-check.cjs --selftest` 6/6；`studio ai-writing` 可跑 | 2026-11-02 蒸馏 BV1Anxq6yE53：先扬后抑 / 限定堆叠 / 扩大局限；见 references/ai-writing-rejection.md |

@@ -2830,3 +2830,7 @@ ode bin/<tool>.cjs 调用。
 ## 3.92.0 — 2026-11-02
 
 **蒸馏 B站《现在发论文 要首先得到AI的认可》（BV1FCxe6AE4N）**：新增 `bin/ai-prescreen.cjs`（`studio ai-prescreen`），把“AI 审稿 → 标 AI 痕迹（只标不改）→ 三版润色 → AI 披露”串成投稿前预审；复用 ai-writing-check，检查 AI 披露段，输出四步提示词；selftest 4/4。新增 `references/ai-prescreen-workflow.md`；BACKLOG P-19 关闭。
+
+## 3.93.0 — 2026-11-02
+
+**蒸馏 B站《AI 的防御性写作表现有这 3 种》（BV1Anxq6yE53）**：`ai-writing-check` 新增三种防御性写作机检——先扬后抑、限定堆叠、扩大局限；selftest 4/4→6/6。`ai-prescreen --prompts` 增加“防御性写作自检”提示；`references/ai-writing-rejection.md` 补该视频要点；BACKLOG P-20 关闭。

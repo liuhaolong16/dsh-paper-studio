@@ -78,9 +78,30 @@ function analyze(text) {
     }
   }
 
-  const status = (jumps.length >= 2 || filler.length + redundant.length >= 5 || hedgeRate > 12)
-    ? 'FAIL' : ((jumps.length || filler.length || redundant.length || hedgeRate > 6) ? 'WARN' : 'PASS');
-  return { status, sentences: ss.length, chars: body.length, filler, hedges, hedgeRate: +hedgeRate.toFixed(1), jumps, redundant };
+  /* 三种防御性写作（BV1Anxq6yE53）：
+     ① 先扬后抑：先夸再“但/然而/并不意味着”，把成果又否定一部分；
+     ② 限定堆叠：一句结论叠两个以上“可能/或许/一定程度上”；
+     ③ 扩大局限：把没做过、不归自己管的都塞进“局限”，一条变五条。 */
+  const defensive = { praiseThenNegate: [], hedgeStack: [], expandedLimits: [] };
+  ss.forEach((s) => {
+    if (/(虽然|尽管|诚然|不可否认)/.test(s) && /(但|然而|不过|并不意味着|不能说明|仍有)/.test(s)) {
+      defensive.praiseThenNegate.push(s);
+    }
+    const hs = HEDGES.filter((w) => s.includes(w));
+    if (hs.length >= 2) defensive.hedgeStack.push({ sentence: s, hedges: hs });
+  });
+  const lim = raw.match(/(?:局限|不足|局限性|Limitations?)[^\n]{0,20}\n?([\s\S]{0,2000})/i);
+  if (lim) {
+    const clauses = lim[1].split(/[。；;\n]+/).map((x) => x.trim()).filter((x) => x.length > 5);
+    const items = clauses.filter((x) => /(未|不|无法|缺乏|仅|尚未)/.test(x));
+    if (items.length > 3) defensive.expandedLimits = items;
+  }
+  const dCount = defensive.praiseThenNegate.length + defensive.hedgeStack.length
+    + (defensive.expandedLimits.length > 3 ? 1 : 0);
+
+  const status = (jumps.length >= 2 || filler.length + redundant.length >= 5 || hedgeRate > 12 || dCount >= 3)
+    ? 'FAIL' : ((jumps.length || filler.length || redundant.length || hedgeRate > 6 || dCount) ? 'WARN' : 'PASS');
+  return { status, sentences: ss.length, chars: body.length, filler, hedges, hedgeRate: +hedgeRate.toFixed(1), jumps, redundant, defensive, defensiveCount: dCount };
 }
 function render(r) {
   const L = ['AI 写作两类硬伤机检：' + r.status];
@@ -96,7 +117,14 @@ function render(r) {
     L.push('  ✗ 跳跃性结论 ' + r.jumps.length + ' 处：');
     for (const x of r.jumps.slice(0, 5)) L.push('    · [' + x.reason + '] ' + x.sentence.slice(0, 80));
   }
-  L.push('  ⇒ 两类问题：废话太多（不敢下结论）/ 推理跳跃（缺必要步骤）。');
+  if (r.defensive) {
+    const d = r.defensive;
+    if (d.praiseThenNegate.length) L.push('  ✗ 先扬后抑 ' + d.praiseThenNegate.length + ' 处（先夸再“但/并不意味着”）：' + d.praiseThenNegate[0].slice(0, 60));
+    if (d.hedgeStack.length) L.push('  ✗ 限定堆叠 ' + d.hedgeStack.length + ' 处：' + d.hedgeStack[0].sentence.slice(0, 60));
+    if (d.expandedLimits.length > 3) L.push('  ✗ 扩大局限 ' + d.expandedLimits.length + ' 条（把没做过/不归你管的都算局限）');
+  }
+  L.push('  ⇒ 三类防御性写作：先扬后抑 / 限定堆叠 / 扩大局限。');
+  L.push('  ⇒ 两类硬伤：废话太多（不敢下结论）/ 推理跳跃（缺必要步骤）。');
   L.push('  ⇒ 修法：补“自己的数据 / 文献数据 / 作者见解”三类证据；或人工识别后重写。');
   L.push('  ⇒ 这是启发式机检，命中需人工复核，不能替代语义审稿。');
   return L.join('\n');
@@ -106,11 +134,15 @@ function selftest() {
   const fillerText = '值得注意的是，天气变冷了，人要多穿衣服。众所周知，天冷就要多穿衣服。综上所述，这很重要。事实上，这确实很重要。';
   const jumpText = '该方法具有显著优势。因此，它适用于所有场景。由此可见，这是最佳方案。';
   const cleanNoConnector = '表 2 给出 3 组消融结果，去掉记忆模块后准确率下降 4.2 个百分点。';
+  const hedgeText = '该方法可能或许在一定程度上有效。';
+  const limitText = '## 局限\n本研究未考虑 A 场景；本研究未考虑 B 场景；无法覆盖 C 场景；不适用于 D 场景；仅覆盖 E 场景；缺乏 F 场景。';
   const checks = [
     ['正控：有证据的“因此”不报跳跃', analyze(cleanText).jumps.length === 0],
     ['必失败：防御性废话被抓', analyze(fillerText).filler.length >= 2],
     ['必失败：无证据强结论被抓', analyze(jumpText).jumps.length >= 2],
     ['正控：纯数据句不误报', analyze(cleanNoConnector).status !== 'FAIL'],
+    ['必失败：限定堆叠被抓', analyze(hedgeText).defensive.hedgeStack.length >= 1],
+    ['必失败：扩大局限被抓', analyze(limitText).defensive.expandedLimits.length > 3],
   ];
   let ok = 0;
   for (const [n, p] of checks) { console.log((p ? 'PASS ' : 'FAIL ') + n); if (p) ok += 1; }
